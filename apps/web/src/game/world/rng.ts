@@ -5,16 +5,9 @@
  * byte-identical map. Nothing in this file may use Math.random().
  */
 
-/** Small, fast, seedable PRNG. Returns floats in [0, 1). */
-export function mulberry32(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+// The PRNG itself lives in game-config so the server generates delivery
+// orders with exactly the same generator the client generates the world with.
+export { mulberry32 } from '@ambervale/game-config';
 
 const smoothstep = (t: number): number => t * t * (3 - 2 * t);
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;

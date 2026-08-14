@@ -8,7 +8,7 @@
  * Screen-space HUD lives in HudScene; panels and modals are React.
  */
 
-import { SPAWN, TILE, WORLD, baseZoom } from '@ambervale/game-config';
+import { SPAWN, TILE, WORLD, baseZoom, structureAt } from '@ambervale/game-config';
 import * as Phaser from 'phaser';
 import type { FarmState } from '@/lib/api';
 import { bridge } from '../bridge';
@@ -50,6 +50,8 @@ export class WorldScene extends Phaser.Scene {
   private effects?: Effects;
   /** Last interaction pushed to the HUD, to avoid re-emitting every frame. */
   private lastInteractionKey = '';
+  /** Bouncing "!" over the delivery board when an order can be filled. */
+  private boardMark?: Phaser.GameObjects.Text;
 
   private debugMode = false;
   private debugCam = { x: SPAWN.x * TILE, y: SPAWN.y * TILE };
@@ -89,6 +91,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.effects = new Effects(this);
     this.createPlayer();
+    this.createBoardMark();
 
     if (this.debugMode) {
       this.applyGameplayZoom();
@@ -133,9 +136,37 @@ export class WorldScene extends Phaser.Scene {
     this.interactions = new Interactions(this.controller, this.effects!);
   }
 
+  private createBoardMark(): void {
+    const board = structureAt('board');
+    this.boardMark = this.add
+      .text(board.x * TILE + TILE / 2, (board.y - 1.4) * TILE, '!', {
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        fontSize: '30px',
+        fontStyle: 'bold',
+        color: '#f4b942',
+        stroke: '#0a2e3d',
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(board.y * TILE + 2)
+      .setVisible(false);
+  }
+
+  /** True when any unlocked, open order can actually be filled right now. */
+  private hasFillableOrder(state: FarmState): boolean {
+    return state.deliverySlots.some(
+      (slot) =>
+        slot.unlocked &&
+        slot.state === 'open' &&
+        slot.itemKey !== null &&
+        (state.inventory[slot.itemKey] ?? 0) >= (slot.qty ?? 0),
+    );
+  }
+
   private applyFarm(state: FarmState): void {
     stampReceived(state);
     this.farmView?.hydrate(state);
+    this.boardMark?.setVisible(this.hasFillableOrder(state));
     // Ghost plots disappear the moment the north meadow is bought.
     this.layout.ghostPlots.setVisible(!state.expansion.north);
   }
@@ -180,6 +211,11 @@ export class WorldScene extends Phaser.Scene {
     this.farmView?.update(delta);
     this.controller?.update(delta);
     this.pushInteraction();
+
+    if (this.boardMark?.visible) {
+      const board = structureAt('board');
+      this.boardMark.y = (board.y - 1.4) * TILE + Math.sin(this.elapsed / 260) * 6;
+    }
 
     this.layout.windmillBlades.rotation += (BLADE_SPEED * delta) / 1000;
     this.layout.rowboat.y = this.rowboatBaseY + Math.sin(this.elapsed / 620) * 3;

@@ -326,3 +326,39 @@ export const QUESTS: QuestDef[] = [
     reward: { amber: 1 },
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Shared deterministic RNG
+// ---------------------------------------------------------------------------
+
+/**
+ * Small seedable PRNG, shared so the server and client agree.
+ *
+ * The client uses it for world generation; the server uses it to generate
+ * delivery orders from a seed stored on the row, which makes every order
+ * reproducible for audit — you can always re-derive what a player was asked
+ * for, without trusting anything the client said.
+ */
+export function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * The five traders who post orders on the delivery board.
+ *
+ * NOTE: names and tints are invented — the prototype was not available.
+ * Reconcile against it when it lands; nothing depends on these but the UI.
+ */
+export const DELIVERY_NPCS: readonly { name: string; tint: number }[] = [
+  { name: 'Maren', tint: 0xd0674a },
+  { name: 'Tobias', tint: 0x4a86b8 },
+  { name: 'Wren', tint: 0x6fd08c },
+  { name: 'Odell', tint: 0xd98cb3 },
+  { name: 'Sable', tint: 0xf4b942 },
+];

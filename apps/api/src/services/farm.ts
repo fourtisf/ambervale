@@ -20,6 +20,7 @@ import {
 } from '@ambervale/game-config';
 import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { repRequiredFor, slotUnlocked } from './deliveries';
 import { amberBalance, levelFromTotalXp } from './progression';
 import { questProgress } from './quests';
 
@@ -180,6 +181,8 @@ export interface FarmState {
     npc: number;
     refillAt: number | null;
     unlocked: boolean;
+    /** Reputation needed to use this slot, for the locked-slot progress bar. */
+    repRequired: number;
   }[];
   /** Current quest and live progress toward it, or null when the chain ends. */
   quest: {
@@ -303,7 +306,10 @@ export async function getFarmState(
       amber: s.amber,
       npc: s.npc,
       refillAt: s.refillAt?.getTime() ?? null,
-      unlocked: true,
+      // Locked slots are still generated and shown, so the player can see what
+      // is waiting behind the reputation gate rather than an empty box.
+      unlocked: slotUnlocked(s.slot, user.rep),
+      repRequired: repRequiredFor(s.slot),
     })),
     quest: quest.quest
       ? {

@@ -8,6 +8,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
+import { ensureDeliverySlots } from '../services/deliveries';
 import { bootstrapFarm, getFarmState, repairNodes } from '../services/farm';
 
 export async function farmRoutes(app: FastifyInstance): Promise<void> {
@@ -17,8 +18,11 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
     // A session can outlive a failed bootstrap; make sure the farm exists.
     if (!user.bootstrapped) await bootstrapFarm(user.id);
 
+    // Lazy repair: node respawns and delivery refills are materialised when
+    // someone looks, so no scheduler is needed for a farm left alone for days.
     await prisma.$transaction(async (tx) => {
       await repairNodes(tx, user.id);
+      await ensureDeliverySlots(tx, user.id);
     });
 
     const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });

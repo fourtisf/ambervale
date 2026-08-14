@@ -114,6 +114,7 @@ export interface FarmDeliverySlot {
   npc: number;
   refillAt: number | null;
   unlocked: boolean;
+  repRequired: number;
 }
 
 export interface FarmUser {

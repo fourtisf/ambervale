@@ -8,6 +8,7 @@ import { ValidationError, sendValidationError } from './lib/validate';
 import authPlugin from './plugins/auth';
 import { actionRoutes } from './routes/actions';
 import { authRoutes } from './routes/auth';
+import { deliveryRoutes } from './routes/deliveries';
 import { farmRoutes } from './routes/farm';
 import { healthRoutes } from './routes/health';
 
@@ -84,6 +85,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(authRoutes);
   await app.register(farmRoutes);
   await app.register(actionRoutes);
+  await app.register(deliveryRoutes);
 
   return app;
 }

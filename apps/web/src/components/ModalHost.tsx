@@ -5,6 +5,7 @@ import { CROPS, CROP_KEYS, sellPrice, type CropKey, type ItemKey } from '@amberv
 import { bridge } from '@/game/bridge';
 import { ApiRequestError, apiPost, type FarmState } from '@/lib/api';
 import { audio } from '@/lib/audio';
+import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
 import Modal from './Modal';
 
 interface ActionReply {
@@ -378,6 +379,10 @@ export default function ModalHost() {
       return <MarketModal onClose={close} />;
     case 'bag':
       return <BagModal onClose={close} />;
+    case 'deliveries':
+      return <DeliveriesModal onClose={close} />;
+    case 'expand':
+      return <ExpandModal onClose={close} />;
     case 'settings':
       return <SettingsModal onClose={close} />;
     default:
