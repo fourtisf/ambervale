@@ -199,8 +199,9 @@ export class WorldScene extends Phaser.Scene {
     stampReceived(state);
     this.farmView?.hydrate(state);
     this.boardMark?.setVisible(this.hasFillableOrder(state));
-    // Ghost plots disappear the moment the north meadow is bought.
-    this.layout.ghostPlots.setVisible(!state.expansion.north);
+    // Each zone's dashed outlines disappear the moment that zone is bought.
+    this.layout.ghostPlots['north']?.setVisible(!state.expansion.north);
+    this.layout.ghostPlots['east']?.setVisible(!state.expansion.east);
   }
 
   private beginPlay(): void {

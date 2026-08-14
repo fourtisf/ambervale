@@ -155,6 +155,59 @@ day/night clock to sunrise and nothing else. Growth, egg timers and respawns
 are all server-side wall-clock, and a client that could skip them would be the
 largest exploit in the game. It buys the view, and the toast says so.
 
+## The wallet is the account
+
+A farm used to belong to a browser: a `deviceId` in localStorage and a signed
+cookie. Clear either and it was gone. That is survivable for a toy and fatal
+for a game that promises anything earnable, so a signature over a single-use
+nonce now turns an address into a durable identity.
+
+Three outcomes, decided entirely by what the address already owns: an unknown
+address is linked to the farm being played, an address that owns this farm is a
+no-op, and an address that owns a _different_ farm signs the player into that
+one. The third is recovery and it is the point.
+
+Two details are load-bearing:
+
+- **The session is swapped, not reinterpreted.** The cookie is the only thing
+  that says who you are, so recovery destroys the old session and mints a new
+  one for the recovered account.
+- **The deviceId moves with it.** The cookie expires eventually and the client
+  falls back to `/auth/guest`; if the device still pointed at the abandoned
+  guest the player would appear to lose their farm all over again. The guest
+  keeps a `retired:` placeholder so the unique index still holds.
+
+Recovery abandons whatever farm was being played, so `/wallet/preview` reports
+what would be gained and lost _before_ the wallet is ever prompted. It names no
+account — only levels and balances.
+
+One wallet holds one farm. Carrying a farm across three devices works, but only
+the most recent device auto-resumes without signing again; that is the cost of
+keeping the device mapping a single column rather than a table, and it is the
+right trade while the wallet is the durable half.
+
+## Nobody else existed
+
+The game had no way of showing a player that anyone else was playing, which for
+something with a token in it is a strange omission — a score with nothing to
+compare it against is not a score. Three ranked boards, a count of who played
+today, and a handle derived from the account id rather than typed (asking for a
+name is a signup form by another route).
+
+The daily goals were already the same for everyone on a given date, deliberately
+so; the boards are what finally makes that visible.
+
+## Renown, and the sink that does not end
+
+Every sink added before this one terminates: upgrade tiers cap out, meadows are
+bought once. A finite sink only postpones the problem it solves, so the Vale
+Fund has no end — the price of the next point of renown climbs forever, in
+whichever currency the player has too much of.
+
+Renown grants **no power at all**. It is a rank, and rank is what the boards
+sort on. Letting the only unbounded drain in the economy also buy an unbounded
+bonus would be the clearest possible way to ruin both.
+
 ## Known reconciliations
 
 `docs/AMBERVALE_HANDOFF.md` and `docs/prototype/ambervale2.html` were never

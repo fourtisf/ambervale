@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DELIVERIES, DELIVERY_NPCS, EXPANSION_NORTH } from '@ambervale/game-config';
+import { DELIVERIES, DELIVERY_NPCS, EXPANSIONS, type ExpansionZone } from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
 import { ApiRequestError, apiPost, type FarmState } from '@/lib/api';
 import { audio } from '@/lib/audio';
@@ -256,19 +256,28 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
   useEffect(() => bridge.on('farm', setFarm), []);
   if (!farm) return null;
 
+  // The two meadows are bought in order, so the sheet always shows the next
+  // one rather than making the player choose between a gate and a purchase.
+  const zone: ExpansionZone = farm.expansion['north'] ? 'east' : 'north';
+  const def = EXPANSIONS[zone];
+  const owned = farm.expansion[zone] === true;
+  const amberNeeded = 'amber' in def ? def.amber : 0;
+
   const cost = [
-    { key: 'coins', need: EXPANSION_NORTH.coins, have: farm.user.coins },
-    { key: 'wood', need: EXPANSION_NORTH.wood, have: farm.inventory['wood'] ?? 0 },
-    { key: 'stone', need: EXPANSION_NORTH.stone, have: farm.inventory['stone'] ?? 0 },
+    { key: 'coins', need: def.coins, have: farm.user.coins },
+    { key: 'wood', need: def.wood, have: farm.inventory['wood'] ?? 0 },
+    { key: 'stone', need: def.stone, have: farm.inventory['stone'] ?? 0 },
+    ...(amberNeeded ? [{ key: '$AMBER', need: amberNeeded, have: farm.user.amberBalance }] : []),
   ];
   const affordable = cost.every((c) => c.have >= c.need);
+  const levelShort = 'unlockLv' in def && farm.user.level < def.unlockLv;
 
   const expand = async () => {
     setBusy(true);
     try {
-      const r = await apiPost<DeliverReply>('/act/expand', {});
+      const r = await apiPost<DeliverReply>('/act/expand', { zone });
       commit(r);
-      bridge.toast('good', `The north meadow is yours — ${EXPANSION_NORTH.plotsAdded} new plots.`);
+      bridge.toast('good', `The ${zone} meadow is yours — ${def.plotsAdded} new plots.`);
       onClose();
     } catch (err) {
       audio.error();
@@ -279,14 +288,13 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title="North meadow" onClose={onClose}>
-      {farm.expansion.north ? (
-        <p className="empty">The north meadow is already yours.</p>
+    <Modal title={zone === 'north' ? 'North meadow' : 'East meadow'} onClose={onClose}>
+      {owned ? (
+        <p className="empty">Every meadow in the vale is already yours.</p>
       ) : (
         <>
           <p className="lead">
-            Clear the north meadow for {EXPANSION_NORTH.plotsAdded} more plots and{' '}
-            {EXPANSION_NORTH.xp} XP.
+            Clear the {zone} meadow for {def.plotsAdded} more plots and {def.xp} XP.
           </p>
           <ul className="cost">
             {cost.map((c) => (
@@ -298,8 +306,16 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
               </li>
             ))}
           </ul>
-          <button type="button" disabled={!affordable || busy} onClick={() => void expand()}>
-            {busy ? 'Clearing…' : 'Claim the meadow'}
+          <button
+            type="button"
+            disabled={!affordable || levelShort || busy}
+            onClick={() => void expand()}
+          >
+            {levelShort
+              ? `Opens at level ${'unlockLv' in def ? def.unlockLv : ''}`
+              : busy
+                ? 'Clearing…'
+                : 'Claim the meadow'}
           </button>
         </>
       )}

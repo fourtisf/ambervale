@@ -7,6 +7,7 @@ import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
 import { AwayModal, DailyModal, MillModal, UpgradesPanel } from './EconomyModals';
+import { LeaderboardModal, ValeFundPanel } from './SocialModals';
 import Modal from './Modal';
 import WalletPanel from './WalletPanel';
 import { commit, reportError, useFarm, type ActionReply } from './farmState';
@@ -66,7 +67,10 @@ function MarketModal({ onClose }: { onClose: () => void }) {
       </div>
 
       {tab === 'upgrades' ? (
-        <UpgradesPanel />
+        <>
+          <ValeFundPanel />
+          <UpgradesPanel />
+        </>
       ) : tab === 'buy' ? (
         <ul className="rows">
           {CROP_KEYS.map((key) => {
@@ -413,6 +417,8 @@ export default function ModalHost() {
       return <MillModal onClose={close} />;
     case 'daily':
       return <DailyModal onClose={close} />;
+    case 'leaderboard':
+      return <LeaderboardModal onClose={close} />;
     case 'away':
       return <AwayModal onClose={close} />;
     case 'settings':

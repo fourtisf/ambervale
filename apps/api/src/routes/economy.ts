@@ -10,12 +10,14 @@
 import {
   FISHING,
   GOODS,
+  PATRONAGE,
   RECIPES,
   UPGRADES,
   isRecipeKey,
   isUpgradeKey,
   nextTierCost,
   rollFish,
+  titleFor,
   type ItemKey,
   type RecipeKey,
   type UpgradeKey,
@@ -29,6 +31,8 @@ import { allowEvery, allowMutation, takeActionLock } from '../lib/rateLimit';
 import { parseBody } from '../lib/validate';
 import { addItem, addSeed, evaluateProgress, grant, itemQty, logEvent } from '../services/actions';
 import { getFarmState } from '../services/farm';
+import { readLeaderboard, standingFor } from '../services/leaderboard';
+import { amberBalance } from '../services/progression';
 import { purchaseTier, readUpgrades, shortfallFor, tierOf } from '../services/upgrades';
 
 async function withFarm(user: User, extra: Record<string, unknown>) {
@@ -228,6 +232,104 @@ export async function economyRoutes(app: FastifyInstance): Promise<void> {
         xp: result.xp,
       }),
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // The Vale Fund — buy a point of renown
+  // -------------------------------------------------------------------------
+  app.post('/act/patronage', async (req, res) => {
+    const body = parseBody(
+      z.object({ currency: z.union([z.literal('coins'), z.literal('amber')]) }),
+      req,
+    );
+    const user = req.requireUser();
+
+    if (!(await allowMutation(user.id))) throw rateLimited();
+    if (!(await takeActionLock(user.id, 'patronage'))) {
+      throw conflict('TOO_FAST', 'That gift is already in flight.');
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const fresh = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
+      if (fresh.level < PATRONAGE.unlockLv) {
+        throw conflict('LEVEL_TOO_LOW', `The Vale Fund opens at level ${PATRONAGE.unlockLv}.`, {
+          required: PATRONAGE.unlockLv,
+        });
+      }
+
+      // Priced from the renown already owned, read inside this transaction —
+      // two concurrent gifts therefore cannot both buy the cheap next point.
+      const owned = fresh.renown;
+
+      if (body.currency === 'coins') {
+        const cost = PATRONAGE.coinCost(owned);
+        if (fresh.coins < cost) {
+          throw conflict('INSUFFICIENT_COINS', 'Not enough coins.', {
+            have: fresh.coins,
+            need: cost,
+          });
+        }
+        const moved = await tx.user.updateMany({
+          where: { id: user.id, renown: owned },
+          data: { coins: { decrement: cost }, renown: { increment: 1 } },
+        });
+        if (moved.count === 0) throw conflict('TOO_FAST', 'That gift is already in flight.');
+        await logEvent(tx, user.id, 'act.patronage', {
+          currency: 'coins',
+          cost,
+          renown: owned + 1,
+        });
+      } else {
+        const cost = PATRONAGE.amberCost(owned);
+        const balance = await amberBalance(tx, user.id);
+        if (balance < cost) {
+          throw conflict('INSUFFICIENT_ITEMS', 'Not enough $AMBER.', {
+            missing: { amber: { have: balance, need: cost } },
+          });
+        }
+        const moved = await tx.user.updateMany({
+          where: { id: user.id, renown: owned },
+          data: { renown: { increment: 1 } },
+        });
+        if (moved.count === 0) throw conflict('TOO_FAST', 'That gift is already in flight.');
+        await tx.amberLedger.create({
+          data: { userId: user.id, delta: -cost, reason: 'patronage', refId: String(owned + 1) },
+        });
+        await logEvent(tx, user.id, 'act.patronage', {
+          currency: 'amber',
+          cost,
+          renown: owned + 1,
+        });
+      }
+
+      const progress = await evaluateProgress(tx, user.id);
+      return { renown: owned + 1, ...progress };
+    });
+
+    return res.send(
+      await withFarm(user, {
+        levelUps: [],
+        questCompleted: result.questCompleted,
+        daily: result.daily,
+        renown: result.renown,
+        title: titleFor(result.renown),
+      }),
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Leaderboard
+  // -------------------------------------------------------------------------
+  app.get('/leaderboard', async (req, res) => {
+    const user = req.requireUser();
+    const [board, you] = await Promise.all([readLeaderboard(prisma), standingFor(prisma, user.id)]);
+
+    // Mark the asking player's own rows so the UI can highlight them.
+    for (const list of [board.renown, board.level, board.streak]) {
+      for (const row of list) if (row.handle === you.handle) row.you = true;
+    }
+
+    return res.send({ ...board, you });
   });
 
   // A tiny read used by the crafting sheet to price the margin without the

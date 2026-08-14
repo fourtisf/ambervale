@@ -123,8 +123,8 @@ export class FarmView {
       const slot = plotAt(index);
       if (!plot || !slot) continue;
 
-      // North plots stay hidden (drawn as dashed ghosts) until unlocked.
-      const usable = slot.zone === 'base' || state.expansion.north;
+      // A locked zone stays hidden (drawn as dashed ghosts) until it is bought.
+      const usable = slot.zone === 'base' || state.expansion[slot.zone] === true;
       view.soil.setVisible(usable);
 
       if (!usable || !plot.cropKey) {

@@ -171,6 +171,9 @@ export async function purchaseTier(
     });
   }
 
+  // Counted so the quest that teaches the shop has something to watch.
+  await tx.user.update({ where: { id: userId }, data: { upgradesBought: { increment: 1 } } });
+
   const hensAdded = key === 'coop' ? await growCoop(tx, userId, tier) : 0;
 
   return {

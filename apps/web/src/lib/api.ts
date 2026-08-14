@@ -138,6 +138,9 @@ export interface FarmUser {
   coins: number;
   rep: number;
   amberBalance: number;
+  renown: number;
+  title: string | null;
+  handle: string;
   tutorialStep: number;
   questIndex: number;
   firstPlantDone: boolean;
@@ -210,7 +213,7 @@ export interface FarmQuest {
 export interface FarmState {
   serverNow: number;
   user: FarmUser;
-  expansion: { north: boolean };
+  expansion: Record<string, boolean>;
   plots: FarmPlot[];
   nodes: FarmNode[];
   animals: FarmAnimal[];
@@ -236,3 +239,48 @@ export const authGuest = (): Promise<{ created: boolean; farm: FarmState }> =>
   apiPost('/auth/guest', { deviceId: getDeviceId() });
 
 export const fetchFarm = (): Promise<FarmState> => apiGet('/farm');
+
+// ---------------------------------------------------------------------------
+// Leaderboard
+// ---------------------------------------------------------------------------
+
+export interface BoardRow {
+  handle: string;
+  title: string | null;
+  level: number;
+  renown: number;
+  deliveries: number;
+  streak: number;
+  you?: boolean;
+}
+
+export interface Leaderboard {
+  renown: BoardRow[];
+  level: BoardRow[];
+  streak: BoardRow[];
+  activeToday: number;
+  totalFarms: number;
+  you: { handle: string; renown: number; level: number; renownRank: number | null };
+}
+
+export const fetchLeaderboard = (): Promise<Leaderboard> => apiGet('/leaderboard');
+
+// ---------------------------------------------------------------------------
+// Wallet sign-in
+// ---------------------------------------------------------------------------
+
+export type WalletOutcome = 'linked' | 'already' | 'recovered';
+
+export interface WalletPreview {
+  outcome: WalletOutcome;
+  /** Present when signing would move the player to a different farm. */
+  target?: { level: number; coins: number; renown: number };
+  current?: { level: number; coins: number; renown: number };
+}
+
+export interface WalletSignIn {
+  outcome: WalletOutcome;
+  address: string;
+  chainId: number;
+  farm: FarmState;
+}

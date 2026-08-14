@@ -90,6 +90,9 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
         >
           Today{dailyPending > 0 && <span className="badge">{dailyPending}</span>}
         </button>
+        <button type="button" onClick={() => onOpen('leaderboard')} aria-label="Leaderboard">
+          Ranks
+        </button>
         <button type="button" onClick={() => onOpen('settings')} aria-label="Settings">
           ⚙
         </button>

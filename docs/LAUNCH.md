@@ -141,7 +141,7 @@ Honest account of what has and has not been run.
 
 | Check                               | Status                                                     |
 | ----------------------------------- | ---------------------------------------------------------- |
-| Abuse / regression suite (43 tests) | ✅ passing against a live Postgres + Redis                 |
+| Abuse / regression suite (56 tests) | ✅ passing against a live Postgres + Redis                 |
 | Ledger integrity (`SUM(delta)`)     | ✅ asserted in CI and verified by hand                     |
 | `/play` bundle budget               | ✅ 560 KB gzipped against a 1.5 MB budget                  |
 | Typecheck, lint, format             | ✅ clean across all three packages                         |

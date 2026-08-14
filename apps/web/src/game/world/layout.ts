@@ -25,8 +25,8 @@ import { SPRITE_SCALE } from './textures';
 export interface LayoutRefs {
   windmillBlades: Phaser.GameObjects.Image;
   rowboat: Phaser.GameObjects.Image;
-  /** Dashed outlines for the locked north plots; hidden once expanded. */
-  ghostPlots: Phaser.GameObjects.Graphics;
+  /** Dashed outlines per locked zone; each hidden once that zone is bought. */
+  ghostPlots: Record<string, Phaser.GameObjects.Graphics>;
   /** Standing sprites tall enough to hide the player; see Occlusion. */
   occluders: Phaser.GameObjects.Image[];
 }
@@ -42,7 +42,7 @@ function place(scene: Phaser.Scene, key: string, tx: number, ty: number): Phaser
   return img;
 }
 
-function drawGhostPlots(scene: Phaser.Scene): Phaser.GameObjects.Graphics {
+function drawGhostPlots(scene: Phaser.Scene, zone: string): Phaser.GameObjects.Graphics {
   const g = scene.add.graphics().setDepth(-500);
   g.setPipeline('Light2D');
 
@@ -51,7 +51,7 @@ function drawGhostPlots(scene: Phaser.Scene): Phaser.GameObjects.Graphics {
   g.lineStyle(2.5, 0xf5e6c8, 0.42);
 
   for (const plot of PLOTS) {
-    if (plot.zone !== 'north') continue;
+    if (plot.zone !== zone) continue;
     const x = plot.x * TILE + 6;
     const y = plot.y * TILE + 6;
     const w = TILE - 12;
@@ -103,7 +103,11 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
     }
   }
 
-  const ghostPlots = drawGhostPlots(scene);
+  // One graphics object per buyable zone, so each can be hidden on its own.
+  const ghostPlots: Record<string, Phaser.GameObjects.Graphics> = {
+    north: drawGhostPlots(scene, 'north'),
+    east: drawGhostPlots(scene, 'east'),
+  };
   const occluders: Phaser.GameObjects.Image[] = [];
 
   let rowboat: Phaser.GameObjects.Image | undefined;

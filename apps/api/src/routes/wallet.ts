@@ -9,67 +9,58 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
-import { verifyMessage } from 'viem';
 import { z } from 'zod';
 import { env } from '../env';
 import { ApiError, badRequest, conflict, rateLimited, unauthorized } from '../lib/errors';
 import { prisma } from '../lib/prisma';
-import { isUniqueViolation } from '../lib/prismaErrors';
 import { allowMutation, takeActionLock } from '../lib/rateLimit';
-import { redis } from '../lib/redis';
+import { createSession, destroySession } from '../lib/session';
 import { parseBody } from '../lib/validate';
+import { getFarmState } from '../services/farm';
 import { amberBalance } from '../services/progression';
+import {
+  applySignIn,
+  buildLinkMessage,
+  issueNonce,
+  previewFor,
+  signatureIsValid,
+  signInDomain,
+  takeNonce,
+} from '../services/walletAuth';
 
-/** How long a link nonce stays valid. */
-const NONCE_TTL_SEC = 300;
+export { buildLinkMessage };
 
-const nonceKey = (userId: string) => `walletnonce:${userId}`;
+const AddressField = z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Not an EVM address.');
 
 const LinkBody = z.object({
-  address: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Not an EVM address.'),
+  address: AddressField,
   signature: z.string().regex(/^0x[a-fA-F0-9]+$/, 'Not a signature.'),
   chainId: z.number().int().positive(),
 });
 
-/**
- * The message the wallet signs.
- *
- * SIWE-shaped: it names the domain, the account, and a single-use nonce, so a
- * signature captured from one site or one attempt cannot be replayed at
- * another.
- */
-export function buildLinkMessage(params: {
-  domain: string;
-  address: string;
-  userId: string;
-  nonce: string;
-  chainId: number;
-}): string {
-  return [
-    `${params.domain} wants you to sign in with your Ethereum account:`,
-    params.address,
-    '',
-    'Link this wallet to your AMBERVALE farm.',
-    '',
-    `URI: ${params.domain}`,
-    'Version: 1',
-    `Chain ID: ${params.chainId}`,
-    `Nonce: ${params.nonce}`,
-    `Account: ${params.userId}`,
-  ].join('\n');
-}
-
 export async function walletRoutes(app: FastifyInstance): Promise<void> {
-  /** Issues a single-use nonce for the link message. */
+  /** Issues a single-use nonce for the sign-in message. */
   app.post('/wallet/nonce', async (req, res) => {
     const user = req.requireUser();
     if (!(await allowMutation(user.id))) throw rateLimited();
 
-    const nonce = Math.random().toString(36).slice(2) + Date.now().toString(36);
-    await redis.set(nonceKey(user.id), nonce, 'EX', NONCE_TTL_SEC);
+    const nonce = await issueNonce(user.id);
+    return res.send({ nonce, domain: signInDomain(), userId: user.id });
+  });
 
-    const domain = new URL(env.WEB_ORIGIN[0] ?? 'http://localhost').host;
-    return res.send({ nonce, domain, userId: user.id });
+  /**
+   * What signing would do, asked before the wallet is ever prompted.
+   *
+   * Recovery abandons whatever farm is being played, so the player has to be
+   * able to see that coming. Reports progress on both sides and nothing that
+   * identifies the other account.
+   */
+  app.post('/wallet/preview', async (req, res) => {
+    const body = parseBody(z.object({ address: AddressField }), req);
+    const user = req.requireUser();
+    if (!(await allowMutation(user.id))) throw rateLimited();
+
+    return res.send(await previewFor(prisma, body.address, user.id));
   });
 
   app.post('/wallet/link', async (req, res) => {
@@ -83,47 +74,48 @@ export async function walletRoutes(app: FastifyInstance): Promise<void> {
 
     // Single-use: consumed before verification, so a failed attempt cannot be
     // retried with the same nonce.
-    const nonce = await redis.getdel(nonceKey(user.id));
-    if (!nonce) throw badRequest('That link request expired. Try again.');
+    const nonce = await takeNonce(user.id);
+    if (!nonce) throw badRequest('That sign-in request expired. Try again.');
 
-    const domain = new URL(env.WEB_ORIGIN[0] ?? 'http://localhost').host;
     const message = buildLinkMessage({
-      domain,
+      domain: signInDomain(),
       address: body.address,
       userId: user.id,
       nonce,
       chainId: body.chainId,
     });
 
-    const valid = await verifyMessage({
-      address: body.address as `0x${string}`,
+    const valid = await signatureIsValid({
+      address: body.address,
+      signature: body.signature,
       message,
-      signature: body.signature as `0x${string}`,
     });
     if (!valid) throw unauthorized('That signature does not match the address.');
 
-    // Addresses are stored lower-cased so the unique index is genuinely
-    // one-account-per-wallet rather than one-per-capitalisation.
-    const address = body.address.toLowerCase();
+    const headerDevice = req.headers['x-device-id'];
+    const result = await applySignIn(prisma, {
+      address: body.address,
+      chainId: body.chainId,
+      currentUserId: user.id,
+      deviceId: typeof headerDevice === 'string' ? headerDevice : undefined,
+    });
 
-    try {
-      const wallet = await prisma.wallet.upsert({
-        where: { userId: user.id },
-        create: { userId: user.id, address, chainId: body.chainId },
-        update: { address, chainId: body.chainId },
-      });
-
-      await prisma.eventLog.create({
-        data: { userId: user.id, kind: 'wallet.link', payload: { address, chainId: body.chainId } },
-      });
-
-      return res.send({ address: wallet.address, chainId: wallet.chainId });
-    } catch (err) {
-      if (isUniqueViolation(err)) {
-        throw conflict('WALLET_TAKEN', 'That wallet is already linked to another farm.');
-      }
-      throw err;
+    // Recovery means this browser is now a different player. Swap the session
+    // rather than trusting the old one: the cookie is the only thing that says
+    // who you are, so it has to change with the account.
+    if (result.userId !== user.id) {
+      if (req.sessionId) await destroySession(req.sessionId);
+      res.setSessionCookie(await createSession(result.userId));
     }
+
+    const owner = await prisma.user.findUniqueOrThrow({ where: { id: result.userId } });
+
+    return res.send({
+      outcome: result.outcome,
+      address: result.address,
+      chainId: result.chainId,
+      farm: await getFarmState(prisma, owner),
+    });
   });
 
   app.get('/wallet', async (req, res) => {

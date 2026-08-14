@@ -185,7 +185,7 @@ export const FENCES: readonly { x: number; y: number; w: number; h: number }[] =
 // Plots
 // ---------------------------------------------------------------------------
 
-export type PlotZone = 'base' | 'north';
+export type PlotZone = 'base' | 'north' | 'east';
 
 export interface PlotSlot {
   index: number;
@@ -217,10 +217,21 @@ export const PLOTS: readonly PlotSlot[] = [
   { index: 12, zone: 'north', x: 17, y: 18 },
   { index: 13, zone: 'north', x: 19, y: 18 },
   { index: 14, zone: 'north', x: 21, y: 18 },
+
+  // East meadow, bought after the north. Every tile here is plain grass and
+  // clear of the coop's footprint and the lane that runs past it — checked
+  // against the generated map rather than eyeballed.
+  { index: 15, zone: 'east', x: 25, y: 20 },
+  { index: 16, zone: 'east', x: 27, y: 20 },
+  { index: 17, zone: 'east', x: 29, y: 20 },
+  { index: 18, zone: 'east', x: 25, y: 22 },
+  { index: 19, zone: 'east', x: 27, y: 22 },
+  { index: 20, zone: 'east', x: 29, y: 22 },
 ];
 
 export const BASE_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'base').length;
 export const NORTH_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'north').length;
+export const EAST_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'east').length;
 
 export const plotAt = (index: number): PlotSlot | undefined => PLOTS.find((p) => p.index === index);
 

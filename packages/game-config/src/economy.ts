@@ -379,6 +379,48 @@ export const LEVEL_REWARDS: Record<number, LevelReward> = {
 };
 
 // ---------------------------------------------------------------------------
+// The Vale Fund — the endless sink
+// ---------------------------------------------------------------------------
+
+/**
+ * Renown, bought from the Vale Fund.
+ *
+ * Every other sink in the game terminates: upgrades cap out, expansions are
+ * bought once. A finite sink only postpones the problem it solves, so this one
+ * has no end — the price of the next point climbs forever, in whichever
+ * currency the player has too much of.
+ *
+ * Renown grants no power whatsoever. It is a rank, and rank is what the
+ * leaderboard sorts on. Making it buy a bonus instead would turn the only
+ * unbounded sink in the game into unbounded advantage.
+ */
+export const PATRONAGE = {
+  unlockLv: 5,
+  /** Coin price of the next point, given how many are already owned. */
+  coinCost: (owned: number): number => Math.ceil(140 * Math.pow(owned + 1, 1.35)),
+  /** $AMBER price of the same point. Climbs more gently — $AMBER is scarcer. */
+  amberCost: (owned: number): number => Math.max(2, Math.ceil(1.6 * Math.pow(owned + 1, 0.85))),
+} as const;
+
+/** Titles earned at renown thresholds. Cosmetic, shown beside the name. */
+export const RENOWN_TITLES: { at: number; title: string }[] = [
+  { at: 1, title: 'Friend of the Vale' },
+  { at: 5, title: 'Patron' },
+  { at: 15, title: 'Benefactor' },
+  { at: 40, title: 'Steward' },
+  { at: 80, title: 'Warden' },
+  { at: 150, title: 'Keeper of Ambervale' },
+];
+
+export function titleFor(renown: number): string | null {
+  let title: string | null = null;
+  for (const step of RENOWN_TITLES) {
+    if (renown >= step.at) title = step.title;
+  }
+  return title;
+}
+
+// ---------------------------------------------------------------------------
 // Away report
 // ---------------------------------------------------------------------------
 

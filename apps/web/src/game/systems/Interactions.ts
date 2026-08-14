@@ -90,7 +90,7 @@ export class Interactions {
     for (const plot of farm.plots) {
       const slot = plotAt(plot.index);
       if (!slot) continue;
-      if (slot.zone === 'north' && !farm.expansion.north) continue;
+      if (slot.zone !== 'base' && farm.expansion[slot.zone] !== true) continue;
 
       const x = slot.x * TILE + TILE / 2;
       const y = slot.y * TILE + TILE / 2;

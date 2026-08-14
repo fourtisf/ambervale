@@ -78,6 +78,9 @@ export interface FarmLike {
     coins: number;
     rep: number;
     amberBalance: number;
+    renown: number;
+    title: string | null;
+    handle: string;
     tutorialStep: number;
     counters: Record<string, number>;
   };
@@ -101,7 +104,7 @@ export interface FarmLike {
     amber: number | null;
     unlocked: boolean;
   }[];
-  expansion: { north: boolean };
+  expansion: Record<string, boolean>;
   quest: { id: string; current: number; target: number } | null;
   upgrades: Record<string, number>;
   shop: {

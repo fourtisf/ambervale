@@ -8,7 +8,13 @@
  * the payment is what would have to succeed twice for that to happen.
  */
 
-import { DELIVERIES, EXPANSION_NORTH, PLOTS } from '@ambervale/game-config';
+import {
+  DELIVERIES,
+  EXPANSIONS,
+  PLOTS,
+  isExpansionZone,
+  type ExpansionZone,
+} from '@ambervale/game-config';
 import type { FastifyInstance } from 'fastify';
 import type { Prisma, User } from '@prisma/client';
 import { z } from 'zod';
@@ -19,6 +25,7 @@ import { allowMutation, takeActionLock } from '../lib/rateLimit';
 import { rateLimited } from '../lib/errors';
 import { parseBody } from '../lib/validate';
 import { addItem, evaluateProgress, grant, itemQty, logEvent } from '../services/actions';
+import { amberBalance } from '../services/progression';
 import { ensureDeliverySlots, slotUnlocked, repRequiredFor } from '../services/deliveries';
 import { getFarmState } from '../services/farm';
 
@@ -160,59 +167,83 @@ export async function deliveryRoutes(app: FastifyInstance): Promise<void> {
   // -------------------------------------------------------------------------
 
   app.post('/act/expand', async (req, res) => {
+    // Older clients sent no body at all, when north was the only meadow.
+    const body = parseBody(z.object({ zone: z.string().optional() }), req);
+    const zone: ExpansionZone = isExpansionZone(body.zone ?? 'north')
+      ? ((body.zone ?? 'north') as ExpansionZone)
+      : 'north';
+    const def = EXPANSIONS[zone];
+
     const user = req.requireUser();
 
     if (!(await allowMutation(user.id))) throw rateLimited();
-    if (!(await takeActionLock(user.id, 'expand'))) {
+    if (!(await takeActionLock(user.id, 'expand', zone))) {
       throw conflict('TOO_FAST', 'Already expanding.');
     }
 
     const result = await prisma.$transaction(async (tx) => {
       const expansion = await tx.expansion.findUnique({ where: { userId: user.id } });
-      if (expansion?.north)
-        throw conflict('ALREADY_EXPANDED', 'The north meadow is already yours.');
+      if (expansion?.[zone]) {
+        throw conflict('ALREADY_EXPANDED', `The ${zone} meadow is already yours.`);
+      }
+
+      // The east meadow is the second purchase, not an alternative to the
+      // first: buying it out of order would leave a gap in the map.
+      if ('requiresNorth' in def && def.requiresNorth && !expansion?.north) {
+        throw conflict('PLOT_LOCKED', 'Claim the north meadow first.');
+      }
 
       const fresh = await tx.user.findUniqueOrThrow({ where: { id: user.id } });
+      if ('unlockLv' in def && fresh.level < def.unlockLv) {
+        throw conflict('LEVEL_TOO_LOW', `That meadow opens at level ${def.unlockLv}.`, {
+          required: def.unlockLv,
+        });
+      }
+
       const wood = await itemQty(tx, user.id, 'wood');
       const stone = await itemQty(tx, user.id, 'stone');
+      const amber = await amberBalance(tx, user.id);
+      const needAmber = 'amber' in def ? def.amber : 0;
 
       const missing: Record<string, { have: number; need: number }> = {};
-      if (fresh.coins < EXPANSION_NORTH.coins) {
-        missing['coins'] = { have: fresh.coins, need: EXPANSION_NORTH.coins };
-      }
-      if (wood < EXPANSION_NORTH.wood) missing['wood'] = { have: wood, need: EXPANSION_NORTH.wood };
-      if (stone < EXPANSION_NORTH.stone) {
-        missing['stone'] = { have: stone, need: EXPANSION_NORTH.stone };
-      }
+      if (fresh.coins < def.coins) missing['coins'] = { have: fresh.coins, need: def.coins };
+      if (wood < def.wood) missing['wood'] = { have: wood, need: def.wood };
+      if (stone < def.stone) missing['stone'] = { have: stone, need: def.stone };
+      if (needAmber && amber < needAmber) missing['amber'] = { have: amber, need: needAmber };
+
       if (Object.keys(missing).length > 0) {
         throw conflict('INSUFFICIENT_ITEMS', 'Not enough to claim the meadow yet.', { missing });
       }
 
-      await addItem(tx, user.id, 'wood', -EXPANSION_NORTH.wood);
-      await addItem(tx, user.id, 'stone', -EXPANSION_NORTH.stone);
+      await addItem(tx, user.id, 'wood', -def.wood);
+      await addItem(tx, user.id, 'stone', -def.stone);
+      if (needAmber) {
+        await tx.amberLedger.create({
+          data: { userId: user.id, delta: -needAmber, reason: 'expansion', refId: zone },
+        });
+      }
 
       // Compare-and-set so two concurrent expands cannot both charge the player.
       const claimed = await tx.expansion.updateMany({
-        where: { userId: user.id, north: false },
-        data: { north: true },
+        where: { userId: user.id, [zone]: false },
+        data: { [zone]: true },
       });
       if (claimed.count === 0) {
-        throw conflict('ALREADY_EXPANDED', 'The north meadow is already yours.');
+        throw conflict('ALREADY_EXPANDED', `The ${zone} meadow is already yours.`);
       }
 
-      const g = await grant(tx, user.id, {
-        coins: -EXPANSION_NORTH.coins,
-        xp: EXPANSION_NORTH.xp,
-      });
+      const g = await grant(tx, user.id, { coins: -def.coins, xp: def.xp });
 
-      await logEvent(tx, user.id, 'act.expand', { cost: EXPANSION_NORTH });
+      await logEvent(tx, user.id, 'act.expand', { zone, cost: JSON.stringify(def) });
       const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
       return {
         levelUps: g.levelUps,
+        levelRewards: g.levelRewards,
         questCompleted,
         daily,
-        plotsAdded: PLOTS.filter((p) => p.zone === 'north').length,
+        zone,
+        plotsAdded: PLOTS.filter((p) => p.zone === zone).length,
       };
     });
 

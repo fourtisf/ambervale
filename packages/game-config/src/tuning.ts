@@ -241,6 +241,33 @@ export const EXPANSION_NORTH = {
   xp: 60,
 } as const;
 
+/**
+ * The second expansion. Gated behind the first, and priced an order of
+ * magnitude higher: it is meant to be the thing a mid-game farm is saving for,
+ * not a second purchase on the same afternoon.
+ */
+export const EXPANSION_EAST = {
+  coins: 1800,
+  wood: 60,
+  stone: 40,
+  amber: 6,
+  plotsAdded: 6,
+  xp: 220,
+  /** Requires the north meadow first. */
+  requiresNorth: true,
+  unlockLv: 7,
+} as const;
+
+export type ExpansionZone = 'north' | 'east';
+
+export const EXPANSIONS = {
+  north: EXPANSION_NORTH,
+  east: EXPANSION_EAST,
+} as const;
+
+export const isExpansionZone = (key: string): key is ExpansionZone =>
+  key === 'north' || key === 'east';
+
 // ---------------------------------------------------------------------------
 // New accounts
 // ---------------------------------------------------------------------------
@@ -268,7 +295,12 @@ export type QuestCounter =
   | 'level'
   | 'deliveriesDone'
   | 'milkCount'
-  | 'expansionNorth';
+  | 'expansionNorth'
+  | 'upgradesBought'
+  | 'fishCount'
+  | 'craftCount'
+  | 'renown'
+  | 'expansionEast';
 
 export interface QuestDef {
   id: string;
@@ -334,6 +366,46 @@ export const QUESTS: QuestDef[] = [
     counter: 'expansionNorth',
     target: 1,
     reward: { amber: 1 },
+  },
+
+  // Everything past here exists to introduce a system the player would
+  // otherwise never find. Content nobody discovers is content that does not
+  // exist, and the chain used to end before the dock, the mill, the shop and
+  // the Vale Fund were ever mentioned.
+  {
+    id: 'upgrade1',
+    text: 'Buy your first upgrade at the market',
+    counter: 'upgradesBought',
+    target: 1,
+    reward: { coins: 90 },
+  },
+  {
+    id: 'fish3',
+    text: 'Land 3 fish from the dock',
+    counter: 'fishCount',
+    target: 3,
+    reward: { coins: 110 },
+  },
+  {
+    id: 'craft1',
+    text: 'Mill something at the windmill',
+    counter: 'craftCount',
+    target: 1,
+    reward: { coins: 150 },
+  },
+  {
+    id: 'renown1',
+    text: 'Give to the Vale Fund',
+    counter: 'renown',
+    target: 1,
+    reward: { amber: 1 },
+  },
+  {
+    id: 'expandEast',
+    text: 'Claim the east meadow',
+    counter: 'expansionEast',
+    target: 1,
+    reward: { amber: 3 },
   },
 ];
 

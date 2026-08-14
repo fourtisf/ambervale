@@ -16,11 +16,13 @@ import {
   PADDOCKS,
   PLOTS,
   TILE,
+  titleFor,
   type CropKey,
 } from '@ambervale/game-config';
 import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { dailyState, type DailyDto } from './daily';
+import { handleFor } from './leaderboard';
 import { repRequiredFor, slotUnlocked } from './deliveries';
 import { amberBalance, levelFromTotalXp } from './progression';
 import { questProgress } from './quests';
@@ -164,12 +166,16 @@ export interface FarmState {
     coins: number;
     rep: number;
     amberBalance: number;
+    renown: number;
+    /** Cosmetic rank earned from renown, or null below the first threshold. */
+    title: string | null;
+    handle: string;
     tutorialStep: number;
     questIndex: number;
     firstPlantDone: boolean;
     counters: Record<string, number>;
   };
-  expansion: { north: boolean };
+  expansion: { north: boolean; east: boolean };
   plots: FarmPlotDto[];
   nodes: { index: number; kind: string; hp: number; respawnAt: number | null }[];
   animals: { index: number; kind: string; nextYieldAt: number; ready: boolean }[];
@@ -337,6 +343,9 @@ export async function getFarmState(
       coins: user.coins,
       rep: user.rep,
       amberBalance: amber,
+      renown: user.renown,
+      title: titleFor(user.renown),
+      handle: handleFor(user.id),
       tutorialStep: user.tutorialStep,
       questIndex: user.questIndex,
       firstPlantDone: user.firstPlantDone,
@@ -352,9 +361,11 @@ export async function getFarmState(
         deliveriesDone: user.deliveriesDone,
         fishCount: user.fishCount,
         craftCount: user.craftCount,
+        upgradesBought: user.upgradesBought,
+        renown: user.renown,
       },
     },
-    expansion: { north: expansion?.north ?? false },
+    expansion: { north: expansion?.north ?? false, east: expansion?.east ?? false },
     plots: plots.map((p) => plotToDto(p, effects.growth)),
     nodes: nodes.map((n) => ({
       index: n.index,

@@ -53,6 +53,11 @@ model User {
   deliveriesDone Int @default(0)
   fishCount      Int @default(0)
   craftCount     Int @default(0)
+  upgradesBought Int @default(0)
+
+  /// Prestige bought from the Vale Fund. Purely a rank — it grants no power,
+  /// so an endless coin and $AMBER sink cannot turn into pay-to-win.
+  renown Int @default(0)
 
   /// Last time this player looked at their farm. The gap since is what the
   /// "while you were away" report is measured over.
@@ -76,6 +81,8 @@ model User {
   daily         DailyState?
 
   @@index([createdAt])
+  @@index([renown])
+  @@index([xp])
 }
 
 /// One tilled square. `index` maps to a fixed world coordinate via PLOTS in
@@ -269,6 +276,7 @@ model Expansion {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   north Boolean @default(false)
+  east  Boolean @default(false)
 
   updatedAt DateTime @updatedAt
 }

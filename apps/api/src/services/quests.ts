@@ -34,13 +34,15 @@ async function counterValue(
   userId: string,
   quest: QuestDef,
 ): Promise<number> {
-  if (quest.counter === 'expansionNorth') {
+  if (quest.counter === 'expansionNorth' || quest.counter === 'expansionEast') {
     const expansion = await tx.expansion.findUnique({ where: { userId } });
-    return expansion?.north ? 1 : 0;
+    const owned = quest.counter === 'expansionNorth' ? expansion?.north : expansion?.east;
+    return owned ? 1 : 0;
   }
 
   const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
   if (quest.counter === 'level') return user.level;
+  if (quest.counter === 'renown') return user.renown;
 
   const counters = user as unknown as Record<string, number>;
   return counters[quest.counter] ?? 0;
