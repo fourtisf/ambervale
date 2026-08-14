@@ -10,6 +10,7 @@
  * therefore placed with setOrigin(0.5, 1).
  */
 
+import { CROP_KEYS, type CropKey } from '@ambervale/game-config';
 import type Phaser from 'phaser';
 
 /** Textures are rendered at this multiple of their design size. */
@@ -499,6 +500,207 @@ const bush: Painter = (g, s) => {
 };
 
 // ---------------------------------------------------------------------------
+// Plots and crops
+// ---------------------------------------------------------------------------
+
+/** Tilled soil, drawn under every plot. */
+const soil: Painter = (g, s) => {
+  g.fillStyle(0x6b4f31, 1);
+  g.fillRoundedRect(2 * s, 2 * s, 60 * s, 60 * s, 7 * s);
+  g.fillStyle(0x82603c, 1);
+  g.fillRoundedRect(5 * s, 5 * s, 54 * s, 54 * s, 6 * s);
+  // furrows
+  g.fillStyle(0x6b4f31, 0.75);
+  for (let i = 0; i < 3; i++) g.fillRect(9 * s, (16 + i * 14) * s, 46 * s, 3 * s);
+};
+
+/** The dashed highlight ring drawn under a harvest-ready crop. */
+const readyRing: Painter = (g, s) => {
+  g.lineStyle(3 * s, 0xf4d35e, 0.95);
+  g.strokeCircle(34 * s, 34 * s, 27 * s);
+  g.lineStyle(2 * s, 0xfff6d0, 0.6);
+  g.strokeCircle(34 * s, 34 * s, 21 * s);
+};
+
+interface CropStyle {
+  /** Colour of the fruit/flower head. */
+  head: number;
+  headDark: number;
+  /** Head shape at full growth. */
+  shape: 'flower' | 'root' | 'gourd' | 'star';
+}
+
+const CROP_STYLE: Record<CropKey, CropStyle> = {
+  sunflower: { head: 0xf4c542, headDark: 0xd39a1e, shape: 'flower' },
+  carrot: { head: 0xe8792b, headDark: 0xbc5c19, shape: 'root' },
+  pumpkin: { head: 0xe07a28, headDark: 0xb35a17, shape: 'gourd' },
+  starglow: { head: 0x9fe8ff, headDark: 0x54a8d8, shape: 'star' },
+};
+
+/** Growth stages 0..3; 3 is harvest-ready. */
+export const CROP_STAGES = 4;
+
+function cropPainter(key: CropKey, stage: number): Painter {
+  const style = CROP_STYLE[key];
+  // Stage 0 is a sprout; the head only appears from stage 2.
+  const t = stage / (CROP_STAGES - 1);
+
+  return (g, s) => {
+    const cx = 32;
+    const baseY = 56;
+    const height = 8 + t * 30;
+
+    // stem
+    g.lineStyle(Math.max(2, 3 * t + 2) * s, 0x3f7a3a, 1);
+    g.lineBetween(cx * s, baseY * s, cx * s, (baseY - height) * s);
+
+    // leaves
+    const leafR = 4 + t * 6;
+    g.fillStyle(0x4f9142, 1);
+    g.fillEllipse((cx - 7 - t * 4) * s, (baseY - height * 0.45) * s, leafR * 2.2 * s, leafR * s);
+    g.fillEllipse((cx + 7 + t * 4) * s, (baseY - height * 0.62) * s, leafR * 2.2 * s, leafR * s);
+
+    if (stage < 2) return;
+
+    const hy = baseY - height;
+    const scale = stage === 2 ? 0.6 : 1;
+
+    switch (style.shape) {
+      case 'flower': {
+        const r = 11 * scale;
+        g.fillStyle(style.head, 1);
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          g.fillEllipse(
+            (cx + Math.cos(a) * r * 0.85) * s,
+            (hy + Math.sin(a) * r * 0.85) * s,
+            r * 0.9 * s,
+            r * 0.6 * s,
+          );
+        }
+        g.fillStyle(0x6b4a2f, 1);
+        g.fillCircle(cx * s, hy * s, r * 0.55 * s);
+        break;
+      }
+      case 'root': {
+        // Carrot shoulders just breaking the soil.
+        g.fillStyle(style.head, 1);
+        g.fillEllipse(cx * s, (baseY - 6) * s, 20 * scale * s, 11 * scale * s);
+        g.fillStyle(style.headDark, 1);
+        g.fillEllipse(cx * s, (baseY - 4) * s, 14 * scale * s, 6 * scale * s);
+        break;
+      }
+      case 'gourd': {
+        const r = 13 * scale;
+        g.fillStyle(style.headDark, 1);
+        g.fillEllipse(cx * s, (baseY - r * 0.8) * s, r * 2.3 * s, r * 1.8 * s);
+        g.fillStyle(style.head, 1);
+        g.fillEllipse(cx * s, (baseY - r * 0.85) * s, r * 1.9 * s, r * 1.5 * s);
+        g.fillStyle(style.headDark, 0.7);
+        g.fillRect((cx - 1) * s, (baseY - r * 1.6) * s, 2 * s, r * 1.5 * s);
+        break;
+      }
+      case 'star': {
+        const r = 12 * scale;
+        g.fillStyle(style.head, 1);
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+          g.fillEllipse(
+            (cx + Math.cos(a) * r * 0.7) * s,
+            (hy + Math.sin(a) * r * 0.7) * s,
+            r * 0.85 * s,
+            r * 0.85 * s,
+          );
+        }
+        g.fillStyle(0xffffff, 0.9);
+        g.fillCircle(cx * s, hy * s, r * 0.5 * s);
+        break;
+      }
+    }
+  };
+}
+
+/** Texture key for a crop at a growth stage. */
+export const cropTextureKey = (key: string, stage: number): string =>
+  `crop_${key}_${Math.max(0, Math.min(CROP_STAGES - 1, stage))}`;
+
+// ---------------------------------------------------------------------------
+// Characters
+// ---------------------------------------------------------------------------
+
+/** The player: straw hat, tunic, boots. Facing is done by flipping X. */
+const player: Painter = (g, s) => {
+  shadow(g, s, 20, 52, 11);
+  // legs
+  g.fillStyle(0x4d3521, 1);
+  g.fillRoundedRect(13 * s, 38 * s, 6 * s, 14 * s, 2 * s);
+  g.fillRoundedRect(21 * s, 38 * s, 6 * s, 14 * s, 2 * s);
+  // tunic
+  g.fillStyle(0x4a86b8, 1);
+  g.fillRoundedRect(9 * s, 20 * s, 22 * s, 22 * s, 5 * s);
+  g.fillStyle(0x3b6d97, 1);
+  g.fillRect(9 * s, 34 * s, 22 * s, 8 * s);
+  // arms
+  g.fillStyle(0xf0c9a0, 1);
+  g.fillRoundedRect(4 * s, 24 * s, 6 * s, 14 * s, 3 * s);
+  g.fillRoundedRect(30 * s, 24 * s, 6 * s, 14 * s, 3 * s);
+  // head
+  g.fillStyle(0xf0c9a0, 1);
+  g.fillCircle(20 * s, 15 * s, 9 * s);
+  // straw hat
+  g.fillStyle(0xe8c46a, 1);
+  g.fillEllipse(20 * s, 10 * s, 30 * s, 10 * s);
+  g.fillStyle(0xd4a94a, 1);
+  g.fillEllipse(20 * s, 6 * s, 16 * s, 11 * s);
+  // eyes
+  g.fillStyle(0x2a1a05, 1);
+  g.fillCircle(17 * s, 16 * s, 1.6 * s);
+  g.fillCircle(23 * s, 16 * s, 1.6 * s);
+};
+
+const chicken: Painter = (g, s) => {
+  shadow(g, s, 16, 26, 8);
+  g.fillStyle(0xf5f0e4, 1);
+  g.fillEllipse(16 * s, 17 * s, 22 * s, 17 * s);
+  g.fillCircle(22 * s, 10 * s, 6 * s);
+  g.fillStyle(0xd94f3d, 1);
+  g.fillCircle(22 * s, 5 * s, 2.6 * s);
+  g.fillCircle(24 * s, 4 * s, 2.2 * s);
+  g.fillStyle(0xe8a83a, 1);
+  g.fillTriangle(27 * s, 10 * s, 32 * s, 11.5 * s, 27 * s, 13 * s);
+  g.fillRect(12 * s, 24 * s, 2 * s, 4 * s);
+  g.fillRect(18 * s, 24 * s, 2 * s, 4 * s);
+  g.fillStyle(0x2a1a05, 1);
+  g.fillCircle(24 * s, 9 * s, 1.3 * s);
+};
+
+const cow: Painter = (g, s) => {
+  shadow(g, s, 30, 40, 18);
+  g.fillStyle(0xf5f2ec, 1);
+  g.fillRoundedRect(8 * s, 14 * s, 44 * s, 24 * s, 10 * s);
+  g.fillStyle(0x3a3a3a, 1);
+  g.fillEllipse(20 * s, 22 * s, 14 * s, 11 * s);
+  g.fillEllipse(40 * s, 30 * s, 11 * s, 9 * s);
+  g.fillStyle(0xf5f2ec, 1);
+  g.fillCircle(50 * s, 15 * s, 9 * s);
+  g.fillStyle(0xf0b8bc, 1);
+  g.fillEllipse(54 * s, 18 * s, 9 * s, 6 * s);
+  g.fillStyle(0x2a1a05, 1);
+  g.fillCircle(48 * s, 12 * s, 1.6 * s);
+  g.fillStyle(0x4d3521, 1);
+  g.fillRect(14 * s, 36 * s, 4 * s, 6 * s);
+  g.fillRect(40 * s, 36 * s, 4 * s, 6 * s);
+};
+
+const egg: Painter = (g, s) => {
+  shadow(g, s, 10, 17, 6);
+  g.fillStyle(0xfdf6e3, 1);
+  g.fillEllipse(10 * s, 10 * s, 14 * s, 18 * s);
+  g.fillStyle(0xffffff, 0.8);
+  g.fillEllipse(7 * s, 6 * s, 5 * s, 6 * s);
+};
+
+// ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
 
@@ -525,6 +727,21 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'rock2', w: 64, h: 48, paint: rockAt(2) },
   { key: 'rock3', w: 64, h: 48, paint: rockAt(3) },
   { key: 'bush', w: 52, h: 42, paint: bush },
+  { key: 'soil', w: 64, h: 64, paint: soil },
+  { key: 'readyRing', w: 68, h: 68, paint: readyRing },
+  { key: 'player', w: 40, h: 56, paint: player },
+  { key: 'chicken', w: 34, h: 30, paint: chicken },
+  { key: 'cow', w: 62, h: 44, paint: cow },
+  { key: 'egg', w: 20, h: 20, paint: egg },
+  // Crop growth stages, one texture per crop per stage.
+  ...CROP_KEYS.flatMap((key) =>
+    Array.from({ length: CROP_STAGES }, (_, stage) => ({
+      key: cropTextureKey(key, stage),
+      w: 64,
+      h: 64,
+      paint: cropPainter(key, stage),
+    })),
+  ),
 ];
 
 /** Texture key for a rock at the given remaining hp (0–3). */

@@ -3,7 +3,11 @@ import cors from '@fastify/cors';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { env, isProd } from './env';
+import { ApiError } from './lib/errors';
 import { ValidationError, sendValidationError } from './lib/validate';
+import authPlugin from './plugins/auth';
+import { authRoutes } from './routes/auth';
+import { farmRoutes } from './routes/farm';
 import { healthRoutes } from './routes/health';
 
 export async function buildServer(): Promise<FastifyInstance> {
@@ -29,10 +33,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     },
   });
 
-  // CORS is locked to the one browser origin that is allowed to hold a session
-  // cookie. No wildcards — credentials mode requires an exact origin anyway.
+  // CORS is locked to an explicit allowlist of origins permitted to hold a
+  // session cookie. No wildcards — credentialed CORS forbids them anyway.
   await app.register(cors, {
-    origin: [env.WEB_ORIGIN],
+    origin: env.WEB_ORIGIN,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['content-type', 'x-device-id', 'x-request-id'],
@@ -46,6 +50,16 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   app.setErrorHandler((error: FastifyError, req, reply) => {
     if (error instanceof ValidationError) return sendValidationError(reply, error);
+
+    // Rule rejections carry a stable code and machine-readable details, so the
+    // client can render "12s left" rather than parsing a sentence.
+    if (error instanceof ApiError) {
+      return reply.status(error.statusCode).send({
+        error: error.code,
+        message: error.message,
+        ...(error.details ?? {}),
+      });
+    }
 
     const status = error.statusCode ?? 500;
     if (status >= 500) req.log.error({ err: error }, 'unhandled error');
@@ -63,7 +77,11 @@ export async function buildServer(): Promise<FastifyInstance> {
       .send({ error: 'NOT_FOUND', message: `No route for ${req.method} ${req.url}` }),
   );
 
+  await app.register(authPlugin);
+
   await app.register(healthRoutes);
+  await app.register(authRoutes);
+  await app.register(farmRoutes);
 
   return app;
 }

@@ -13,7 +13,35 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4021),
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().min(1),
-  WEB_ORIGIN: z.string().url(),
+  /**
+   * Comma-separated allowlist of browser origins. A list rather than a single
+   * value because http://localhost and http://127.0.0.1 are different origins,
+   * and prod usually needs both an apex and a www host. Still an explicit
+   * allowlist — never a wildcard, which credentialed CORS forbids anyway.
+   */
+  WEB_ORIGIN: z
+    .string()
+    .min(1)
+    .transform((value, ctx) => {
+      const origins = value
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+
+      if (origins.length === 0) {
+        ctx.addIssue({ code: 'custom', message: 'At least one origin is required.' });
+        return z.NEVER;
+      }
+      for (const origin of origins) {
+        try {
+          new URL(origin);
+        } catch {
+          ctx.addIssue({ code: 'custom', message: `"${origin}" is not a valid URL.` });
+          return z.NEVER;
+        }
+      }
+      return origins;
+    }),
   SESSION_SECRET: z.string().min(32),
   ENABLE_CLAIM: boolish.default(false),
 });

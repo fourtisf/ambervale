@@ -1,9 +1,12 @@
 // AMBERVALE — Prisma schema.
 //
-// Phase 0 is scaffold only: the gameplay models (User, Plot, ResourceNode,
-// Animal, GroundItem, InventoryItem, SeedItem, DeliverySlot, AmberLedger,
-// Expansion) land in Phase 2 per handoff §5. EventLog exists from the start
-// because auth and bootstrap already need an audit trail.
+// The server is authoritative: every number that matters to a player's balance
+// lives in a row here, and the client is only ever told about it. Gameplay
+// constants (grow times, prices, XP) are NOT stored — they come from
+// packages/game-config at read time, so retuning the game never needs a
+// migration or a backfill.
+//
+// All timestamps are DateTime (UTC); the API serialises them to epoch ms.
 
 generator client {
   provider = "prisma-client-js"
@@ -12,6 +15,256 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @default(cuid())
+
+  /// Null until an account is upgraded from guest to email. Kept nullable so
+  /// magic-link auth can be added later without a schema change.
+  email    String? @unique
+  /// Stable per-browser id. Lets a player who cleared cookies get their farm
+  /// back, and is what /auth/guest looks up before creating an account.
+  deviceId String  @unique
+
+  level Int @default(1)
+  xp    Int @default(0)
+  coins Int @default(0)
+  rep   Int @default(0)
+
+  tutorialStep Int @default(0)
+  questIndex   Int @default(0)
+
+  /// The very first crop a player plants grows in FIRST_CROP_FAST_SEC.
+  firstPlantDone Boolean @default(false)
+  /// Guards bootstrap so a concurrent first request cannot double-seed a farm.
+  bootstrapped   Boolean @default(false)
+
+  // Quest counters. Monotonic, so the quest chain can be re-evaluated from
+  // scratch after any action without storing per-quest progress.
+  plantedCount   Int @default(0)
+  harvestedCount Int @default(0)
+  choppedCount   Int @default(0)
+  minedCount     Int @default(0)
+  soldCount      Int @default(0)
+  boughtSeeds    Int @default(0)
+  milkCount      Int @default(0)
+  eggCount       Int @default(0)
+  deliveriesDone Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  plots         Plot[]
+  nodes         ResourceNode[]
+  animals       Animal[]
+  groundItems   GroundItem[]
+  inventory     InventoryItem[]
+  seeds         SeedItem[]
+  deliverySlots DeliverySlot[]
+  amberLedger   AmberLedger[]
+  expansion     Expansion?
+  wallet        Wallet?
+  claimIntents  ClaimIntent[]
+
+  @@index([createdAt])
+}
+
+/// One tilled square. `index` maps to a fixed world coordinate via PLOTS in
+/// game-config, so position never needs storing.
+model Plot {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  index Int
+  /// "base" | "north" — north plots are unusable until Expansion.north.
+  zone  String
+
+  cropKey   String?
+  plantedAt DateTime?
+  /// True when this plot is growing the player's accelerated first crop.
+  fast      Boolean   @default(false)
+
+  @@unique([userId, index])
+  @@index([userId])
+}
+
+/// A choppable oak or mineable rock. Position comes from NODE_SLOTS.
+model ResourceNode {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  index Int
+  /// "oak" | "rock"
+  kind  String
+  hp    Int
+
+  /// Set when depleted; a lazy pass on read restores hp once it has passed.
+  respawnAt DateTime?
+
+  @@unique([userId, index])
+  @@index([userId])
+}
+
+model Animal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  index Int
+  /// "chicken" | "cow"
+  kind  String
+
+  /// When this animal's next egg/milk becomes available.
+  nextYieldAt DateTime
+  /// Cows hold their milk until collected; chickens drop GroundItems instead.
+  ready       Boolean  @default(false)
+
+  @@unique([userId, index])
+  @@index([userId])
+}
+
+/// An uncollected egg lying in the coop yard. Capped per ANIMALS.chicken.
+model GroundItem {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  itemKey String
+  /// World position in pixels, chosen server-side when the egg is laid.
+  x       Float
+  y       Float
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model InventoryItem {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  itemKey String
+  qty     Int    @default(0)
+
+  @@unique([userId, itemKey])
+  @@index([userId])
+}
+
+model SeedItem {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  cropKey String
+  qty     Int    @default(0)
+
+  @@unique([userId, cropKey])
+  @@index([userId])
+}
+
+/// One of the three delivery board orders.
+model DeliverySlot {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  slot Int
+  /// "open" | "done"
+  state String @default("open")
+
+  itemKey String?
+  qty     Int?
+  amber   Int?
+  /// NPC index, so the same face stays on the same order across reloads.
+  npc     Int     @default(0)
+  /// Seed the order was generated from — generation is server-only and
+  /// reproducible for audit.
+  seed    Int     @default(0)
+
+  /// When a completed slot regenerates.
+  refillAt  DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, slot])
+  @@index([userId])
+}
+
+/// Append-only $AMBER ledger. Balance is SUM(delta) — never a stored column,
+/// so it cannot drift from its own history.
+model AmberLedger {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  delta  Int
+  /// "delivery" | "quest" | "claim_lock" | ...
+  reason String
+  /// Points at whatever caused the entry (delivery slot id, quest id).
+  refId  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Expansion {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  north Boolean @default(false)
+
+  updatedAt DateTime @updatedAt
+}
+
+/// One wallet per account and one account per wallet (Phase 7).
+model Wallet {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  address String @unique
+  chainId Int
+
+  linkedAt DateTime @default(now())
+}
+
+/// A request to move $AMBER on-chain. Inert until ENABLE_CLAIM (Phase 7).
+model ClaimIntent {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  amount Int
+  /// "pending" | "sent" | "failed"
+  status String @default("pending")
+  txHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+}
+
+/// Idempotency records for mutating actions that must never double-apply.
+model IdempotencyKey {
+  id     String @id @default(cuid())
+  userId String
+  key    String
+  /// Endpoint the key was used against, so the same key on a different action
+  /// cannot replay a stale result.
+  scope  String
+  /// JSON response body to replay verbatim on a repeat call.
+  result Json
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, scope, key])
+  @@index([createdAt])
 }
 
 /// Append-only audit trail. Every mutating action writes one row.

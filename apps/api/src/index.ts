@@ -23,7 +23,10 @@ async function main(): Promise<void> {
   }
 
   await app.listen({ host: env.HOST, port: env.PORT });
-  app.log.info({ webOrigin: env.WEB_ORIGIN, enableClaim: env.ENABLE_CLAIM }, 'ambervale-api ready');
+  app.log.info(
+    { webOrigins: env.WEB_ORIGIN, enableClaim: env.ENABLE_CLAIM },
+    'ambervale-api ready',
+  );
 
   let shuttingDown = false;
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
