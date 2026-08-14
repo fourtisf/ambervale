@@ -20,6 +20,7 @@ import { DayNight } from '../systems/DayNight';
 import { Effects } from '../systems/Effects';
 import { FarmView } from '../systems/FarmView';
 import { Interactions, stampReceived } from '../systems/Interactions';
+import { Occlusion } from '../systems/Occlusion';
 import { PlayerController } from '../systems/PlayerController';
 import { TutorialGuide } from '../systems/TutorialGuide';
 import { buildLayout, buildScenery, type LayoutRefs } from '../world/layout';
@@ -63,6 +64,8 @@ export class WorldScene extends Phaser.Scene {
   private effects?: Effects;
   private tutorial?: TutorialGuide;
   private animalLife?: AnimalLife;
+  /** Fades trees and buildings that would otherwise hide the player. */
+  private occlusion!: Occlusion;
   /** Last interaction pushed to the HUD, to avoid re-emitting every frame. */
   private lastInteractionKey = '';
   /** Bouncing "!" over the delivery board when an order can be filled. */
@@ -95,12 +98,16 @@ export class WorldScene extends Phaser.Scene {
     bakeSprites(this);
     this.terrain = bakeTerrain(this, this.map);
 
+    this.occlusion = new Occlusion(new Phaser.Geom.Rectangle());
+
     this.layout = buildLayout(this);
-    buildScenery(this, (tx, ty) => {
+    const scenery = buildScenery(this, (tx, ty) => {
       const kind = this.map.at(tx, ty);
       if (kind === Tile.Water || kind === Tile.Dirt) return true;
       return this.collision.blocked(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
     });
+    this.occlusion.registerAll(this.layout.occluders);
+    this.occlusion.registerAll(scenery);
     this.rowboatBaseY = this.layout.rowboat.y;
 
     this.cameras.main.setBounds(0, 0, WORLD.w * TILE, WORLD.h * TILE);
@@ -108,7 +115,7 @@ export class WorldScene extends Phaser.Scene {
     this.dayNight = new DayNight(this);
     this.ambient = new Ambient(this, this.map);
     this.animalLife = new AnimalLife(this);
-    this.farmView = new FarmView(this, this.dayNight, this.animalLife);
+    this.farmView = new FarmView(this, this.dayNight, this.animalLife, this.occlusion);
 
     this.effects = new Effects(this);
     this.createPlayer();
@@ -284,6 +291,9 @@ export class WorldScene extends Phaser.Scene {
     this.farmView?.update(delta);
     this.animalLife?.update(delta);
     this.controller?.update(delta);
+    if (this.controller && bridge.started) {
+      this.occlusion.update(this.controller.x, this.controller.y, delta);
+    }
     this.syncAmbience();
     this.tutorial?.update(delta);
     this.pushInteraction();
@@ -365,6 +375,7 @@ export class WorldScene extends Phaser.Scene {
     this.scale.off('resize', this.onResize, this);
     audio.setAmbience(null);
     this.animalLife?.destroy();
+    this.occlusion?.destroy();
     this.tutorial?.destroy();
     this.controller?.destroy();
     this.dayNight?.destroy();

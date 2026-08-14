@@ -21,6 +21,27 @@ const ARRIVE_EPSILON = 8;
 /** Radius of the player's body for collision, in pixels. */
 const BODY_RADIUS = 13;
 
+/** Half-height of the feet box, so the body is a box rather than a cross. */
+const FOOT_HALF = 6;
+
+/**
+ * Sideways nudge tried when a move is blocked, in pixels per frame.
+ *
+ * Without it, clipping a shoreline lobe or a building corner head-on stops the
+ * player dead: the axis they are pushing is blocked, the other axis has no
+ * input, and nothing happens until they let go and re-aim. Small enough that
+ * it reads as sliding round the corner rather than being pulled sideways.
+ */
+const SLIP = 2.4;
+
+/**
+ * A tap target is abandoned after this long without getting meaningfully
+ * closer. Tapping across the lake used to leave the player walking on the spot
+ * against the shore forever, which is exactly what "stuck" looks like.
+ */
+const STALL_MS = 650;
+const STALL_EPSILON = 1.5;
+
 export class PlayerController {
   readonly sprite: Phaser.GameObjects.Image;
 
@@ -32,6 +53,9 @@ export class PlayerController {
   >;
 
   private walkTarget: { x: number; y: number } | null = null;
+  /** Closest we have come to the current tap target, and time since. */
+  private walkBest = Infinity;
+  private walkStallMs = 0;
   private ripple?: Phaser.GameObjects.Arc;
   private bobPhase = 0;
   private baseY = 0;
@@ -67,6 +91,8 @@ export class PlayerController {
 
   private setWalkTarget(x: number, y: number): void {
     this.walkTarget = { x, y };
+    this.walkBest = Infinity;
+    this.walkStallMs = 0;
     this.showRipple(x, y);
   }
 
@@ -135,7 +161,12 @@ export class PlayerController {
       const dx = this.walkTarget.x - this.sprite.x;
       const dy = this.walkTarget.y - this.baseY;
       const dist = Math.hypot(dx, dy);
+
       if (dist <= ARRIVE_EPSILON) {
+        this.walkTarget = null;
+      } else if (this.stalled(dist, deltaMs)) {
+        // Unreachable — a tap across the lake, or behind the barn. Drop it
+        // rather than lean on the obstacle indefinitely.
         this.walkTarget = null;
       } else {
         vx = dx / dist;
@@ -155,8 +186,8 @@ export class PlayerController {
       const ny = (vy / magnitude) * step;
 
       // Axis-separated so a diagonal into a wall slides along it instead of
-      // sticking. Sampling at the body edge, not the centre, keeps the sprite
-      // from visually overlapping the obstacle.
+      // sticking. Each axis samples the whole feet box, not the centre, so the
+      // sprite never visually overlaps the obstacle.
       this.tryMove(nx, 0);
       this.tryMove(0, ny);
 
@@ -174,20 +205,73 @@ export class PlayerController {
     this.light?.setPosition(this.sprite.x, this.baseY - 16);
   }
 
+  /**
+   * How many corners of the feet box are inside something solid.
+   *
+   * A count rather than a boolean because it is what makes the escape hatch in
+   * {@link tryMove} work: a player who somehow ends up overlapping a wall needs
+   * a rule for which way is *out*, and "fewer corners buried" is that rule.
+   */
+  private blockedCorners(x: number, y: number): number {
+    let n = 0;
+    if (this.collision.blocked(x - BODY_RADIUS, y - FOOT_HALF)) n++;
+    if (this.collision.blocked(x + BODY_RADIUS, y - FOOT_HALF)) n++;
+    if (this.collision.blocked(x - BODY_RADIUS, y + FOOT_HALF)) n++;
+    if (this.collision.blocked(x + BODY_RADIUS, y + FOOT_HALF)) n++;
+    return n;
+  }
+
+  private commit(x: number, y: number): void {
+    this.sprite.x = x;
+    this.baseY = y;
+  }
+
   private tryMove(dx: number, dy: number): void {
     if (dx === 0 && dy === 0) return;
 
     const nx = this.sprite.x + dx;
     const ny = this.baseY + dy;
+    const here = this.blockedCorners(this.sprite.x, this.baseY);
 
-    // Probe the leading edge of the body rather than its centre.
-    const probeX = nx + Math.sign(dx) * BODY_RADIUS;
-    const probeY = ny + Math.sign(dy) * (BODY_RADIUS * 0.5);
+    // Escape hatch. Standing inside a solid is not supposed to be reachable,
+    // but if it ever happens — a retuned building box, a future teleport, a
+    // resized body — checking only the destination would wall the player in
+    // permanently. Allowing any move that does not bury them deeper always
+    // leaves a way out.
+    if (here > 0) {
+      if (this.blockedCorners(nx, ny) <= here) this.commit(nx, ny);
+      return;
+    }
 
-    if (this.collision.blocked(dx !== 0 ? probeX : nx, dy !== 0 ? probeY : ny - 2)) return;
+    if (this.blockedCorners(nx, ny) === 0) {
+      this.commit(nx, ny);
+      return;
+    }
 
-    this.sprite.x = nx;
-    this.baseY = ny;
+    // Blocked head-on: try slipping a little along the other axis, so clipping
+    // a corner rounds it instead of stopping.
+    for (const slip of [SLIP, -SLIP]) {
+      const sx = dx !== 0 ? nx : nx + slip;
+      const sy = dx !== 0 ? ny + slip : ny;
+      if (this.blockedCorners(sx, sy) === 0) {
+        this.commit(sx, sy);
+        return;
+      }
+    }
+  }
+
+  /**
+   * True once the tap target has gone {@link STALL_MS} without getting closer.
+   * Resets whenever real progress is made, so a long walk is never cut short.
+   */
+  private stalled(dist: number, deltaMs: number): boolean {
+    if (dist < this.walkBest - STALL_EPSILON) {
+      this.walkBest = dist;
+      this.walkStallMs = 0;
+      return false;
+    }
+    this.walkStallMs += deltaMs;
+    return this.walkStallMs >= STALL_MS;
   }
 
   /** Distance from the player's feet to a world point. */

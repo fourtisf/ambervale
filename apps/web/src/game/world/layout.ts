@@ -27,6 +27,8 @@ export interface LayoutRefs {
   rowboat: Phaser.GameObjects.Image;
   /** Dashed outlines for the locked north plots; hidden once expanded. */
   ghostPlots: Phaser.GameObjects.Graphics;
+  /** Standing sprites tall enough to hide the player; see Occlusion. */
+  occluders: Phaser.GameObjects.Image[];
 }
 
 /** Sprites drawn bottom-anchored, sorted by their feet. */
@@ -102,6 +104,7 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
   }
 
   const ghostPlots = drawGhostPlots(scene);
+  const occluders: Phaser.GameObjects.Image[] = [];
 
   let rowboat: Phaser.GameObjects.Image | undefined;
 
@@ -116,7 +119,7 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
         .setPipeline('Light2D');
       continue;
     }
-    place(scene, s.key, s.x, s.y);
+    occluders.push(place(scene, s.key, s.x, s.y));
   }
 
   // Blades pivot about their own centre, in front of the mill's cap.
@@ -130,7 +133,7 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
 
   // Lamps stand slightly proud of their tile so light reads above the post.
   for (const lamp of LAMPS) {
-    place(scene, 'lamp', lamp.x, lamp.y);
+    occluders.push(place(scene, 'lamp', lamp.x, lamp.y));
   }
 
   // North meadow signpost.
@@ -145,7 +148,7 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
     .setOrigin(0.5, 0.5)
     .setDepth(sign.y * TILE + 1);
 
-  return { windmillBlades, rowboat: rowboat!, ghostPlots };
+  return { windmillBlades, rowboat: rowboat!, ghostPlots, occluders };
 }
 
 /**
@@ -156,7 +159,9 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
 export function buildScenery(
   scene: Phaser.Scene,
   isBlocked: (tx: number, ty: number) => boolean,
-): void {
+): Phaser.GameObjects.Image[] {
+  const placed: Phaser.GameObjects.Image[] = [];
+
   for (let ty = 1; ty < WORLD.h - 1; ty++) {
     for (let tx = 1; tx < WORLD.w - 1; tx++) {
       if (isBlocked(tx, ty)) continue;
@@ -165,8 +170,10 @@ export function buildScenery(
       if (tx > 9 && tx < 30 && ty > 10 && ty < 30) continue;
 
       const roll = h01(tx, ty, 101);
-      if (roll < 0.035) place(scene, 'pine', tx, ty);
-      else if (roll < 0.075) place(scene, 'bush', tx, ty);
+      if (roll < 0.035) placed.push(place(scene, 'pine', tx, ty));
+      else if (roll < 0.075) placed.push(place(scene, 'bush', tx, ty));
     }
   }
+
+  return placed;
 }

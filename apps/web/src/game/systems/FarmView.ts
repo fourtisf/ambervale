@@ -21,6 +21,7 @@ import type { FarmState } from '@/lib/api';
 import { CROP_STAGES, SPRITE_SCALE, cropTextureKey, rockTextureKey } from '../world/textures';
 import type { AnimalLife } from './AnimalLife';
 import type { DayNight } from './DayNight';
+import type { Occlusion } from './Occlusion';
 
 /** Growth fraction → sprite stage. Stage 3 is harvest-ready. */
 function stageFor(progress: number): number {
@@ -46,6 +47,7 @@ export class FarmView {
   private readonly nodes = new Map<number, Phaser.GameObjects.Image>();
   /** Cosmetic animal behaviour; the server owns whether a yield exists. */
   private animalLife?: AnimalLife;
+  private occlusion?: Occlusion;
   private readonly ground = new Map<string, Phaser.GameObjects.Image>();
 
   private state: FarmState | null = null;
@@ -53,10 +55,16 @@ export class FarmView {
   private clockSkewMs = 0;
   private elapsed = 0;
 
-  constructor(scene: Phaser.Scene, dayNight: DayNight, animalLife?: AnimalLife) {
+  constructor(
+    scene: Phaser.Scene,
+    dayNight: DayNight,
+    animalLife?: AnimalLife,
+    occlusion?: Occlusion,
+  ) {
     this.scene = scene;
     this.dayNight = dayNight;
     this.animalLife = animalLife;
+    this.occlusion = occlusion;
     this.buildPlots();
   }
 
@@ -143,7 +151,12 @@ export class FarmView {
           .setScale(SPRITE_SCALE)
           .setDepth(slot.y * TILE)
           .setPipeline('Light2D');
+        sprite.setData('baseAlpha', 1);
         this.nodes.set(node.index, sprite);
+        // An oak is tall enough to swallow the player whole; let Occlusion
+        // dim it, reading its own opacity through the data slot below.
+        const owned = sprite;
+        this.occlusion?.register(owned, () => (owned.getData('baseAlpha') as number) ?? 1);
       }
 
       const depleted = node.hp <= 0;
@@ -153,7 +166,10 @@ export class FarmView {
         sprite.setTexture(rockTextureKey(depleted ? 0 : node.hp));
       }
       // A depleted node stays visible as a stump/rubble so the world does not
-      // blink; it just cannot be harvested until respawnAt passes.
+      // blink; it just cannot be harvested until respawnAt passes. The alpha
+      // goes through the data slot so an occlusion fade can multiply into it
+      // instead of the two systems fighting over one property.
+      sprite.setData('baseAlpha', depleted ? 0.85 : 1);
       sprite.setAlpha(depleted ? 0.85 : 1);
     }
   }
