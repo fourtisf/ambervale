@@ -1,5 +1,8 @@
 import * as Phaser from 'phaser';
-import { BACKGROUND_COLOR, BootScene } from './BootScene';
+import { HudScene } from './scenes/HudScene';
+import { WorldScene } from './scenes/WorldScene';
+
+export const BACKGROUND_COLOR = '#0a2e3d';
 
 /**
  * Builds the Phaser game instance. Kept separate from the React mount so the
@@ -29,6 +32,6 @@ export function createGame(parent: HTMLElement): Phaser.Game {
     fps: { target: 60, limit: 60 },
     autoFocus: true,
     disableContextMenu: true,
-    scene: [BootScene],
+    scene: [WorldScene, HudScene],
   });
 }
