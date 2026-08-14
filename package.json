@@ -23,7 +23,8 @@
     "db:generate": "pnpm --filter @ambervale/api db:generate",
     "db:studio": "pnpm --filter @ambervale/api db:studio",
     "db:reset": "pnpm --filter @ambervale/api db:reset",
-    "clean": "pnpm -r clean"
+    "clean": "pnpm -r clean",
+    "test": "pnpm --filter @ambervale/api test"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

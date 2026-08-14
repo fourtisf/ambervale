@@ -1,0 +1,153 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Static checks need no services, so they fail fast and independently of the
+  # integration job.
+  static:
+    name: Lint, format, types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ambervale/api db:generate
+      - run: pnpm -r typecheck
+      - run: pnpm lint
+      - run: pnpm format:check
+
+  # The abuse suite is the reason this job exists: every case in it is a bug
+  # that would mint value if it regressed, and every defence it tests lives in
+  # Postgres constraints, Redis locks or transaction boundaries — so it runs
+  # against a real stack rather than mocks.
+  integration:
+    name: Abuse and regression tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ambervale
+          POSTGRES_PASSWORD: ambervale
+          POSTGRES_DB: ambervale
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ambervale"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://ambervale:ambervale@localhost:5432/ambervale?schema=public
+      REDIS_URL: redis://localhost:6379
+      WEB_ORIGIN: http://localhost:4022,http://127.0.0.1:4022
+      SESSION_SECRET: ci-only-secret-000000000000000000000000000000000
+      ENABLE_CLAIM: 'false'
+      ADMIN_USER: admin
+      ADMIN_PASSWORD: ci-admin
+      HOST: 127.0.0.1
+      PORT: '4021'
+      LOG_LEVEL: warn
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build shared config
+        run: pnpm --filter @ambervale/game-config build
+
+      - name: Apply migrations
+        run: pnpm --filter @ambervale/api db:deploy
+
+      - name: Start the API
+        run: |
+          pnpm --filter @ambervale/api exec tsx src/index.ts &
+          echo $! > /tmp/api.pid
+          for i in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:4021/health > /dev/null; then
+              echo "api up after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "api failed to start"; exit 1
+
+      - name: Run the abuse suite
+        run: pnpm --filter @ambervale/api test
+        env:
+          TEST_API_URL: http://127.0.0.1:4021
+
+      - name: Assert ledger integrity
+        # $AMBER balance is SUM(delta) over an append-only table. Any row whose
+        # sum went negative means a payout wrote without its authorising record.
+        run: |
+          NEGATIVE=$(psql "$DATABASE_URL" -t -A -c \
+            'SELECT count(*) FROM (SELECT "userId", SUM(delta) AS s FROM "AmberLedger" GROUP BY "userId") t WHERE t.s < 0;')
+          echo "users with negative balance: $NEGATIVE"
+          test "$NEGATIVE" = "0"
+
+      - name: Stop the API
+        if: always()
+        run: kill "$(cat /tmp/api.pid)" || true
+
+  build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @ambervale/api db:generate
+      - run: pnpm build
+
+      - name: Check the /play bundle budget
+        # The brief's budget is 1.5MB gzipped for /play. Phaser dominates it,
+        # so a regression here almost always means something pulled the engine
+        # into a shared chunk.
+        run: node scripts/check-bundle-size.mjs

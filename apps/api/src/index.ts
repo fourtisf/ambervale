@@ -1,9 +1,13 @@
 import { buildServer } from './app';
+import { initSentry } from './lib/sentry';
 import { env } from './env';
 import { disconnectPrisma, prisma } from './lib/prisma';
 import { disconnectRedis, pingRedis } from './lib/redis';
 
 async function main(): Promise<void> {
+  // Before anything else, so a crash during boot is still reported.
+  initSentry();
+
   const app = await buildServer();
 
   try {

@@ -45,9 +45,12 @@ const EnvSchema = z.object({
   SESSION_SECRET: z.string().min(32),
   ENABLE_CLAIM: boolish.default(false),
 
-  /** Basic-auth credentials for the admin CSV export. */
+  /** Basic-auth credentials for the admin CSV export and /metrics. */
   ADMIN_USER: z.string().default('admin'),
   ADMIN_PASSWORD: z.string().default(''),
+
+  /** Error reporting. Unset disables Sentry entirely. */
+  SENTRY_DSN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

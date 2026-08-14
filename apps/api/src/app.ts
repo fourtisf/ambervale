@@ -4,8 +4,10 @@ import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { env, isProd } from './env';
 import { ApiError } from './lib/errors';
+import { captureError } from './lib/sentry';
 import { ValidationError, sendValidationError } from './lib/validate';
 import authPlugin from './plugins/auth';
+import metricsPlugin from './plugins/metrics';
 import { actionRoutes } from './routes/actions';
 import { animalRoutes } from './routes/animals';
 import { authRoutes } from './routes/auth';
@@ -67,7 +69,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
 
     const status = error.statusCode ?? 500;
-    if (status >= 500) req.log.error({ err: error }, 'unhandled error');
+    if (status >= 500) {
+      req.log.error({ err: error }, 'unhandled error');
+      captureError(error, { url: req.url, method: req.method, requestId: req.id });
+    }
 
     return reply.status(status).send({
       error: status >= 500 ? 'INTERNAL_ERROR' : (error.code ?? 'REQUEST_ERROR'),
@@ -82,6 +87,7 @@ export async function buildServer(): Promise<FastifyInstance> {
       .send({ error: 'NOT_FOUND', message: `No route for ${req.method} ${req.url}` }),
   );
 
+  await app.register(metricsPlugin);
   await app.register(authPlugin);
 
   await app.register(healthRoutes);

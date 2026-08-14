@@ -2,9 +2,12 @@
 
 A server-authoritative farm-to-earn browser game.
 
-**Status: Phase 0 — scaffold only.** No gameplay, no auth, no persistence
-beyond an empty schema. `/play` renders an empty Phaser scene with an FPS
-counter. Everything else arrives phase by phase (see `docs/`).
+**Status: Phases 0–8 complete.** The game is playable end to end: plant,
+harvest, chop, mine, sell, buy, deliver for $AMBER, expand the farm, and a
+ten-step guided tutorial. The server is authoritative for every rule.
+
+Claims are flagged **off** — $AMBER accrues in an append-only ledger and
+nothing leaves the game until a contract exists. See `docs/DECISIONS.md`.
 
 ## Layout
 
@@ -61,18 +64,19 @@ propagate to both apps without a restart.
 
 ## Scripts
 
-| Command              | What it does                                 |
-| -------------------- | -------------------------------------------- |
-| `pnpm dev`           | game-config watch + api + web, concurrently  |
-| `pnpm build`         | Builds all workspace packages                |
-| `pnpm typecheck`     | `tsc` across every package                   |
-| `pnpm lint`          | ESLint (flat config) across the repo         |
-| `pnpm format`        | Prettier write                               |
-| `pnpm services:up`   | `docker compose up -d` (postgres, redis)     |
-| `pnpm services:down` | Stops the containers                         |
-| `pnpm db:migrate`    | `prisma migrate dev`                         |
-| `pnpm db:studio`     | Prisma Studio                                |
-| `pnpm db:reset`      | `prisma migrate reset` (destroys local data) |
+| Command              | What it does                                   |
+| -------------------- | ---------------------------------------------- |
+| `pnpm dev`           | game-config watch + api + web, concurrently    |
+| `pnpm build`         | Builds all workspace packages                  |
+| `pnpm typecheck`     | `tsc` across every package                     |
+| `pnpm lint`          | ESLint (flat config) across the repo           |
+| `pnpm format`        | Prettier write                                 |
+| `pnpm services:up`   | `docker compose up -d` (postgres, redis)       |
+| `pnpm services:down` | Stops the containers                           |
+| `pnpm db:migrate`    | `prisma migrate dev`                           |
+| `pnpm db:studio`     | Prisma Studio                                  |
+| `pnpm db:reset`      | `prisma migrate reset` (destroys local data)   |
+| `pnpm test`          | Abuse and regression suite (needs services up) |
 
 ## Ports
 
@@ -95,6 +99,27 @@ pm2 startOrReload ecosystem.config.cjs
 ```
 
 Nginx, Cloudflare, backups and the launch checklist are Phase 8.
+
+## Documentation
+
+| File                | What is in it                                           |
+| ------------------- | ------------------------------------------------------- |
+| `docs/DECISIONS.md` | Chain choice, claim design, server-authority rules      |
+| `docs/LAUNCH.md`    | Env matrix, deploy and rollback, flag state, smoke test |
+| `docs/README.md`    | Which source documents are still missing                |
+
+## Testing
+
+```bash
+pnpm services:up      # postgres + redis
+pnpm dev              # the API must be running
+pnpm test             # 27 abuse and regression tests
+```
+
+These are integration tests on purpose. Every defence they cover — the rate
+limiter, the action locks, the idempotency key, the unique indexes — lives in
+the interaction between Fastify, Postgres and Redis. Mocking those would test
+the mocks.
 
 ## Conventions
 

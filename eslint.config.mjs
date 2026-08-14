@@ -47,5 +47,16 @@ export default tseslint.config(
       'no-undef': 'off',
     },
   },
+  {
+    // k6 scripts run in k6's own runtime, not Node: __ENV is a k6 global and
+    // the k6/* imports resolve inside the binary.
+    files: ['ops/k6/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' } },
+  },
+  {
+    // Build scripts are CLIs; printing is the whole point.
+    files: ['scripts/**/*.mjs'],
+    rules: { 'no-console': 'off' },
+  },
   prettier,
 );

@@ -1,0 +1,10 @@
+{
+  // Tests live outside the build's rootDir, so they get their own project.
+  // `pnpm typecheck` runs both; only src is ever emitted to dist.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

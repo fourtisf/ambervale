@@ -12,7 +12,13 @@ declare global {
 export const prisma: PrismaClient =
   globalThis.__ambervalePrisma ??
   new PrismaClient({
-    log: isProd ? ['warn', 'error'] : ['warn', 'error'],
+    // 'query' as an event (not stdout) so the metrics plugin can time it and
+    // log only the slow ones, instead of printing every statement.
+    log: [
+      { level: 'query', emit: 'event' },
+      { level: 'warn', emit: 'stdout' },
+      { level: 'error', emit: 'stdout' },
+    ],
     datasources: { db: { url: env.DATABASE_URL } },
   });
 
