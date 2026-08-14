@@ -36,6 +36,16 @@ import {
 /** Windmill blade rotation, radians per second. */
 const BLADE_SPEED = 0.85;
 
+/** How long the camera lingers on a tutorial objective before returning. */
+const PEEK_OUT_MS = 1350;
+const PEEK_BACK_MS = 950;
+
+/**
+ * Hard ceiling on a peek. If a pan is interrupted its callback may never fire,
+ * and without this the camera would stay detached from the player forever.
+ */
+const PEEK_TIMEOUT_MS = PEEK_OUT_MS + PEEK_BACK_MS + 1200;
+
 const DEBUG_CAM_SPEED = 900;
 
 export class WorldScene extends Phaser.Scene {
@@ -57,6 +67,11 @@ export class WorldScene extends Phaser.Scene {
   private lastInteractionKey = '';
   /** Bouncing "!" over the delivery board when an order can be filled. */
   private boardMark?: Phaser.GameObjects.Text;
+  /** True while a tutorial camera peek is in flight. */
+  private peeking = false;
+  private peekDeadline = 0;
+  /** Whether the camera is currently locked to the player. */
+  private followingPlayer = false;
 
   private debugMode = false;
   private debugCam = { x: SPAWN.x * TILE, y: SPAWN.y * TILE };
@@ -140,7 +155,9 @@ export class WorldScene extends Phaser.Scene {
 
     this.controller = new PlayerController(this, this.player, this.collision, light);
     this.interactions = new Interactions(this.controller, this.effects!);
-    this.tutorial = new TutorialGuide(this, this.controller, this.interactions);
+    this.tutorial = new TutorialGuide(this, this.controller, this.interactions, (x, y) =>
+      this.peekAt(x, y),
+    );
   }
 
   private createBoardMark(): void {
@@ -182,7 +199,51 @@ export class WorldScene extends Phaser.Scene {
     if (!this.player) return;
     this.player.setVisible(true);
     this.cine?.release(this.player);
+    this.followingPlayer = true;
     if (this.debugMode) this.applyGameplayZoom();
+  }
+
+  /** Locks the camera back onto the player. */
+  private followPlayer(): void {
+    if (!this.player) return;
+    this.cameras.main.startFollow(this.player, true, 0.09, 0.09);
+    this.followingPlayer = true;
+  }
+
+  /**
+   * Eases the camera out to a point and back, then re-attaches it.
+   *
+   * Two details are load-bearing. The return pan passes force=true: it is
+   * started from inside the outgoing pan's own completion callback, and while
+   * that effect is still marked running Phaser silently drops a non-forced
+   * pan — which strands the camera wherever it stopped, with follow already
+   * released. And `peeking` is watchdogged in update(), because any pan whose
+   * callback never fires would otherwise leave the camera detached for good.
+   */
+  peekAt(x: number, y: number): void {
+    if (!this.player || !bridge.started || this.peeking) return;
+
+    const cam = this.cameras.main;
+    this.peeking = true;
+    this.peekDeadline = this.elapsed + PEEK_TIMEOUT_MS;
+
+    cam.stopFollow();
+    this.followingPlayer = false;
+
+    cam.pan(x, y, PEEK_OUT_MS, 'Sine.easeInOut', true, (_cam, progress) => {
+      if (progress < 1 || !this.peeking) return;
+      const px = this.player?.x ?? x;
+      const py = this.player?.y ?? y;
+      cam.pan(px, py, PEEK_BACK_MS, 'Sine.easeInOut', true, (_c2, p2) => {
+        if (p2 < 1 || !this.peeking) return;
+        this.endPeek();
+      });
+    });
+  }
+
+  private endPeek(): void {
+    this.peeking = false;
+    this.followPlayer();
   }
 
   private applyGameplayZoom(): void {
@@ -238,6 +299,26 @@ export class WorldScene extends Phaser.Scene {
 
     if (this.debugMode) this.updateDebugCamera(delta);
     else this.cine?.update(delta);
+
+    this.watchCamera();
+  }
+
+  /**
+   * Safety net for the camera.
+   *
+   * A peek that overruns its deadline is abandoned and the camera handed back
+   * to the player. Losing the camera is far worse than losing the flourish:
+   * without this, one dropped pan callback leaves the player unable to see
+   * themselves for the rest of the session.
+   */
+  private watchCamera(): void {
+    if (!bridge.started || this.debugMode || this.cine?.isActive) return;
+
+    if (this.peeking && this.elapsed > this.peekDeadline) {
+      this.endPeek();
+      return;
+    }
+    if (!this.peeking && !this.followingPlayer) this.followPlayer();
   }
 
   /**

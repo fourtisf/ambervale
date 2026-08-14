@@ -14,13 +14,12 @@ import { apiPatch, type FarmState } from '@/lib/api';
 import type { Interactions } from './Interactions';
 import type { PlayerController } from './PlayerController';
 
-/** How long the camera lingers on a new step's target. */
-const PEEK_MS = 1350;
-
 export class TutorialGuide {
   private readonly scene: Phaser.Scene;
   private readonly player: PlayerController;
   private readonly interactions: Interactions;
+  /** Asks the world to run a camera peek; owned by WorldScene. */
+  private readonly peek: (x: number, y: number) => void;
 
   private ring: Phaser.GameObjects.Arc;
   private chevron: Phaser.GameObjects.Text;
@@ -31,10 +30,16 @@ export class TutorialGuide {
   /** World position of the current objective, for HudScene's edge arrow. */
   target: { x: number; y: number } | null = null;
 
-  constructor(scene: Phaser.Scene, player: PlayerController, interactions: Interactions) {
+  constructor(
+    scene: Phaser.Scene,
+    player: PlayerController,
+    interactions: Interactions,
+    peek: (x: number, y: number) => void,
+  ) {
     this.scene = scene;
     this.player = player;
     this.interactions = interactions;
+    this.peek = peek;
 
     this.ring = scene.add.circle(0, 0, 34).setDepth(7500).setVisible(false);
     this.ring.setStrokeStyle(3, 0xf4b942, 0.9);
@@ -109,21 +114,14 @@ export class TutorialGuide {
   }
 
   /**
-   * Eases the camera to the objective and back, so a new step shows the player
-   * where to go without teleporting them.
+   * Asks the world to ease the camera to the objective and back.
+   *
+   * The camera and the player belong to WorldScene, so the peek lives there;
+   * reaching in and driving another object's camera from here is what made
+   * the original version impossible to recover from.
    */
   private peekAt(x: number, y: number): void {
-    const cam = this.scene.cameras.main;
-    const follow = (cam as unknown as { _follow?: Phaser.GameObjects.GameObject })._follow;
-    if (!follow) return;
-
-    cam.stopFollow();
-    cam.pan(x, y, PEEK_MS, 'Sine.easeInOut', false, (_c, progress) => {
-      if (progress < 1) return;
-      cam.pan(this.player.x, this.player.y, PEEK_MS * 0.7, 'Sine.easeInOut', false, (_c2, p2) => {
-        if (p2 >= 1) cam.startFollow(follow, true, 0.09, 0.09);
-      });
-    });
+    this.peek(x, y);
   }
 
   private async checkCompletion(
