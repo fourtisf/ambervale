@@ -89,12 +89,15 @@ export default function TutorialBanner() {
           position: fixed;
           left: 50%;
           transform: translateX(-50%);
-          bottom: max(9.5rem, calc(env(safe-area-inset-bottom) + 9.5rem));
-          width: min(26rem, 92vw);
-          padding: 0.8rem 0.95rem;
+          /* Sits just above the controls rather than mid-screen: the field is
+             what the step is asking you to look at. */
+          bottom: max(7.5rem, calc(env(safe-area-inset-bottom) + 7.5rem));
+          width: min(24rem, 90vw);
+          padding: 0.65rem 0.85rem;
           border-radius: 14px;
-          background: rgba(10, 46, 61, 0.94);
-          border: 1px solid rgba(244, 185, 66, 0.4);
+          background: rgba(9, 38, 50, 0.95);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(244, 185, 66, 0.35);
           color: #f5e6c8;
           z-index: 25;
           pointer-events: auto;
@@ -122,9 +125,9 @@ export default function TutorialBanner() {
           padding: 0.2rem 0.3rem;
         }
         .text {
-          margin: 0 0 0.7rem;
-          font-size: 0.92rem;
-          line-height: 1.4;
+          margin: 0 0 0.55rem;
+          font-size: 0.86rem;
+          line-height: 1.35;
         }
         .actions {
           display: flex;
@@ -132,7 +135,7 @@ export default function TutorialBanner() {
         }
         .actions button {
           flex: 1;
-          padding: 0.6rem;
+          padding: 0.5rem;
           border-radius: 10px;
           border: 0;
           font-weight: 700;

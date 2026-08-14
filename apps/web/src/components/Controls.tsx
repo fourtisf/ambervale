@@ -157,8 +157,8 @@ export default function Controls() {
           width: ${JOYSTICK.radius * 2.4}px;
           height: ${JOYSTICK.radius * 2.4}px;
           border-radius: 50%;
-          background: rgba(10, 46, 61, 0.45);
-          border: 2px solid rgba(245, 230, 200, 0.28);
+          background: rgba(9, 38, 50, 0.34);
+          border: 1.5px solid rgba(245, 230, 200, 0.2);
           pointer-events: auto;
           touch-action: none;
           display: grid;
@@ -168,8 +168,10 @@ export default function Controls() {
           width: ${JOYSTICK.radius}px;
           height: ${JOYSTICK.radius}px;
           border-radius: 50%;
-          background: rgba(245, 230, 200, 0.85);
-          border: 2px solid rgba(10, 46, 61, 0.5);
+          /* Softer than the old near-opaque cream disc, which drew the eye
+             away from the farm every frame. */
+          background: rgba(245, 230, 200, 0.62);
+          border: 1.5px solid rgba(9, 38, 50, 0.35);
           will-change: transform;
         }
         .action {
@@ -190,7 +192,12 @@ export default function Controls() {
           box-shadow: 0 6px 18px rgba(4, 18, 26, 0.45);
         }
         .action:disabled {
-          opacity: 0.35;
+          /* Idle state is a quiet slate chip, not a faded yellow smear that
+             looks like a rendering fault. */
+          background: rgba(9, 38, 50, 0.72);
+          color: rgba(245, 230, 200, 0.55);
+          box-shadow: none;
+          opacity: 1;
           cursor: default;
         }
         .action[data-disabled='true'] {

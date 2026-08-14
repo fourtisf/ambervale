@@ -58,14 +58,17 @@ export function makeRadialGradient(
  * opaque at the corners.
  */
 export function makeVignette(scene: Phaser.Scene, key: string, size = 512): void {
+  // Kept gentle. A vignette should frame the eye, not crush the edges of the
+  // playfield — and the playfield extends to the corners here, so anything
+  // heavy reads as dirt on the lens rather than atmosphere.
   makeRadialGradient(
     scene,
     key,
     [
       [0, 'rgba(0,0,0,0)'],
-      [0.62, 'rgba(0,0,0,0)'],
-      [0.85, 'rgba(4,18,26,0.28)'],
-      [1, 'rgba(4,18,26,0.62)'],
+      [0.72, 'rgba(0,0,0,0)'],
+      [0.9, 'rgba(6,22,30,0.10)'],
+      [1, 'rgba(6,22,30,0.26)'],
     ],
     size,
   );

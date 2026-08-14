@@ -333,22 +333,51 @@ const lamp: Painter = (g, s) => {
   g.fillRoundedRect(8 * s, 9 * s, 12 * s, 12 * s, 2 * s);
 };
 
+/**
+ * Fences.
+ *
+ * Drawn as posts standing up with rails behind them, plus a ground shadow.
+ * The previous pair were two parallel rails with evenly spaced rungs, which
+ * from this camera angle read unmistakably as a ladder lying flat.
+ */
 const fenceH: Painter = (g, s) => {
+  g.fillStyle(PALETTE.shadow, 0.16);
+  g.fillEllipse(32 * s, 26 * s, 58 * s, 7 * s);
+
+  // rails span the tile, drawn behind the posts
   g.fillStyle(PALETTE.wood, 1);
-  g.fillRect(0, 6 * s, 64 * s, 4 * s);
-  g.fillRect(0, 16 * s, 64 * s, 4 * s);
-  g.fillStyle(PALETTE.woodDark, 1);
-  g.fillRect(4 * s, 0, 6 * s, 28 * s);
-  g.fillRect(54 * s, 0, 6 * s, 28 * s);
+  g.fillRoundedRect(0, 9 * s, 64 * s, 3.5 * s, 1.5 * s);
+  g.fillRoundedRect(0, 16 * s, 64 * s, 3.5 * s, 1.5 * s);
+  g.fillStyle(PALETTE.woodLight, 0.5);
+  g.fillRect(0, 9 * s, 64 * s, 1.2 * s);
+
+  // posts, with a lit left face
+  for (const px of [6, 52]) {
+    g.fillStyle(PALETTE.woodDark, 1);
+    g.fillRoundedRect(px * s, 2 * s, 6 * s, 24 * s, 2 * s);
+    g.fillStyle(PALETTE.wood, 1);
+    g.fillRoundedRect(px * s, 2 * s, 2.6 * s, 24 * s, 1.5 * s);
+  }
 };
 
 const fenceV: Painter = (g, s) => {
+  g.fillStyle(PALETTE.shadow, 0.16);
+  g.fillEllipse(15 * s, 60 * s, 20 * s, 6 * s);
+
+  // two rails running down the tile, seen edge-on. One rail alone reads as a
+  // dropped stick rather than a fence line.
   g.fillStyle(PALETTE.wood, 1);
-  g.fillRect(8 * s, 0, 4 * s, 64 * s);
-  g.fillRect(18 * s, 0, 4 * s, 64 * s);
+  g.fillRoundedRect(9 * s, 0, 4.5 * s, 64 * s, 2 * s);
+  g.fillRoundedRect(17 * s, 0, 4.5 * s, 64 * s, 2 * s);
+  g.fillStyle(PALETTE.woodLight, 0.45);
+  g.fillRect(9 * s, 0, 1.5 * s, 64 * s);
+  g.fillRect(17 * s, 0, 1.5 * s, 64 * s);
+
+  // one post per tile, so a run reads as evenly spaced uprights
   g.fillStyle(PALETTE.woodDark, 1);
-  g.fillRect(2 * s, 4 * s, 24 * s, 6 * s);
-  g.fillRect(2 * s, 54 * s, 24 * s, 6 * s);
+  g.fillRoundedRect(7 * s, 34 * s, 9 * s, 26 * s, 2.5 * s);
+  g.fillStyle(PALETTE.wood, 1);
+  g.fillRoundedRect(7 * s, 34 * s, 3.4 * s, 26 * s, 2 * s);
 };
 
 // ---------------------------------------------------------------------------
@@ -503,15 +532,50 @@ const bush: Painter = (g, s) => {
 // Plots and crops
 // ---------------------------------------------------------------------------
 
-/** Tilled soil, drawn under every plot. */
+/**
+ * Tilled soil.
+ *
+ * Read as turned earth rather than a brown card: a raised rim catching light
+ * at the top, ridges with a lit crest and a shadowed trough, and clods
+ * scattered across it. Flat fill plus three lines reads as cardboard, because
+ * nothing in it suggests the surface has any thickness.
+ */
 const soil: Painter = (g, s) => {
-  g.fillStyle(0x6b4f31, 1);
-  g.fillRoundedRect(2 * s, 2 * s, 60 * s, 60 * s, 7 * s);
-  g.fillStyle(0x82603c, 1);
-  g.fillRoundedRect(5 * s, 5 * s, 54 * s, 54 * s, 6 * s);
-  // furrows
-  g.fillStyle(0x6b4f31, 0.75);
-  for (let i = 0; i < 3; i++) g.fillRect(9 * s, (16 + i * 14) * s, 46 * s, 3 * s);
+  // outer lip / cast shadow
+  g.fillStyle(0x4e3a23, 1);
+  g.fillRoundedRect(2 * s, 3 * s, 60 * s, 59 * s, 8 * s);
+  // soil body
+  g.fillStyle(0x6f5231, 1);
+  g.fillRoundedRect(3 * s, 2 * s, 58 * s, 57 * s, 8 * s);
+  // sunlit top edge
+  g.fillStyle(0x8a663e, 1);
+  g.fillRoundedRect(5 * s, 4 * s, 54 * s, 22 * s, 7 * s);
+  g.fillStyle(0x7a5a37, 1);
+  g.fillRoundedRect(5 * s, 14 * s, 54 * s, 42 * s, 7 * s);
+
+  // ridges: lit crest above, dark trough below
+  for (let i = 0; i < 4; i++) {
+    const y = 13 + i * 11;
+    g.fillStyle(0x8f6b41, 0.9);
+    g.fillRoundedRect(8 * s, y * s, 48 * s, 4 * s, 2 * s);
+    g.fillStyle(0x5b4227, 0.55);
+    g.fillRoundedRect(8 * s, (y + 4) * s, 48 * s, 3 * s, 1.5 * s);
+  }
+
+  // clods
+  const clods: [number, number, number][] = [
+    [16, 20, 2.4],
+    [39, 31, 2.0],
+    [24, 44, 2.6],
+    [47, 18, 1.8],
+    [31, 12, 1.6],
+  ];
+  for (const [cx, cy, r] of clods) {
+    g.fillStyle(0x5b4227, 0.5);
+    g.fillCircle(cx * s, (cy + 1) * s, r * s);
+    g.fillStyle(0x99724a, 0.85);
+    g.fillCircle(cx * s, cy * s, r * s);
+  }
 };
 
 /** The dashed highlight ring drawn under a harvest-ready crop. */

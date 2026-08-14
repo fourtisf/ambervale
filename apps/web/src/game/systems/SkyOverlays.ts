@@ -9,7 +9,7 @@
  */
 
 import { DAY } from '@ambervale/game-config';
-import type Phaser from 'phaser';
+import * as Phaser from 'phaser';
 import { makeRadialGradient, makeVerticalGradient, makeVignette } from './gradients';
 
 export class SkyOverlays {
@@ -32,17 +32,20 @@ export class SkyOverlays {
       [0.5, 'rgba(255,190,150,0.30)'],
       [1, 'rgba(255,214,170,0.45)'],
     ]);
+    // Faint, and drawn additively below. A translucent warm sheet in NORMAL
+    // blend does not "light" the scene — it lays milk over it, flattening
+    // contrast everywhere at once. Additive only ever brightens.
     makeRadialGradient(scene, 'sun-glow', [
-      [0, 'rgba(255,236,180,0.34)'],
-      [0.5, 'rgba(255,220,150,0.14)'],
-      [1, 'rgba(255,210,140,0)'],
+      [0, 'rgba(255,238,196,0.55)'],
+      [0.55, 'rgba(255,224,160,0.16)'],
+      [1, 'rgba(255,214,150,0)'],
     ]);
     makeVignette(scene, 'vignette');
 
     const mk = (key: string, depth: number) =>
       scene.add.image(0, 0, key).setOrigin(0, 0).setDepth(depth).setAlpha(0);
 
-    this.sun = mk('sun-glow', 100);
+    this.sun = mk('sun-glow', 100).setBlendMode(Phaser.BlendModes.ADD);
     this.duskWash = mk('wash-dusk', 110);
     this.dawnWash = mk('wash-dawn', 111);
     this.vignette = mk('vignette', 120).setAlpha(1);
@@ -71,10 +74,11 @@ export class SkyOverlays {
     this.duskWash.setAlpha(duskT < 0 ? 0 : Math.sin(duskT * Math.PI) * 0.85);
     this.dawnWash.setAlpha(dawnT < 0 ? 0 : Math.sin(dawnT * Math.PI) * 0.8);
 
-    // Warm sun radial, strongest at midday and gone by dusk.
+    // Warm sun radial, strongest at midday and gone by dusk. Kept deliberately
+    // subtle: this is a hint of sunlight pooling, not a filter over the world.
     const dayT = 1 - nightAmount;
     const arc = Math.sin(Math.min(1, Math.max(0, u / DAY.dayEnd)) * Math.PI);
-    this.sun.setAlpha(dayT * (0.35 + 0.4 * arc));
+    this.sun.setAlpha(dayT * (0.1 + 0.16 * arc));
   }
 
   destroy(): void {

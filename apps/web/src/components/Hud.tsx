@@ -124,10 +124,12 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
           gap: 0.4rem;
           padding: 0.4rem 0.75rem;
           border-radius: 999px;
-          background: rgba(10, 46, 61, 0.78);
-          border: 1px solid rgba(245, 230, 200, 0.18);
+          background: rgba(9, 38, 50, 0.9);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(245, 230, 200, 0.16);
           font-weight: 700;
           color: #f5e6c8;
+          box-shadow: 0 2px 10px rgba(4, 18, 26, 0.3);
         }
         .dot {
           width: 0.6rem;
@@ -153,23 +155,30 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
         }
         .buttons button {
           padding: 0.55rem 0.9rem;
-          border: 1px solid rgba(245, 230, 200, 0.2);
+          border: 1px solid rgba(245, 230, 200, 0.18);
           border-radius: 12px;
-          background: rgba(10, 46, 61, 0.82);
+          background: rgba(9, 38, 50, 0.9);
+          backdrop-filter: blur(8px);
           color: #f5e6c8;
           font-size: 0.8rem;
           font-weight: 600;
           cursor: pointer;
+          box-shadow: 0 2px 10px rgba(4, 18, 26, 0.3);
         }
         .quest {
           position: absolute;
           top: calc(max(0.75rem, env(safe-area-inset-top)) + 3.4rem);
           left: max(0.75rem, env(safe-area-inset-left));
-          width: min(16rem, 55vw);
-          padding: 0.6rem 0.8rem;
+          width: min(15rem, 52vw);
+          padding: 0.55rem 0.75rem;
           border-radius: 12px;
-          background: rgba(10, 46, 61, 0.78);
-          border: 1px solid rgba(245, 230, 200, 0.16);
+          /* Nearly opaque plus a blur: at 0.78 the world showed straight
+             through the card and the panel read as an artefact rather than
+             a surface. */
+          background: rgba(9, 38, 50, 0.93);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(245, 230, 200, 0.14);
+          box-shadow: 0 4px 16px rgba(4, 18, 26, 0.35);
         }
         .quest-text {
           font-size: 0.8rem;
