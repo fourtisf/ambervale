@@ -6,6 +6,7 @@ import { env, isProd } from './env';
 import { ApiError } from './lib/errors';
 import { ValidationError, sendValidationError } from './lib/validate';
 import authPlugin from './plugins/auth';
+import { actionRoutes } from './routes/actions';
 import { authRoutes } from './routes/auth';
 import { farmRoutes } from './routes/farm';
 import { healthRoutes } from './routes/health';
@@ -82,6 +83,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(farmRoutes);
+  await app.register(actionRoutes);
 
   return app;
 }

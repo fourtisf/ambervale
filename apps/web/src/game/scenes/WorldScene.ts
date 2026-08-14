@@ -15,7 +15,10 @@ import { bridge } from '../bridge';
 import { Ambient } from '../systems/Ambient';
 import { CineCamera } from '../systems/CineCamera';
 import { DayNight } from '../systems/DayNight';
+import { Effects } from '../systems/Effects';
 import { FarmView } from '../systems/FarmView';
+import { Interactions, stampReceived } from '../systems/Interactions';
+import { PlayerController } from '../systems/PlayerController';
 import { buildLayout, buildScenery, type LayoutRefs } from '../world/layout';
 import { bakeTerrain, type Terrain } from '../world/terrain';
 import { SPRITE_SCALE, bakeSprites } from '../world/textures';
@@ -42,6 +45,11 @@ export class WorldScene extends Phaser.Scene {
   private cine?: CineCamera;
   private farmView?: FarmView;
   private player?: Phaser.GameObjects.Image;
+  private controller?: PlayerController;
+  private interactions?: Interactions;
+  private effects?: Effects;
+  /** Last interaction pushed to the HUD, to avoid re-emitting every frame. */
+  private lastInteractionKey = '';
 
   private debugMode = false;
   private debugCam = { x: SPAWN.x * TILE, y: SPAWN.y * TILE };
@@ -79,6 +87,7 @@ export class WorldScene extends Phaser.Scene {
     this.ambient = new Ambient(this, this.map);
     this.farmView = new FarmView(this, this.dayNight);
 
+    this.effects = new Effects(this);
     this.createPlayer();
 
     if (this.debugMode) {
@@ -118,10 +127,14 @@ export class WorldScene extends Phaser.Scene {
       .setVisible(false);
 
     // A soft lantern glow so the player stays readable at night.
-    this.dayNight?.addDynamicLight(x, y, 170, 0xffd9a0);
+    const light = this.dayNight?.addDynamicLight(x, y, 170, 0xffd9a0);
+
+    this.controller = new PlayerController(this, this.player, this.collision, light);
+    this.interactions = new Interactions(this.controller, this.effects!);
   }
 
   private applyFarm(state: FarmState): void {
+    stampReceived(state);
     this.farmView?.hydrate(state);
     // Ghost plots disappear the moment the north meadow is bought.
     this.layout.ghostPlots.setVisible(!state.expansion.north);
@@ -165,6 +178,8 @@ export class WorldScene extends Phaser.Scene {
     this.dayNight?.update(delta);
     this.ambient.update(delta, this.dayNight?.nightAmount ?? 0);
     this.farmView?.update(delta);
+    this.controller?.update(delta);
+    this.pushInteraction();
 
     this.layout.windmillBlades.rotation += (BLADE_SPEED * delta) / 1000;
     this.layout.rowboat.y = this.rowboatBaseY + Math.sin(this.elapsed / 620) * 3;
@@ -172,6 +187,24 @@ export class WorldScene extends Phaser.Scene {
 
     if (this.debugMode) this.updateDebugCamera(delta);
     else this.cine?.update(delta);
+  }
+
+  /**
+   * Publishes the current interaction to the HUD, but only when it actually
+   * changes — this runs every frame and React should not re-render 60 times a
+   * second because a countdown ticked a millisecond.
+   */
+  private pushInteraction(): void {
+    if (!this.interactions) return;
+    const interaction = this.interactions.currentInteraction();
+    const key = interaction
+      ? `${interaction.kind}:${interaction.target}:${interaction.enabled}:${
+          interaction.remainingMs ? Math.ceil(interaction.remainingMs / 1000) : ''
+        }`
+      : '';
+    if (key === this.lastInteractionKey) return;
+    this.lastInteractionKey = key;
+    bridge.emit('interaction', interaction);
   }
 
   private updateDebugCamera(delta: number): void {
@@ -188,6 +221,7 @@ export class WorldScene extends Phaser.Scene {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
     this.scale.off('resize', this.onResize, this);
+    this.controller?.destroy();
     this.dayNight?.destroy();
     this.ambient.destroy();
     this.farmView?.destroy();

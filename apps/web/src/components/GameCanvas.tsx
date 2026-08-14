@@ -4,7 +4,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type Phaser from 'phaser';
 import { bridge } from '@/game/bridge';
 import { authGuest, type FarmState } from '@/lib/api';
+import { audio } from '@/lib/audio';
+import Controls from './Controls';
+import Hud from './Hud';
+import ModalHost from './ModalHost';
 import TitleScreen from './TitleScreen';
+import Toasts from './Toasts';
 
 type DebugWindow = Window & { __ambervaleGame?: Phaser.Game };
 
@@ -29,6 +34,7 @@ export default function GameCanvas() {
     setError(null);
     try {
       const { farm: state } = await authGuest();
+      state.__receivedAt = Date.now();
       setFarm(state);
       bridge.emit('farm', state);
     } catch (err) {
@@ -82,6 +88,8 @@ export default function GameCanvas() {
   }, [connect]);
 
   const handleStart = useCallback(() => {
+    // Browsers only allow an AudioContext to start inside a user gesture.
+    audio.resume();
     setStarted(true);
     bridge.emit('start', undefined);
   }, []);
@@ -100,7 +108,7 @@ export default function GameCanvas() {
           overflow: 'hidden',
         }}
       />
-      {!started && (
+      {!started ? (
         <TitleScreen
           farm={farm}
           loading={loading}
@@ -108,7 +116,14 @@ export default function GameCanvas() {
           onStart={handleStart}
           onRetry={() => void connect()}
         />
+      ) : (
+        <>
+          <Hud onOpen={(modal) => bridge.emit('modal', modal)} />
+          <Controls />
+          <ModalHost />
+        </>
       )}
+      <Toasts />
     </>
   );
 }

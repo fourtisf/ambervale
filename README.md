@@ -48,8 +48,12 @@ pnpm dev                  # api :4021, web :4022
 
 Then open:
 
-- <http://localhost:4022> — placeholder landing page
-- <http://localhost:4022/play> — empty Phaser scene, FPS counter
+> **Use `localhost`, not `127.0.0.1`.** The session cookie is `SameSite=Lax`,
+> and those two are different sites, so mixing them drops the cookie on every
+> request after login. Match the host in `NEXT_PUBLIC_API_URL`.
+
+- <http://localhost:4022> — landing page
+- <http://localhost:4022/play> — the game
 - <http://localhost:4021/health> — `{ "ok": true, "ts": … }`
 
 `pnpm dev` also runs `tsc --watch` on `game-config`, so constant changes

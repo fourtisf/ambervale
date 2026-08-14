@@ -21,6 +21,7 @@ import {
 import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { amberBalance, levelFromTotalXp } from './progression';
+import { questProgress } from './quests';
 
 const ms = (sec: number) => sec * 1000;
 
@@ -180,6 +181,14 @@ export interface FarmState {
     refillAt: number | null;
     unlocked: boolean;
   }[];
+  /** Current quest and live progress toward it, or null when the chain ends. */
+  quest: {
+    index: number;
+    id: string;
+    text: string;
+    current: number;
+    target: number;
+  } | null;
 }
 
 /** Growth duration for a plot, honouring the accelerated first crop. */
@@ -227,7 +236,7 @@ export async function getFarmState(
 ): Promise<FarmState> {
   const userId = user.id;
 
-  const [plots, nodes, animals, groundItems, inventory, seeds, slots, expansion, amber] =
+  const [plots, nodes, animals, groundItems, inventory, seeds, slots, expansion, amber, quest] =
     await Promise.all([
       db.plot.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
       db.resourceNode.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
@@ -238,6 +247,7 @@ export async function getFarmState(
       db.deliverySlot.findMany({ where: { userId }, orderBy: { slot: 'asc' } }),
       db.expansion.findUnique({ where: { userId } }),
       amberBalance(db as Prisma.TransactionClient, userId),
+      questProgress(db as Prisma.TransactionClient, userId),
     ]);
 
   const lv = levelFromTotalXp(user.xp);
@@ -295,5 +305,14 @@ export async function getFarmState(
       refillAt: s.refillAt?.getTime() ?? null,
       unlocked: true,
     })),
+    quest: quest.quest
+      ? {
+          index: quest.index,
+          id: quest.quest.id,
+          text: quest.quest.text,
+          current: quest.current,
+          target: quest.target,
+        }
+      : null,
   };
 }

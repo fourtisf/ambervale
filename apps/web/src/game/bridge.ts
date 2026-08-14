@@ -18,6 +18,18 @@ export interface ToastMessage {
   text: string;
 }
 
+/** What the player can currently do, driving the contextual action button. */
+export interface Interaction {
+  kind: 'plant' | 'harvest' | 'chop' | 'mine' | 'sell' | 'buy' | 'deliver' | 'egg' | 'milk';
+  label: string;
+  /** Plot/node index or ground-item id, whichever the action needs. */
+  target: number | string;
+  /** False while the action is known to be rejected (e.g. crop still growing). */
+  enabled: boolean;
+  /** Countdown shown on the button when a crop is not ready. */
+  remainingMs?: number;
+}
+
 /** Events React and Phaser send each other. */
 export interface BridgeEvents {
   /** Authoritative state changed; both sides re-render from it. */
@@ -32,6 +44,14 @@ export interface BridgeEvents {
   levelUp: number[];
   /** Coins/amber flew to the HUD — world position to fly from. */
   fly: { kind: 'coin' | 'amber' | 'xp'; amount: number; x: number; y: number };
+  /** What the player is standing next to, or null. */
+  interaction: Interaction | null;
+  /** The action button (or E) was pressed. */
+  act: void;
+  /** UI asked the world to walk somewhere, e.g. tutorial "Guide me". */
+  walkTo: { x: number; y: number };
+  /** A modal opened or closed; the world pauses input while one is up. */
+  modal: string | null;
 }
 
 type Handler<K extends keyof BridgeEvents> = (payload: BridgeEvents[K]) => void;
@@ -43,6 +63,21 @@ class GameBridge {
   farm: FarmState | null = null;
   /** Set once the player leaves the title screen. */
   started = false;
+
+  /**
+   * Movement intent, in the range [-1, 1] per axis.
+   *
+   * Deliberately a mutable object polled once per frame rather than an event:
+   * a joystick fires pointermove far more often than the game renders, and
+   * emitting each one would be pure overhead.
+   */
+  readonly input = { moveX: 0, moveY: 0 };
+
+  /** Current interaction, mirrored here so late subscribers see it. */
+  interaction: Interaction | null = null;
+
+  /** Set while a modal is open, so world input stays inert underneath it. */
+  openModal: string | null = null;
 
   on<K extends keyof BridgeEvents>(event: K, handler: Handler<K>): () => void {
     let set = this.handlers.get(event);
@@ -61,6 +96,8 @@ class GameBridge {
   emit<K extends keyof BridgeEvents>(event: K, payload: BridgeEvents[K]): void {
     if (event === 'farm') this.farm = payload as FarmState;
     if (event === 'start') this.started = true;
+    if (event === 'interaction') this.interaction = payload as Interaction | null;
+    if (event === 'modal') this.openModal = payload as string | null;
 
     for (const handler of this.handlers.get(event) ?? []) {
       (handler as Handler<K>)(payload);
@@ -76,6 +113,10 @@ class GameBridge {
     this.handlers.clear();
     this.farm = null;
     this.started = false;
+    this.interaction = null;
+    this.openModal = null;
+    this.input.moveX = 0;
+    this.input.moveY = 0;
   }
 }
 

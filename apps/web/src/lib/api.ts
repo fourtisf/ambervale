@@ -131,6 +131,14 @@ export interface FarmUser {
   counters: Record<string, number>;
 }
 
+export interface FarmQuest {
+  index: number;
+  id: string;
+  text: string;
+  current: number;
+  target: number;
+}
+
 export interface FarmState {
   serverNow: number;
   user: FarmUser;
@@ -142,6 +150,13 @@ export interface FarmState {
   inventory: Record<string, number>;
   seeds: Record<string, number>;
   deliverySlots: FarmDeliverySlot[];
+  quest: FarmQuest | null;
+  /**
+   * Client-only: when this snapshot arrived locally. Timers extrapolate from
+   * `serverNow` using this, so a browser clock that is wrong (or wound
+   * forward) never makes a crop look ready early.
+   */
+  __receivedAt?: number;
 }
 
 export const authGuest = (): Promise<{ created: boolean; farm: FarmState }> =>

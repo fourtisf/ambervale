@@ -1,0 +1,386 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { CROPS, CROP_KEYS, sellPrice, type CropKey, type ItemKey } from '@ambervale/game-config';
+import { bridge } from '@/game/bridge';
+import { ApiRequestError, apiPost, type FarmState } from '@/lib/api';
+import { audio } from '@/lib/audio';
+import Modal from './Modal';
+
+interface ActionReply {
+  farm: FarmState;
+  levelUps?: number[];
+  coinsGained?: number;
+}
+
+/** Applies a server reply everywhere and plays whatever it earned. */
+function commit(reply: ActionReply): void {
+  reply.farm.__receivedAt = Date.now();
+  bridge.emit('farm', reply.farm);
+  for (const level of reply.levelUps ?? []) {
+    audio.levelUp();
+    bridge.toast('good', `Level ${level}!`);
+  }
+}
+
+function useFarm(): FarmState | null {
+  const [farm, setFarm] = useState<FarmState | null>(bridge.farm);
+  useEffect(() => bridge.on('farm', setFarm), []);
+  return farm;
+}
+
+function reportError(err: unknown): void {
+  audio.error();
+  bridge.toast('warn', err instanceof ApiRequestError ? err.message : 'Something went wrong.');
+}
+
+// ---------------------------------------------------------------------------
+
+function MarketModal({ onClose }: { onClose: () => void }) {
+  const farm = useFarm();
+  const [tab, setTab] = useState<'buy' | 'sell'>('buy');
+  const [busy, setBusy] = useState(false);
+
+  if (!farm) return null;
+
+  const buy = async (cropKey: CropKey, qty: 1 | 5) => {
+    setBusy(true);
+    try {
+      commit(await apiPost<ActionReply>('/act/buySeed', { cropKey, qty }));
+      audio.coin();
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sell = async (itemKey: ItemKey) => {
+    setBusy(true);
+    try {
+      const r = await apiPost<ActionReply>('/act/sell', { itemKey, qty: 'all' });
+      commit(r);
+      audio.coin();
+      if (r.coinsGained) bridge.toast('good', `Sold for ${r.coinsGained} coins`);
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const sellable = Object.entries(farm.inventory).filter(([, qty]) => qty > 0) as [
+    ItemKey,
+    number,
+  ][];
+
+  return (
+    <Modal title="Market" onClose={onClose}>
+      <div className="tabs">
+        <button type="button" data-on={tab === 'buy'} onClick={() => setTab('buy')}>
+          Buy seeds
+        </button>
+        <button type="button" data-on={tab === 'sell'} onClick={() => setTab('sell')}>
+          Sell
+        </button>
+      </div>
+
+      {tab === 'buy' ? (
+        <ul className="rows">
+          {CROP_KEYS.map((key) => {
+            const crop = CROPS[key];
+            const locked = farm.user.level < crop.unlockLv;
+            return (
+              <li key={key} data-locked={locked}>
+                <div className="name">
+                  <b>{key}</b>
+                  <small>
+                    {locked
+                      ? `Unlocks at level ${crop.unlockLv}`
+                      : `${crop.seedCost} coins · grows ${crop.growSec}s · sells ${crop.sell}`}
+                  </small>
+                </div>
+                <div className="actions">
+                  <span className="have">×{farm.seeds[key] ?? 0}</span>
+                  <button
+                    type="button"
+                    disabled={locked || busy || farm.user.coins < crop.seedCost}
+                    onClick={() => void buy(key, 1)}
+                  >
+                    ×1
+                  </button>
+                  <button
+                    type="button"
+                    disabled={locked || busy || farm.user.coins < crop.seedCost * 5}
+                    onClick={() => void buy(key, 5)}
+                  >
+                    ×5
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : sellable.length === 0 ? (
+        <p className="empty">Your bag is empty. Harvest something first.</p>
+      ) : (
+        <ul className="rows">
+          {sellable.map(([key, qty]) => (
+            <li key={key}>
+              <div className="name">
+                <b>{key}</b>
+                <small>
+                  {sellPrice(key)} coins each · {qty} in bag
+                </small>
+              </div>
+              <div className="actions">
+                <button type="button" disabled={busy} onClick={() => void sell(key)}>
+                  Sell all ({sellPrice(key) * qty})
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <style jsx>{`
+        .tabs {
+          display: flex;
+          gap: 0.4rem;
+          margin-bottom: 0.9rem;
+        }
+        .tabs button {
+          flex: 1;
+          padding: 0.55rem;
+          border-radius: 10px;
+          border: 1px solid rgba(245, 230, 200, 0.2);
+          background: transparent;
+          color: #f5e6c8;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .tabs button[data-on='true'] {
+          background: #f4b942;
+          color: #2a1a05;
+          border-color: transparent;
+        }
+        .rows {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .rows li {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          padding: 0.6rem 0.75rem;
+          border-radius: 12px;
+          background: rgba(245, 230, 200, 0.07);
+        }
+        .rows li[data-locked='true'] {
+          opacity: 0.45;
+        }
+        .name b {
+          text-transform: capitalize;
+        }
+        .name small {
+          display: block;
+          opacity: 0.7;
+          font-size: 0.72rem;
+        }
+        .actions {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+        .have {
+          opacity: 0.65;
+          font-size: 0.78rem;
+        }
+        .actions button {
+          padding: 0.45rem 0.7rem;
+          border-radius: 9px;
+          border: 0;
+          background: #f4b942;
+          color: #2a1a05;
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 0.8rem;
+        }
+        .actions button:disabled {
+          opacity: 0.4;
+          cursor: default;
+        }
+        .empty {
+          opacity: 0.7;
+          text-align: center;
+          padding: 1.5rem 0;
+        }
+      `}</style>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function BagModal({ onClose }: { onClose: () => void }) {
+  const farm = useFarm();
+  if (!farm) return null;
+
+  const items = Object.entries(farm.inventory).filter(([, qty]) => qty > 0);
+  const seeds = Object.entries(farm.seeds).filter(([, qty]) => qty > 0);
+
+  return (
+    <Modal title="Bag" onClose={onClose}>
+      <h3>Harvest &amp; goods</h3>
+      {items.length === 0 ? (
+        <p className="empty">Nothing yet.</p>
+      ) : (
+        <div className="grid">
+          {items.map(([key, qty]) => (
+            <div key={key} className="cell">
+              <b>{key}</b>
+              <span>×{qty}</span>
+              <small>{sellPrice(key as ItemKey)} ea</small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <h3>Seeds</h3>
+      {seeds.length === 0 ? (
+        <p className="empty">No seeds — buy some at the market.</p>
+      ) : (
+        <div className="grid">
+          {seeds.map(([key, qty]) => (
+            <div key={key} className="cell">
+              <b>{key}</b>
+              <span>×{qty}</span>
+              <small>seed</small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style jsx>{`
+        h3 {
+          margin: 0.4rem 0 0.6rem;
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          opacity: 0.6;
+        }
+        .grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(5.5rem, 1fr));
+          gap: 0.5rem;
+          margin-bottom: 1rem;
+        }
+        .cell {
+          padding: 0.65rem 0.5rem;
+          border-radius: 12px;
+          background: rgba(245, 230, 200, 0.07);
+          text-align: center;
+        }
+        .cell b {
+          display: block;
+          text-transform: capitalize;
+          font-size: 0.82rem;
+        }
+        .cell span {
+          display: block;
+          font-weight: 700;
+          color: #f4b942;
+        }
+        .cell small {
+          opacity: 0.6;
+          font-size: 0.68rem;
+        }
+        .empty {
+          opacity: 0.65;
+          margin: 0 0 1rem;
+        }
+      `}</style>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function SettingsModal({ onClose }: { onClose: () => void }) {
+  const [muted, setMuted] = useState(audio.isMuted);
+
+  const toggleMute = () => {
+    const next = !muted;
+    audio.setMuted(next);
+    setMuted(next);
+  };
+
+  return (
+    <Modal title="Settings" onClose={onClose}>
+      <div className="row">
+        <span>Sound</span>
+        <button type="button" onClick={toggleMute}>
+          {muted ? 'Muted' : 'On'}
+        </button>
+      </div>
+      <div className="row">
+        <span>Wallet</span>
+        <button type="button" onClick={() => bridge.toast('info', 'Wallet linking arrives soon.')}>
+          Connect
+        </button>
+      </div>
+      <p className="note">Sound preference is saved on this device.</p>
+
+      <style jsx>{`
+        .row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0.7rem 0;
+          border-bottom: 1px solid rgba(245, 230, 200, 0.1);
+        }
+        .row button {
+          padding: 0.45rem 1rem;
+          border-radius: 9px;
+          border: 1px solid rgba(245, 230, 200, 0.25);
+          background: transparent;
+          color: #f5e6c8;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        .note {
+          margin-top: 1rem;
+          font-size: 0.72rem;
+          opacity: 0.6;
+        }
+      `}</style>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+/** Routes the bridge's `modal` event to the right sheet. */
+export default function ModalHost() {
+  const [open, setOpen] = useState<string | null>(null);
+
+  useEffect(() => bridge.on('modal', setOpen), []);
+
+  const close = useCallback(() => bridge.emit('modal', null), []);
+
+  switch (open) {
+    case 'market':
+      return <MarketModal onClose={close} />;
+    case 'bag':
+      return <BagModal onClose={close} />;
+    case 'settings':
+      return <SettingsModal onClose={close} />;
+    default:
+      return null;
+  }
+}
