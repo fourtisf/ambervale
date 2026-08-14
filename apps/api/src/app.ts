@@ -13,6 +13,7 @@ import { deliveryRoutes } from './routes/deliveries';
 import { farmRoutes } from './routes/farm';
 import { healthRoutes } from './routes/health';
 import { tutorialRoutes } from './routes/tutorial';
+import { walletRoutes } from './routes/wallet';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -90,6 +91,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(deliveryRoutes);
   await app.register(tutorialRoutes);
   await app.register(animalRoutes);
+  await app.register(walletRoutes);
 
   return app;
 }

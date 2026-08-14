@@ -44,6 +44,10 @@ const EnvSchema = z.object({
     }),
   SESSION_SECRET: z.string().min(32),
   ENABLE_CLAIM: boolish.default(false),
+
+  /** Basic-auth credentials for the admin CSV export. */
+  ADMIN_USER: z.string().default('admin'),
+  ADMIN_PASSWORD: z.string().default(''),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

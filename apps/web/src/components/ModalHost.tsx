@@ -7,6 +7,7 @@ import { ApiRequestError, apiPost, type FarmState } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
 import Modal from './Modal';
+import WalletPanel from './WalletPanel';
 
 interface ActionReply {
   farm: FarmState;
@@ -346,12 +347,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           {muted ? 'Muted' : 'On'}
         </button>
       </div>
-      <div className="row">
-        <span>Wallet</span>
-        <button type="button" onClick={() => bridge.toast('info', 'Wallet linking arrives soon.')}>
-          Connect
-        </button>
-      </div>
+      <WalletPanel />
       <div className="row danger">
         <span>Reset run</span>
         {confirmReset ? (
