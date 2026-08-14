@@ -306,6 +306,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   override update(_time: number, delta: number): void {
+    // Heartbeat for the controls' freeze watchdog. First line of update(), so
+    // it is stamped even if something below throws.
+    bridge.lastFrameAt = Date.now();
     this.elapsed += delta;
 
     this.dayNight?.update(delta);

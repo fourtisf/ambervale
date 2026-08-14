@@ -16,6 +16,15 @@ import Toasts from './Toasts';
 type DebugWindow = Window & { __ambervaleGame?: Phaser.Game };
 
 /**
+ * How many times one tab may auto-reload itself after a lost GPU context.
+ *
+ * A machine that keeps dropping the context would otherwise reload forever.
+ * After the cap the page stays up and says so, which is at least diagnosable.
+ */
+const MAX_CONTEXT_RELOADS = 2;
+const RELOAD_KEY = 'ambervale.contextReloads';
+
+/**
  * Mounts the Phaser game and owns the React side of the shell.
  *
  * Auth and the initial farm read happen here, not in the scene: the world can
@@ -58,6 +67,7 @@ export default function GameCanvas() {
     if (!parent) return;
 
     let cancelled = false;
+    let detach: (() => void) | undefined;
     document.body.classList.add('playing');
 
     void (async () => {
@@ -67,10 +77,12 @@ export default function GameCanvas() {
       if (process.env.NODE_ENV !== 'production') {
         (window as DebugWindow).__ambervaleGame = gameRef.current;
       }
+      detach = watchContext(gameRef.current);
     })();
 
     return () => {
       cancelled = true;
+      detach?.();
       document.body.classList.remove('playing');
       gameRef.current?.destroy(true);
       gameRef.current = null;
@@ -82,6 +94,7 @@ export default function GameCanvas() {
   }, []);
 
   // Strict Mode double-invokes effects in dev; one auth call is enough.
+  // (watchContext is defined below the component, next to its constants.)
   const connectedRef = useRef(false);
   useEffect(() => {
     if (connectedRef.current) return;
@@ -130,4 +143,54 @@ export default function GameCanvas() {
       <Toasts />
     </>
   );
+}
+
+/**
+ * Recovers from a lost WebGL context.
+ *
+ * When the GPU drops the context the canvas freezes on its last frame while
+ * React carries on, so the HUD stays live and the joystick still moves its
+ * knob — the world simply never advances. It is indistinguishable from a
+ * gameplay bug unless something says otherwise, so this says otherwise.
+ *
+ * Reloading is the honest fix rather than a heavy-handed one: the farm is
+ * entirely server-side, so a reload costs a few seconds and loses nothing.
+ */
+function watchContext(game: Phaser.Game): () => void {
+  const canvas = game.canvas;
+  if (!canvas) return () => {};
+
+  const onLost = (event: Event) => {
+    // Preventing the default is what allows a restore to be attempted at all.
+    event.preventDefault();
+
+    const seen = Number(sessionStorage.getItem(RELOAD_KEY) ?? '0');
+    if (seen >= MAX_CONTEXT_RELOADS) {
+      bridge.toast('bad', 'Graphics keep failing on this device. Try closing some tabs.');
+      return;
+    }
+
+    sessionStorage.setItem(RELOAD_KEY, String(seen + 1));
+    bridge.toast('bad', 'Graphics context lost — reloading. Your farm is safe.');
+    window.setTimeout(() => window.location.reload(), 1200);
+  };
+
+  const onRestored = () => {
+    sessionStorage.setItem(RELOAD_KEY, '0');
+  };
+
+  // A tab returning to the foreground may come back with the loop asleep.
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') game.loop.wake();
+  };
+
+  canvas.addEventListener('webglcontextlost', onLost);
+  canvas.addEventListener('webglcontextrestored', onRestored);
+  document.addEventListener('visibilitychange', onVisible);
+
+  return () => {
+    canvas.removeEventListener('webglcontextlost', onLost);
+    canvas.removeEventListener('webglcontextrestored', onRestored);
+    document.removeEventListener('visibilitychange', onVisible);
+  };
 }

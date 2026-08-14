@@ -5,6 +5,9 @@ import { JOYSTICK } from '@ambervale/game-config';
 import { bridge, type Interaction } from '@/game/bridge';
 import { audio } from '@/lib/audio';
 
+/** A frozen world is declared after this long without a rendered frame. */
+const FREEZE_MS = 2000;
+
 /**
  * Fixed virtual joystick and the contextual action button.
  *
@@ -12,6 +15,13 @@ import { audio } from '@/lib/audio';
  * events lose the stream the moment a finger slides outside the element, and
  * they fight the browser's own gesture handling; pointer capture keeps every
  * move routed to the stick until the finger lifts, wherever it wanders.
+ *
+ * Capture is powerful enough to be dangerous: whatever grabs a pointer must
+ * give it back on *every* path out, including the ones that never reach
+ * pointerup — a cancelled gesture, a lost capture, a window that loses focus,
+ * a tab switched away mid-drag. Miss one and `pointerId` stays occupied, every
+ * later press is ignored, and the stick is dead for the rest of the session.
+ * Hence the release-everywhere handlers below.
  */
 export default function Controls() {
   const padRef = useRef<HTMLDivElement>(null);
@@ -59,9 +69,31 @@ export default function Controls() {
     if (knobRef.current) knobRef.current.style.transform = 'translate(0px, 0px)';
   }, []);
 
+  /**
+   * Hands a captured pointer back, tolerating a capture that is already gone.
+   *
+   * releasePointerCapture throws NotFoundError for a pointer the browser has
+   * already retired — which is exactly what has happened by the time a
+   * pointercancel handler runs. Letting that throw would skip the release
+   * below it and strand the stick.
+   */
+  const dropCapture = useCallback((el: Element | null, id: number) => {
+    try {
+      (el as HTMLElement | null)?.releasePointerCapture?.(id);
+    } catch {
+      // Already released. Nothing to do, and nothing worth reporting.
+    }
+  }, []);
+
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (pointerId.current !== null) return;
+      // Take over from a pointer we never saw end. Refusing here is what made
+      // a single missed release permanent; claiming the stick instead means
+      // the next press always works.
+      if (pointerId.current !== null && pointerId.current !== e.pointerId) {
+        dropCapture(e.currentTarget, pointerId.current);
+        release();
+      }
       e.preventDefault();
       e.stopPropagation();
 
@@ -75,7 +107,7 @@ export default function Controls() {
       setVector(e.clientX - origin.current.x, e.clientY - origin.current.y);
       audio.resume();
     },
-    [setVector],
+    [setVector, dropCapture, release],
   );
 
   const onPointerMove = useCallback(
@@ -90,11 +122,60 @@ export default function Controls() {
   const onPointerUp = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (pointerId.current !== e.pointerId) return;
-      e.currentTarget.releasePointerCapture?.(e.pointerId);
+      dropCapture(e.currentTarget, e.pointerId);
       release();
     },
-    [release],
+    [release, dropCapture],
   );
+
+  // Every remaining way a drag can end without a pointerup on the pad: the
+  // browser revoking the capture, the window losing focus, the tab going to
+  // the background, or the press ending somewhere else entirely.
+  useEffect(() => {
+    const stop = () => {
+      if (pointerId.current !== null) release();
+    };
+    const onGlobalUp = (e: PointerEvent) => {
+      if (pointerId.current === e.pointerId) release();
+    };
+
+    window.addEventListener('pointerup', onGlobalUp);
+    window.addEventListener('pointercancel', onGlobalUp);
+    window.addEventListener('blur', stop);
+    document.addEventListener('visibilitychange', stop);
+    return () => {
+      window.removeEventListener('pointerup', onGlobalUp);
+      window.removeEventListener('pointercancel', onGlobalUp);
+      window.removeEventListener('blur', stop);
+      document.removeEventListener('visibilitychange', stop);
+    };
+  }, [release]);
+
+  /**
+   * Watches for a world that has stopped rendering.
+   *
+   * If the stick is being pushed and no frame has been drawn for two seconds,
+   * the character is not stuck — the game loop is. Saying so beats leaving
+   * someone shoving a dead joystick, and reloading costs nothing because every
+   * scrap of progress lives on the server.
+   */
+  useEffect(() => {
+    let warned = false;
+    const id = window.setInterval(() => {
+      const pushing = bridge.input.moveX !== 0 || bridge.input.moveY !== 0;
+      const frozen = bridge.lastFrameAt > 0 && Date.now() - bridge.lastFrameAt > FREEZE_MS;
+
+      if (!pushing || !frozen) {
+        if (!frozen) warned = false;
+        return;
+      }
+      if (warned) return;
+      warned = true;
+      bridge.toast('bad', 'The world stopped drawing — reloading. Your farm is safe.');
+      window.setTimeout(() => window.location.reload(), 1400);
+    }, 500);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Keyboard: E acts, same as the button.
   useEffect(() => {

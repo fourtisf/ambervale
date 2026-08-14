@@ -94,6 +94,16 @@ class GameBridge {
   /** Set while a modal is open, so world input stays inert underneath it. */
   openModal: string | null = null;
 
+  /**
+   * When the world last rendered a frame, as `Date.now()`.
+   *
+   * React and Phaser fail independently: a lost WebGL context freezes the
+   * world while the HUD carries on ticking, which on screen is a joystick that
+   * moves and a character that does not. Nothing else can tell those two apart,
+   * so the world stamps its heartbeat here and the controls watch it.
+   */
+  lastFrameAt = 0;
+
   on<K extends keyof BridgeEvents>(event: K, handler: Handler<K>): () => void {
     let set = this.handlers.get(event);
     if (!set) {
@@ -132,6 +142,7 @@ class GameBridge {
     this.openModal = null;
     this.input.moveX = 0;
     this.input.moveY = 0;
+    this.lastFrameAt = 0;
   }
 }
 
