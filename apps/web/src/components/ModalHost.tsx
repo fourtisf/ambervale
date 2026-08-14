@@ -314,11 +314,28 @@ function BagModal({ onClose }: { onClose: () => void }) {
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const [muted, setMuted] = useState(audio.isMuted);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const toggleMute = () => {
     const next = !muted;
     audio.setMuted(next);
     setMuted(next);
+  };
+
+  const reset = async () => {
+    setBusy(true);
+    try {
+      const r = await apiPost<ActionReply>('/run/reset', {});
+      commit(r);
+      bridge.toast('info', 'Run reset. Fresh farm, fresh start.');
+      onClose();
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+      setConfirmReset(false);
+    }
   };
 
   return (
@@ -335,7 +352,28 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           Connect
         </button>
       </div>
-      <p className="note">Sound preference is saved on this device.</p>
+      <div className="row danger">
+        <span>Reset run</span>
+        {confirmReset ? (
+          <span className="confirm">
+            <button type="button" disabled={busy} onClick={() => void reset()}>
+              {busy ? 'Resetting…' : 'Yes, wipe it'}
+            </button>
+            <button type="button" onClick={() => setConfirmReset(false)}>
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button type="button" onClick={() => setConfirmReset(true)}>
+            Reset
+          </button>
+        )}
+      </div>
+
+      <p className="note">
+        Sound preference is saved on this device. Resetting deletes this farm — every plot, item and
+        $AMBER ledger entry — and cannot be undone.
+      </p>
 
       <style jsx>{`
         .row {
@@ -354,10 +392,19 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           cursor: pointer;
           font-weight: 600;
         }
+        .danger button {
+          border-color: rgba(242, 160, 154, 0.6);
+          color: #f2a09a;
+        }
+        .confirm {
+          display: flex;
+          gap: 0.4rem;
+        }
         .note {
           margin-top: 1rem;
           font-size: 0.72rem;
           opacity: 0.6;
+          line-height: 1.5;
         }
       `}</style>
     </Modal>

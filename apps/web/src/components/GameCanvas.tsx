@@ -9,6 +9,7 @@ import Controls from './Controls';
 import Hud from './Hud';
 import ModalHost from './ModalHost';
 import TitleScreen from './TitleScreen';
+import TutorialBanner from './TutorialBanner';
 import Toasts from './Toasts';
 
 type DebugWindow = Window & { __ambervaleGame?: Phaser.Game };
@@ -119,6 +120,7 @@ export default function GameCanvas() {
       ) : (
         <>
           <Hud onOpen={(modal) => bridge.emit('modal', modal)} />
+          <TutorialBanner />
           <Controls />
           <ModalHost />
         </>

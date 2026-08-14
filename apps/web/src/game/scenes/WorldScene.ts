@@ -19,6 +19,7 @@ import { Effects } from '../systems/Effects';
 import { FarmView } from '../systems/FarmView';
 import { Interactions, stampReceived } from '../systems/Interactions';
 import { PlayerController } from '../systems/PlayerController';
+import { TutorialGuide } from '../systems/TutorialGuide';
 import { buildLayout, buildScenery, type LayoutRefs } from '../world/layout';
 import { bakeTerrain, type Terrain } from '../world/terrain';
 import { SPRITE_SCALE, bakeSprites } from '../world/textures';
@@ -48,6 +49,7 @@ export class WorldScene extends Phaser.Scene {
   private controller?: PlayerController;
   private interactions?: Interactions;
   private effects?: Effects;
+  private tutorial?: TutorialGuide;
   /** Last interaction pushed to the HUD, to avoid re-emitting every frame. */
   private lastInteractionKey = '';
   /** Bouncing "!" over the delivery board when an order can be filled. */
@@ -134,6 +136,7 @@ export class WorldScene extends Phaser.Scene {
 
     this.controller = new PlayerController(this, this.player, this.collision, light);
     this.interactions = new Interactions(this.controller, this.effects!);
+    this.tutorial = new TutorialGuide(this, this.controller, this.interactions);
   }
 
   private createBoardMark(): void {
@@ -196,6 +199,11 @@ export class WorldScene extends Phaser.Scene {
     return this.terrain?.bakeMs ?? 0;
   }
 
+  /** Current tutorial objective in world space, for HudScene's edge arrow. */
+  getObjective(): { x: number; y: number } | null {
+    return this.tutorial?.target ?? null;
+  }
+
   /** What the minimap marks: the player once playing, the camera before that. */
   getFocusPoint(): { x: number; y: number } {
     if (bridge.started && this.player) return { x: this.player.x, y: this.player.y };
@@ -210,6 +218,7 @@ export class WorldScene extends Phaser.Scene {
     this.ambient.update(delta, this.dayNight?.nightAmount ?? 0);
     this.farmView?.update(delta);
     this.controller?.update(delta);
+    this.tutorial?.update(delta);
     this.pushInteraction();
 
     if (this.boardMark?.visible) {
@@ -257,6 +266,7 @@ export class WorldScene extends Phaser.Scene {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
     this.scale.off('resize', this.onResize, this);
+    this.tutorial?.destroy();
     this.controller?.destroy();
     this.dayNight?.destroy();
     this.ambient.destroy();

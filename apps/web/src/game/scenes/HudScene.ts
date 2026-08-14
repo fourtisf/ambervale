@@ -24,6 +24,9 @@ export class HudScene extends Phaser.Scene {
   private minimap!: Minimap;
   private debugText?: Phaser.GameObjects.Text;
   private world!: WorldScene;
+  /** Edge-of-screen pointer to an off-camera tutorial objective. */
+  private arrow!: Phaser.GameObjects.Triangle;
+  private arrowLabel!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: 'HudScene' });
@@ -34,6 +37,23 @@ export class HudScene extends Phaser.Scene {
 
     this.sky = new SkyOverlays(this);
     this.minimap = new Minimap(this, data.map);
+
+    this.arrow = this.add
+      .triangle(0, 0, 0, -13, 11, 9, -11, 9, 0xf4b942)
+      .setDepth(190)
+      .setVisible(false);
+    this.arrowLabel = this.add
+      .text(0, 0, 'Objective', {
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#0a2e3d',
+        backgroundColor: '#f4b942',
+        padding: { x: 5, y: 2 },
+      })
+      .setOrigin(0.5, 0.5)
+      .setDepth(191)
+      .setVisible(false);
 
     const debug =
       typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug');
@@ -55,6 +75,48 @@ export class HudScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Points at the tutorial objective when it is off-camera.
+   *
+   * This lives on the HUD scene because it is a screen-space marker: on the
+   * world camera it would be scaled by the zoom and drift away from the edge.
+   */
+  private updateObjectiveArrow(cam: Phaser.Cameras.Scene2D.Camera): void {
+    const target = this.world.getObjective();
+    if (!target || cam.worldView.contains(target.x, target.y)) {
+      this.arrow.setVisible(false);
+      this.arrowLabel.setVisible(false);
+      return;
+    }
+
+    const { width, height } = this.scale;
+    const cx = width / 2;
+    const cy = height / 2;
+
+    // Direction from the viewport centre to the objective, in screen space.
+    const dx = (target.x - cam.worldView.centerX) * cam.zoom;
+    const dy = (target.y - cam.worldView.centerY) * cam.zoom;
+    const angle = Math.atan2(dy, dx);
+
+    const margin = 46;
+    const rx = cx - margin;
+    const ry = cy - margin;
+    // Scale the direction out to whichever edge it hits first.
+    const scale = Math.min(
+      Math.abs(dx) > 0.001 ? rx / Math.abs(dx) : Infinity,
+      Math.abs(dy) > 0.001 ? ry / Math.abs(dy) : Infinity,
+    );
+
+    const x = cx + dx * scale;
+    const y = cy + dy * scale;
+
+    this.arrow
+      .setPosition(x, y)
+      .setRotation(angle + Math.PI / 2)
+      .setVisible(true);
+    this.arrowLabel.setPosition(x, y + 24).setVisible(true);
+  }
+
   override update(): void {
     const dayNight = this.world.getDayNight();
     if (!dayNight) return;
@@ -64,6 +126,7 @@ export class HudScene extends Phaser.Scene {
     const cam = this.world.cameras.main;
     const focus = this.world.getFocusPoint();
     this.minimap.update(cam, focus.x, focus.y);
+    this.updateObjectiveArrow(cam);
 
     if (this.debugText) {
       this.debugText.setText(
