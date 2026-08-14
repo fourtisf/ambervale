@@ -7,6 +7,7 @@ import { authGuest, type FarmState } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import Controls from './Controls';
 import Hud from './Hud';
+import { AwayWatcher } from './EconomyModals';
 import ModalHost from './ModalHost';
 import TitleScreen from './TitleScreen';
 import TutorialBanner from './TutorialBanner';
@@ -123,6 +124,7 @@ export default function GameCanvas() {
           <TutorialBanner />
           <Controls />
           <ModalHost />
+          <AwayWatcher />
         </>
       )}
       <Toasts />

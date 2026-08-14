@@ -7,9 +7,17 @@
  * changes nothing that matters.
  */
 
-import { type ItemKey, sellPrice } from '@ambervale/game-config';
+import {
+  LEVEL_REWARDS,
+  type CropKey,
+  type ItemKey,
+  type LevelReward,
+  sellPrice,
+} from '@ambervale/game-config';
 import type { Prisma } from '@prisma/client';
+import { evaluateDaily, type DailyOutcome } from './daily';
 import { applyXp } from './progression';
+import { evaluateQuests, type QuestCompletion } from './quests';
 
 /** Adds (or removes, with a negative qty) an inventory item. Never goes below 0. */
 export async function addItem(
@@ -85,17 +93,29 @@ export interface GrantOptions {
   counters?: Record<string, number>;
 }
 
+export interface LevelRewardGrant {
+  level: number;
+  reward: LevelReward;
+}
+
 export interface GrantResult {
   level: number;
   xp: number;
   coins: number;
   rep: number;
   levelUps: number[];
+  /** Payouts for levels crossed by this grant, in order. */
+  levelRewards: LevelRewardGrant[];
 }
 
 /**
  * Applies XP, coins, rep and counters in one update, and returns the levels
  * crossed so the client can play the celebration.
+ *
+ * Level rewards are paid here rather than at the call sites: every action that
+ * can grant XP funnels through this function, so this is the one place where
+ * "crossed a level" is known, and paying anywhere else would mean either
+ * duplicating the check or missing a route.
  */
 export async function grant(
   tx: Prisma.TransactionClient,
@@ -116,7 +136,14 @@ export async function grant(
     (data as Record<string, unknown>)[key] = { increment: amount };
   }
 
-  const updated = await tx.user.update({ where: { id: userId }, data });
+  let updated = await tx.user.update({ where: { id: userId }, data });
+
+  const levelRewards = await payLevelRewards(tx, userId, xpGrant.levelUps);
+  if (levelRewards.length > 0) {
+    // Rewards moved the coin balance after the update above, so re-read rather
+    // than report a figure that is already stale.
+    updated = await tx.user.findUniqueOrThrow({ where: { id: userId } });
+  }
 
   return {
     level: updated.level,
@@ -124,7 +151,62 @@ export async function grant(
     coins: updated.coins,
     rep: updated.rep,
     levelUps: xpGrant.levelUps,
+    levelRewards,
   };
+}
+
+/** Pays the one-off reward attached to each level just crossed. */
+async function payLevelRewards(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  levelUps: number[],
+): Promise<LevelRewardGrant[]> {
+  const paid: LevelRewardGrant[] = [];
+
+  for (const level of levelUps) {
+    const reward = LEVEL_REWARDS[level];
+    if (!reward) continue;
+
+    if (reward.coins) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { coins: { increment: reward.coins } },
+      });
+    }
+    if (reward.amber) {
+      await tx.amberLedger.create({
+        data: { userId, delta: reward.amber, reason: 'level', refId: String(level) },
+      });
+    }
+    for (const [cropKey, qty] of Object.entries(reward.seeds ?? {}) as [CropKey, number][]) {
+      await addSeed(tx, userId, cropKey, qty);
+    }
+
+    await tx.eventLog.create({
+      data: { userId, kind: 'level.reward', payload: { level, reward: JSON.stringify(reward) } },
+    });
+
+    paid.push({ level, reward });
+  }
+
+  return paid;
+}
+
+/**
+ * Everything that has to be re-checked after a mutating action.
+ *
+ * The quest chain and the daily goals both read the same monotonic counters,
+ * so they are always evaluated together — separating them would mean every new
+ * endpoint has to remember two calls instead of one, and forgetting the second
+ * would silently stop paying dailies.
+ */
+export async function evaluateProgress(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<{ questCompleted: QuestCompletion | null; daily: DailyOutcome }> {
+  const questCompleted = await evaluateQuests(tx, userId);
+  const daily = await evaluateDaily(tx, userId);
+  return { questCompleted, daily };
 }
 
 export async function logEvent(

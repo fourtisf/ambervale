@@ -94,7 +94,21 @@ export async function allowNodeHit(
   nodeIndex: number,
   minIntervalMs: number,
 ): Promise<boolean> {
-  const key = `hit:${userId}:${nodeIndex}`;
-  const res = await redis.set(key, '1', 'PX', minIntervalMs, 'NX');
+  return allowEvery(userId, `hit:${nodeIndex}`, minIntervalMs);
+}
+
+/**
+ * Generic per-user cooldown: true at most once per `minIntervalMs`.
+ *
+ * Used where an action has its own pace independent of the global mutation
+ * budget — a fishing cast is meant to take seconds, and the sliding window
+ * alone would happily allow five a second.
+ */
+export async function allowEvery(
+  userId: string,
+  scope: string,
+  minIntervalMs: number,
+): Promise<boolean> {
+  const res = await redis.set(`cd:${userId}:${scope}`, '1', 'PX', minIntervalMs, 'NX');
   return res === 'OK';
 }

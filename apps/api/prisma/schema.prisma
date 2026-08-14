@@ -51,6 +51,12 @@ model User {
   milkCount      Int @default(0)
   eggCount       Int @default(0)
   deliveriesDone Int @default(0)
+  fishCount      Int @default(0)
+  craftCount     Int @default(0)
+
+  /// Last time this player looked at their farm. The gap since is what the
+  /// "while you were away" report is measured over.
+  lastSeenAt DateTime @default(now())
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -66,6 +72,8 @@ model User {
   expansion     Expansion?
   wallet        Wallet?
   claimIntents  ClaimIntent[]
+  upgrades      Upgrade[]
+  daily         DailyState?
 
   @@index([createdAt])
 }
@@ -209,6 +217,50 @@ model AmberLedger {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+/// A purchased upgrade tier. Absent row means tier 0, so buying the first tier
+/// and buying the fourth go through exactly the same code path.
+model Upgrade {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// UpgradeKey from game-config. Not an enum: retuning the upgrade table is a
+  /// config edit everywhere else in this codebase, and it stays one here.
+  key  String
+  tier Int    @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+/// The player's position in the daily-goal cycle.
+///
+/// Progress is "counter now minus counter at the start of the day", so the
+/// baseline snapshot below is the only per-day state that needs storing — the
+/// goals themselves are derived from the date and never persisted.
+model DailyState {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Days since the Unix epoch, UTC. Rolling this over is the daily reset.
+  day      Int
+  /// Counter values as they stood when `day` began.
+  baseline Json
+  /// Bitmask over the day's picks, so a goal pays out exactly once.
+  claimed  Int  @default(0)
+
+  streak          Int @default(0)
+  /// Last day whose goals were all finished, so a streak cannot double-count.
+  lastCompleteDay Int @default(-1)
+
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Expansion {

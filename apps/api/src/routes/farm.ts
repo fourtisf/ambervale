@@ -4,13 +4,26 @@
  * Also the place where lazily-repaired state is materialised: node respawns
  * (Phase 3), egg laying (Phase 6) and delivery refills (Phase 4) are all
  * computed from timestamps when someone looks, rather than by a scheduler.
+ *
+ * Because this read is already the moment the farm catches up with real time,
+ * it is also where the "while you were away" report is assembled — the numbers
+ * are a by-product of repairs that were happening anyway.
  */
 
+import { AWAY } from '@ambervale/game-config';
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { materialiseAnimalYields } from '../services/animals';
+import { ensureDaily } from '../services/daily';
 import { ensureDeliverySlots } from '../services/deliveries';
-import { bootstrapFarm, getFarmState, repairNodes } from '../services/farm';
+import {
+  bootstrapFarm,
+  getFarmState,
+  growMsFor,
+  repairNodes,
+  type AwayReport,
+} from '../services/farm';
+import { effectsFor } from '../services/upgrades';
 
 export async function farmRoutes(app: FastifyInstance): Promise<void> {
   app.get('/farm', async (req, reply) => {
@@ -19,15 +32,74 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
     // A session can outlive a failed bootstrap; make sure the farm exists.
     if (!user.bootstrapped) await bootstrapFarm(user.id);
 
+    const now = Date.now();
+    const lastSeen = user.lastSeenAt.getTime();
+    const awayMs = Math.max(0, now - lastSeen);
+    const reportable = awayMs >= AWAY.minGapSec * 1000;
+
     // Lazy repair: node respawns and delivery refills are materialised when
     // someone looks, so no scheduler is needed for a farm left alone for days.
-    await prisma.$transaction(async (tx) => {
-      await repairNodes(tx, user.id);
-      await materialiseAnimalYields(tx, user.id);
-      await ensureDeliverySlots(tx, user.id);
+    const away = await prisma.$transaction(async (tx) => {
+      // Crops are counted before the repairs, but from timestamps, so ordering
+      // does not matter — what matters is that a crop which came ready during
+      // the gap is counted even though nobody was there to see it.
+      const cropsReady = reportable ? await countCropsReadyDuring(tx, user.id, lastSeen, now) : 0;
+
+      const nodesRegrown = await repairNodes(tx, user.id);
+      const yields = await materialiseAnimalYields(tx, user.id);
+      const ordersRefreshed = await ensureDeliverySlots(tx, user.id);
+      await ensureDaily(tx, user.id, now);
+
+      await tx.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(now) } });
+
+      if (!reportable) return null;
+
+      const report: AwayReport = {
+        awayMs,
+        eggsLaid: yields.eggsLaid,
+        milkReady: yields.milkReady,
+        nodesRegrown,
+        cropsReady,
+        ordersRefreshed,
+      };
+
+      // Nothing happened worth a card. Say nothing rather than open a modal
+      // that reports zeroes.
+      const anything =
+        report.eggsLaid > 0 ||
+        report.milkReady ||
+        report.nodesRegrown > 0 ||
+        report.cropsReady > 0 ||
+        report.ordersRefreshed > 0;
+
+      return anything ? report : null;
     });
 
     const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    return reply.send(await getFarmState(prisma, fresh));
+    return reply.send(await getFarmState(prisma, fresh, away));
   });
+}
+
+/**
+ * How many crops finished growing during the gap.
+ *
+ * Derived from `plantedAt` rather than stored, like everything else that
+ * depends on elapsed time: there is no "became ready" event to miss.
+ */
+async function countCropsReadyDuring(
+  tx: Parameters<typeof repairNodes>[0],
+  userId: string,
+  from: number,
+  to: number,
+): Promise<number> {
+  const effects = await effectsFor(tx, userId);
+  const plots = await tx.plot.findMany({ where: { userId, NOT: { cropKey: null } } });
+
+  let count = 0;
+  for (const plot of plots) {
+    if (!plot.cropKey || !plot.plantedAt) continue;
+    const readyAt = plot.plantedAt.getTime() + growMsFor(plot.cropKey, plot.fast, effects.growth);
+    if (readyAt > from && readyAt <= to) count += 1;
+  }
+  return count;
 }

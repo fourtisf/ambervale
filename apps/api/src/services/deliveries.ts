@@ -85,13 +85,16 @@ const newSeed = (): number => Math.floor(Math.random() * 0x7fffffff);
 export async function ensureDeliverySlots(
   tx: Prisma.TransactionClient,
   userId: string,
-): Promise<void> {
+): Promise<number> {
   const user = await tx.user.findUniqueOrThrow({ where: { id: userId } });
-  if (user.level < DELIVERIES.unlockLv) return;
+  if (user.level < DELIVERIES.unlockLv) return 0;
 
   const existing = await tx.deliverySlot.findMany({ where: { userId } });
   const bySlot = new Map(existing.map((s) => [s.slot, s]));
   const now = new Date();
+
+  // Counted so the away report can say "2 new orders on the board".
+  let refreshed = 0;
 
   for (let slot = 1; slot <= DELIVERIES.slots; slot++) {
     const row = bySlot.get(slot);
@@ -129,6 +132,9 @@ export async function ensureDeliverySlots(
           refillAt: null,
         },
       });
+      refreshed += 1;
     }
   }
+
+  return refreshed;
 }

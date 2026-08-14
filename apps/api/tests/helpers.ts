@@ -103,6 +103,101 @@ export interface FarmLike {
   }[];
   expansion: { north: boolean };
   quest: { id: string; current: number; target: number } | null;
+  upgrades: Record<string, number>;
+  shop: {
+    key: string;
+    tier: number;
+    maxTier: number;
+    unlockLv: number;
+    next: { effect: string; cost: Record<string, unknown> } | null;
+  }[];
+  effects: {
+    axeBonus: number;
+    pickBonus: number;
+    growth: number;
+    sell: number;
+    hens: number;
+    canFish: boolean;
+    canCraft: boolean;
+  };
+  daily: {
+    day: number;
+    resetAt: number;
+    streak: number;
+    allDone: boolean;
+    goals: { id: string; target: number; current: number; done: boolean }[];
+  };
+  away: {
+    awayMs: number;
+    eggsLaid: number;
+    nodesRegrown: number;
+    cropsReady: number;
+  } | null;
+}
+
+/**
+ * Gives a player enough coins, items and level to shop with.
+ *
+ * Tests that are about the *sink* should not have to grind the source first,
+ * so this reaches into the database directly rather than playing the game.
+ */
+export async function endow(
+  userId: string,
+  data: {
+    coins?: number;
+    xp?: number;
+    items?: Record<string, number>;
+    amber?: number;
+    upgrades?: Record<string, number>;
+  },
+): Promise<void> {
+  const { PrismaClient } = await import('@prisma/client');
+  const db = new PrismaClient();
+  try {
+    if (data.coins !== undefined || data.xp !== undefined) {
+      await db.user.update({
+        where: { id: userId },
+        data: {
+          ...(data.coins !== undefined ? { coins: data.coins } : {}),
+          ...(data.xp !== undefined ? { xp: data.xp, level: 99 } : {}),
+        },
+      });
+    }
+    for (const [itemKey, qty] of Object.entries(data.items ?? {})) {
+      await db.inventoryItem.upsert({
+        where: { userId_itemKey: { userId, itemKey } },
+        create: { userId, itemKey, qty },
+        update: { qty },
+      });
+    }
+    if (data.amber) {
+      await db.amberLedger.create({
+        data: { userId, delta: data.amber, reason: 'test_grant' },
+      });
+    }
+    for (const [key, tier] of Object.entries(data.upgrades ?? {})) {
+      await db.upgrade.upsert({
+        where: { userId_key: { userId, key } },
+        create: { userId, key, tier },
+        update: { tier },
+      });
+    }
+  } finally {
+    await db.$disconnect();
+  }
+}
+
+/** Runs a callback with a throwaway Prisma client, for direct state surgery. */
+export async function withDb<T>(
+  fn: (db: import('@prisma/client').PrismaClient) => Promise<T>,
+): Promise<T> {
+  const { PrismaClient } = await import('@prisma/client');
+  const db = new PrismaClient();
+  try {
+    return await fn(db);
+  } finally {
+    await db.$disconnect();
+  }
 }
 
 export const sleep = (ms: number): Promise<void> =>

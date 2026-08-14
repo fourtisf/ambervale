@@ -3,44 +3,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CROPS, CROP_KEYS, sellPrice, type CropKey, type ItemKey } from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
-import { ApiRequestError, apiPost, type FarmState } from '@/lib/api';
+import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
+import { AwayModal, DailyModal, MillModal, UpgradesPanel } from './EconomyModals';
 import Modal from './Modal';
 import WalletPanel from './WalletPanel';
-
-interface ActionReply {
-  farm: FarmState;
-  levelUps?: number[];
-  coinsGained?: number;
-}
-
-/** Applies a server reply everywhere and plays whatever it earned. */
-function commit(reply: ActionReply): void {
-  reply.farm.__receivedAt = Date.now();
-  bridge.emit('farm', reply.farm);
-  for (const level of reply.levelUps ?? []) {
-    audio.levelUp();
-    bridge.toast('good', `Level ${level}!`);
-  }
-}
-
-function useFarm(): FarmState | null {
-  const [farm, setFarm] = useState<FarmState | null>(bridge.farm);
-  useEffect(() => bridge.on('farm', setFarm), []);
-  return farm;
-}
-
-function reportError(err: unknown): void {
-  audio.error();
-  bridge.toast('warn', err instanceof ApiRequestError ? err.message : 'Something went wrong.');
-}
+import { commit, reportError, useFarm, type ActionReply } from './farmState';
 
 // ---------------------------------------------------------------------------
 
 function MarketModal({ onClose }: { onClose: () => void }) {
   const farm = useFarm();
-  const [tab, setTab] = useState<'buy' | 'sell'>('buy');
+  const [tab, setTab] = useState<'buy' | 'sell' | 'upgrades'>('buy');
   const [busy, setBusy] = useState(false);
 
   if (!farm) return null;
@@ -85,9 +60,14 @@ function MarketModal({ onClose }: { onClose: () => void }) {
         <button type="button" data-on={tab === 'sell'} onClick={() => setTab('sell')}>
           Sell
         </button>
+        <button type="button" data-on={tab === 'upgrades'} onClick={() => setTab('upgrades')}>
+          Upgrades
+        </button>
       </div>
 
-      {tab === 'buy' ? (
+      {tab === 'upgrades' ? (
+        <UpgradesPanel />
+      ) : tab === 'buy' ? (
         <ul className="rows">
           {CROP_KEYS.map((key) => {
             const crop = CROPS[key];
@@ -99,7 +79,9 @@ function MarketModal({ onClose }: { onClose: () => void }) {
                   <small>
                     {locked
                       ? `Unlocks at level ${crop.unlockLv}`
-                      : `${crop.seedCost} coins · grows ${crop.growSec}s · sells ${crop.sell}`}
+                      : `${crop.seedCost} coins · grows ${Math.round(
+                          crop.growSec * farm.effects.growth,
+                        )}s · sells ${crop.sell}`}
                   </small>
                 </div>
                 <div className="actions">
@@ -132,12 +114,13 @@ function MarketModal({ onClose }: { onClose: () => void }) {
               <div className="name">
                 <b>{key}</b>
                 <small>
-                  {sellPrice(key)} coins each · {qty} in bag
+                  {Math.round(sellPrice(key) * farm.effects.sell)} coins each · {qty} in bag
+                  {farm.effects.sell > 1 && <em> (cellar)</em>}
                 </small>
               </div>
               <div className="actions">
                 <button type="button" disabled={busy} onClick={() => void sell(key)}>
-                  Sell all ({sellPrice(key) * qty})
+                  Sell all ({Math.round(sellPrice(key) * qty * farm.effects.sell)})
                 </button>
               </div>
             </li>
@@ -426,6 +409,12 @@ export default function ModalHost() {
       return <DeliveriesModal onClose={close} />;
     case 'expand':
       return <ExpandModal onClose={close} />;
+    case 'mill':
+      return <MillModal onClose={close} />;
+    case 'daily':
+      return <DailyModal onClose={close} />;
+    case 'away':
+      return <AwayModal onClose={close} />;
     case 'settings':
       return <SettingsModal onClose={close} />;
     default:

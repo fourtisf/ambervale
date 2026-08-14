@@ -137,6 +137,7 @@ export class WorldScene extends Phaser.Scene {
     if (bridge.farm) this.applyFarm(bridge.farm);
     this.unsubscribe.push(bridge.on('farm', (state) => this.applyFarm(state)));
     this.unsubscribe.push(bridge.on('start', () => this.beginPlay()));
+    this.unsubscribe.push(bridge.on('sleep', () => this.sleep()));
 
     this.scene.launch('HudScene', { map: this.map });
     bridge.emit('worldReady', undefined);
@@ -208,6 +209,27 @@ export class WorldScene extends Phaser.Scene {
     this.cine?.release(this.player);
     this.followingPlayer = true;
     if (this.debugMode) this.applyGameplayZoom();
+  }
+
+  /**
+   * Sleeping at the house: a fade, and the clock lands on sunrise.
+   *
+   * Nothing about the farm moves. Growth, eggs and respawns are all server-side
+   * wall-clock, and a client that could skip them would be the largest exploit
+   * in the game — so this buys the view and nothing else, and says so.
+   */
+  private sleep(): void {
+    if (!bridge.started) return;
+
+    if (!this.dayNight?.skipToDawn()) {
+      bridge.toast('info', 'It is already daylight. Nothing to sleep through.');
+      return;
+    }
+
+    const cam = this.cameras.main;
+    cam.fadeOut(320, 5, 12, 20);
+    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => cam.fadeIn(520, 5, 12, 20));
+    bridge.toast('info', 'You sleep until sunrise. The farm kept its own time.');
   }
 
   /** Locks the camera back onto the player. */

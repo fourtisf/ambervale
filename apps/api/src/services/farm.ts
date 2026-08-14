@@ -20,9 +20,11 @@ import {
 } from '@ambervale/game-config';
 import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { dailyState, type DailyDto } from './daily';
 import { repRequiredFor, slotUnlocked } from './deliveries';
 import { amberBalance, levelFromTotalXp } from './progression';
 import { questProgress } from './quests';
+import { effectsOf, readUpgrades, upgradesToDto, type UpgradeDto } from './upgrades';
 
 const ms = (sec: number) => sec * 1000;
 
@@ -120,11 +122,11 @@ export async function repairNodes(
   tx: Prisma.TransactionClient,
   userId: string,
   now = new Date(),
-): Promise<void> {
+): Promise<number> {
   const due = await tx.resourceNode.findMany({
     where: { userId, respawnAt: { not: null, lte: now } },
   });
-  if (due.length === 0) return;
+  if (due.length === 0) return 0;
 
   for (const node of due) {
     const kind = node.kind === 'oak' ? 'oak' : 'rock';
@@ -133,6 +135,8 @@ export async function repairNodes(
       data: { hp: NODES[kind].hits, respawnAt: null },
     });
   }
+
+  return due.length;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,22 +196,71 @@ export interface FarmState {
     current: number;
     target: number;
   } | null;
+  /** Owned tier per upgrade key, plus what the shop should render. */
+  upgrades: Record<string, number>;
+  shop: UpgradeDto[];
+  /**
+   * Derived effects, sent so the UI can show the real numbers — the price the
+   * market will actually pay, whether the dock is open — without duplicating
+   * the rules. The server still recomputes all of it on every action.
+   */
+  effects: {
+    axeBonus: number;
+    pickBonus: number;
+    growth: number;
+    sell: number;
+    hens: number;
+    canFish: boolean;
+    canCraft: boolean;
+  };
+  daily: DailyDto;
+  /** What happened while the player was away, or null if they were not. */
+  away: AwayReport | null;
 }
 
-/** Growth duration for a plot, honouring the accelerated first crop. */
-export function growMsFor(cropKey: string, fast: boolean): number {
+/**
+ * A summary of what the farm did on its own.
+ *
+ * Everything here was already being computed lazily on read — eggs, respawns,
+ * growth. The only new thing is telling the player about it, which turns
+ * "opening the game" into a payoff rather than a chore.
+ */
+export interface AwayReport {
+  /** Milliseconds the player was gone. */
+  awayMs: number;
+  eggsLaid: number;
+  milkReady: boolean;
+  nodesRegrown: number;
+  cropsReady: number;
+  ordersRefreshed: number;
+}
+
+/**
+ * Growth duration for a plot, honouring the accelerated first crop and the
+ * irrigation well.
+ *
+ * `growthMul` comes from the player's well tier. It is a parameter rather than
+ * a lookup so this stays a pure function — the harvest check and the read model
+ * both call it, and they must never disagree about when a crop is ready.
+ */
+export function growMsFor(cropKey: string, fast: boolean, growthMul = 1): number {
+  // The tutorial's first crop is already near-instant; shortening it further
+  // would be indistinguishable and just risks a zero.
   if (fast) return ms(FIRST_CROP_FAST_SEC);
   const crop = CROPS[cropKey as CropKey];
-  return ms(crop ? crop.growSec : 0);
+  return Math.round(ms(crop ? crop.growSec : 0) * growthMul);
 }
 
-export function plotToDto(plot: {
-  index: number;
-  zone: string;
-  cropKey: string | null;
-  plantedAt: Date | null;
-  fast: boolean;
-}): FarmPlotDto {
+export function plotToDto(
+  plot: {
+    index: number;
+    zone: string;
+    cropKey: string | null;
+    plantedAt: Date | null;
+    fast: boolean;
+  },
+  growthMul = 1,
+): FarmPlotDto {
   const plantedAt = plot.plantedAt?.getTime() ?? null;
   return {
     index: plot.index,
@@ -216,7 +269,9 @@ export function plotToDto(plot: {
     plantedAt,
     fast: plot.fast,
     readyAt:
-      plantedAt !== null && plot.cropKey ? plantedAt + growMsFor(plot.cropKey, plot.fast) : null,
+      plantedAt !== null && plot.cropKey
+        ? plantedAt + growMsFor(plot.cropKey, plot.fast, growthMul)
+        : null,
   };
 }
 
@@ -236,23 +291,39 @@ export function randomCoopPoint(): { x: number; y: number } {
 export async function getFarmState(
   db: PrismaClient | Prisma.TransactionClient,
   user: User,
+  away: AwayReport | null = null,
 ): Promise<FarmState> {
   const userId = user.id;
 
-  const [plots, nodes, animals, groundItems, inventory, seeds, slots, expansion, amber, quest] =
-    await Promise.all([
-      db.plot.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
-      db.resourceNode.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
-      db.animal.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
-      db.groundItem.findMany({ where: { userId } }),
-      db.inventoryItem.findMany({ where: { userId } }),
-      db.seedItem.findMany({ where: { userId } }),
-      db.deliverySlot.findMany({ where: { userId }, orderBy: { slot: 'asc' } }),
-      db.expansion.findUnique({ where: { userId } }),
-      amberBalance(db as Prisma.TransactionClient, userId),
-      questProgress(db as Prisma.TransactionClient, userId),
-    ]);
+  const [
+    plots,
+    nodes,
+    animals,
+    groundItems,
+    inventory,
+    seeds,
+    slots,
+    expansion,
+    amber,
+    quest,
+    tiers,
+    daily,
+  ] = await Promise.all([
+    db.plot.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
+    db.resourceNode.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
+    db.animal.findMany({ where: { userId }, orderBy: { index: 'asc' } }),
+    db.groundItem.findMany({ where: { userId } }),
+    db.inventoryItem.findMany({ where: { userId } }),
+    db.seedItem.findMany({ where: { userId } }),
+    db.deliverySlot.findMany({ where: { userId }, orderBy: { slot: 'asc' } }),
+    db.expansion.findUnique({ where: { userId } }),
+    amberBalance(db as Prisma.TransactionClient, userId),
+    questProgress(db as Prisma.TransactionClient, userId),
+    readUpgrades(db as Prisma.TransactionClient, userId),
+    dailyState(db as Prisma.TransactionClient, userId),
+  ]);
 
+  const effects = effectsOf(tiers);
   const lv = levelFromTotalXp(user.xp);
 
   return {
@@ -279,10 +350,12 @@ export async function getFarmState(
         milkCount: user.milkCount,
         eggCount: user.eggCount,
         deliveriesDone: user.deliveriesDone,
+        fishCount: user.fishCount,
+        craftCount: user.craftCount,
       },
     },
     expansion: { north: expansion?.north ?? false },
-    plots: plots.map(plotToDto),
+    plots: plots.map((p) => plotToDto(p, effects.growth)),
     nodes: nodes.map((n) => ({
       index: n.index,
       kind: n.kind,
@@ -320,5 +393,10 @@ export async function getFarmState(
           target: quest.target,
         }
       : null,
+    upgrades: { ...tiers },
+    shop: upgradesToDto(tiers),
+    effects,
+    daily,
+    away,
   };
 }

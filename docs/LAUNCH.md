@@ -7,7 +7,7 @@ Everything needed to put AMBERVALE on a VPS and to take it back off again.
 | Variable                        | api | web | Notes                                                                       |
 | ------------------------------- | :-: | :-: | --------------------------------------------------------------------------- |
 | `NODE_ENV`                      | ✅  | ✅  | `production` on the VPS. Flips the cookie to `Secure; SameSite=None`.       |
-| `DATABASE_URL`                  | ✅  |     | Postgres 16.                                                                |
+| `DATABASE_URL`                  | ✅  |     | Postgres 16. Confirm the port with `pg_lsclusters` first — see below.       |
 | `REDIS_URL`                     | ✅  |     | Sessions, rate limits, action locks.                                        |
 | `WEB_ORIGIN`                    | ✅  |     | **Comma-separated allowlist.** Must include every host players use.         |
 | `SESSION_SECRET`                | ✅  |     | 32+ bytes. `openssl rand -hex 32`. Rotating it logs everyone out.           |
@@ -36,6 +36,21 @@ openssl rand -hex 32                                # -> SESSION_SECRET
 pnpm install --frozen-lockfile
 pnpm --filter @ambervale/api db:generate
 ```
+
+> **Check the Postgres port before writing `DATABASE_URL`.** Debian and Ubuntu
+> put a second cluster on **5433** whenever 5432 is already claimed — including
+> by a cluster left behind by a previous project on the same box. The symptom
+> is `P1001: Can't reach database server at localhost:5432` in a restart loop,
+> which reads like a firewall problem and is not.
+>
+> ```bash
+> pg_lsclusters                 # Ver Cluster Port Status Owner
+> psql "${DATABASE_URL%%\?*}" -c '\conninfo'
+> ```
+>
+> Note the `%%\?*`: `psql` does not understand Prisma's `?schema=public`
+> suffix and fails with `invalid URI query parameter: "schema"`. Stripping the
+> query string is the whole fix.
 
 **Migration order matters.** Migrations run _before_ the new code starts, and
 must be backwards-compatible with the code still running:
@@ -126,7 +141,7 @@ Honest account of what has and has not been run.
 
 | Check                               | Status                                                     |
 | ----------------------------------- | ---------------------------------------------------------- |
-| Abuse / regression suite (27 tests) | ✅ passing against a live Postgres + Redis                 |
+| Abuse / regression suite (43 tests) | ✅ passing against a live Postgres + Redis                 |
 | Ledger integrity (`SUM(delta)`)     | ✅ asserted in CI and verified by hand                     |
 | `/play` bundle budget               | ✅ 560 KB gzipped against a 1.5 MB budget                  |
 | Typecheck, lint, format             | ✅ clean across all three packages                         |

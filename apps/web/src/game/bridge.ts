@@ -20,7 +20,20 @@ export interface ToastMessage {
 
 /** What the player can currently do, driving the contextual action button. */
 export interface Interaction {
-  kind: 'plant' | 'harvest' | 'chop' | 'mine' | 'sell' | 'buy' | 'deliver' | 'egg' | 'milk';
+  kind:
+    | 'plant'
+    | 'harvest'
+    | 'chop'
+    | 'mine'
+    | 'sell'
+    | 'buy'
+    | 'deliver'
+    | 'egg'
+    | 'milk'
+    | 'fish'
+    | 'mill'
+    | 'bag'
+    | 'sleep';
   label: string;
   /** Plot/node index or ground-item id, whichever the action needs. */
   target: number | string;
@@ -52,6 +65,8 @@ export interface BridgeEvents {
   walkTo: { x: number; y: number };
   /** A modal opened or closed; the world pauses input while one is up. */
   modal: string | null;
+  /** The player slept at the house; the world skips its clock to dawn. */
+  sleep: void;
 }
 
 type Handler<K extends keyof BridgeEvents> = (payload: BridgeEvents[K]) => void;

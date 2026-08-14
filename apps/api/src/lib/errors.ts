@@ -25,6 +25,8 @@ export type ApiErrorCode =
   | 'SLOT_LOCKED'
   | 'SLOT_NOT_OPEN'
   | 'ALREADY_EXPANDED'
+  | 'MAX_TIER'
+  | 'NEEDS_UPGRADE'
   | 'CLAIMS_DISABLED'
   | 'WALLET_TAKEN'
   | 'CONFLICT';

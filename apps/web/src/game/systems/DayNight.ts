@@ -103,6 +103,22 @@ export class DayNight {
   }
 
   /**
+   * Winds the clock forward to sunrise. Sleeping at the house.
+   *
+   * Purely cosmetic, and deliberately so: growth, egg timers and respawns are
+   * all server-side wall-clock, and letting a client skip them would be the
+   * single largest exploit in the game. What sleeping buys is the view.
+   */
+  skipToDawn(): boolean {
+    // Already daylight — nothing to skip, and pretending otherwise would just
+    // yank the lighting for no reason.
+    if (this.u < DAY.dayEnd) return false;
+    this.u = DAY.sessionStartU;
+    this.apply();
+    return true;
+  }
+
+  /**
    * Registers a gameplay light (player lantern, starglow crop) that should
    * fade in and out with the night rather than burn at constant intensity.
    */

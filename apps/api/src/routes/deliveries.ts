@@ -18,10 +18,9 @@ import { isUniqueViolation } from '../lib/prismaErrors';
 import { allowMutation, takeActionLock } from '../lib/rateLimit';
 import { rateLimited } from '../lib/errors';
 import { parseBody } from '../lib/validate';
-import { addItem, grant, itemQty, logEvent } from '../services/actions';
+import { addItem, evaluateProgress, grant, itemQty, logEvent } from '../services/actions';
 import { ensureDeliverySlots, slotUnlocked, repRequiredFor } from '../services/deliveries';
 import { getFarmState } from '../services/farm';
-import { evaluateQuests } from '../services/quests';
 
 const DeliverBody = z.object({
   slot: z.number().int().min(1).max(DELIVERIES.slots),
@@ -123,7 +122,7 @@ export async function deliveryRoutes(app: FastifyInstance): Promise<void> {
         seed: row.seed,
       });
 
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
       const payload = {
         amberGained: row.amber,
@@ -131,6 +130,7 @@ export async function deliveryRoutes(app: FastifyInstance): Promise<void> {
         xp: DELIVERIES.xpPerDelivery,
         levelUps: g.levelUps,
         questCompleted,
+        daily,
       };
 
       // Written inside the payout transaction. A concurrent retry with the same
@@ -141,7 +141,7 @@ export async function deliveryRoutes(app: FastifyInstance): Promise<void> {
             userId: user.id,
             scope: 'deliver',
             key: body.idempotencyKey,
-            result: payload as Prisma.InputJsonValue,
+            result: payload as unknown as Prisma.InputJsonValue,
           },
         });
       } catch (err) {
@@ -206,11 +206,12 @@ export async function deliveryRoutes(app: FastifyInstance): Promise<void> {
       });
 
       await logEvent(tx, user.id, 'act.expand', { cost: EXPANSION_NORTH });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
       return {
         levelUps: g.levelUps,
         questCompleted,
+        daily,
         plotsAdded: PLOTS.filter((p) => p.zone === 'north').length,
       };
     });

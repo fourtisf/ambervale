@@ -86,13 +86,16 @@ export const FIRST_CROP_FAST_SEC = 10;
 // Goods (non-crop items)
 // ---------------------------------------------------------------------------
 
-export type GoodKey = 'egg' | 'milk' | 'wood' | 'stone';
+export type GoodKey =
+  'egg' | 'milk' | 'wood' | 'stone' | 'fish' | 'flour' | 'butter' | 'pie' | 'cake';
 
 export interface GoodDef {
   /** Coin value of one unit. */
   sell: number;
   /** XP granted when picked up, where pickup is an action (eggs, milk). */
   xpOnCollect?: number;
+  /** True for goods that only exist as the output of a recipe. */
+  crafted?: boolean;
 }
 
 export const GOODS: Record<GoodKey, GoodDef> = {
@@ -100,6 +103,13 @@ export const GOODS: Record<GoodKey, GoodDef> = {
   milk: { sell: 38, xpOnCollect: 10 },
   wood: { sell: 5 },
   stone: { sell: 8 },
+  fish: { sell: 26, xpOnCollect: 8 },
+  // Crafted goods are worth more than the sum of their inputs — that margin is
+  // the whole reason the mill exists. See RECIPES in economy.ts.
+  flour: { sell: 46, crafted: true },
+  butter: { sell: 92, crafted: true },
+  pie: { sell: 210, crafted: true },
+  cake: { sell: 430, crafted: true },
 };
 
 export const GOOD_KEYS = Object.keys(GOODS) as GoodKey[];

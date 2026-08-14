@@ -23,9 +23,19 @@ import { badRequest, conflict, notFound, rateLimited } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 import { allowMutation, allowNodeHit, takeActionLock } from '../lib/rateLimit';
 import { parseBody } from '../lib/validate';
-import { addItem, addSeed, grant, itemQty, logEvent, seedQty } from '../services/actions';
+import {
+  addItem,
+  addSeed,
+  evaluateProgress,
+  grant,
+  itemQty,
+  logEvent,
+  seedQty,
+} from '../services/actions';
+import type { DailyOutcome } from '../services/daily';
 import { getFarmState, growMsFor, plotToDto, repairNodes } from '../services/farm';
-import { evaluateQuests, type QuestCompletion } from '../services/quests';
+import type { QuestCompletion } from '../services/quests';
+import { effectsFor } from '../services/upgrades';
 
 /**
  * Every action replies with the whole farm rather than a delta.
@@ -39,6 +49,7 @@ async function reply(
   extra: {
     levelUps: number[];
     questCompleted?: QuestCompletion | null;
+    daily?: DailyOutcome;
     gained?: Record<string, number>;
     [key: string]: unknown;
   },
@@ -113,6 +124,10 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       const have = await seedQty(tx, user.id, cropKey);
       if (have < 1) throw conflict('NO_SEEDS', `No ${cropKey} seeds left.`);
 
+      // The well shortens every grow time, so the plot we hand back has to be
+      // dated with the player's own multiplier — not the base one.
+      const effects = await effectsFor(tx, user.id);
+
       await addSeed(tx, user.id, cropKey, -1);
 
       // The very first crop a player ever plants grows in seconds, so the
@@ -129,15 +144,17 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
 
       const g = await grant(tx, user.id, { counters: { plantedCount: 1 } });
       await logEvent(tx, user.id, 'act.plant', { plotIndex: body.plotIndex, cropKey, fast });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { plot: plotToDto(updated), g, questCompleted, fast };
+      return { plot: plotToDto(updated, effects.growth), g, questCompleted, daily, fast };
     });
 
     return res.send(
       await reply(user, {
         levelUps: result.g.levelUps,
+        levelRewards: result.g.levelRewards,
         questCompleted: result.questCompleted,
+        daily: result.daily,
         plot: result.plot,
         fast: result.fast,
       }),
@@ -160,7 +177,8 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         throw conflict('PLOT_EMPTY', 'Nothing is growing here.');
       }
 
-      const readyAt = plot.plantedAt.getTime() + growMsFor(plot.cropKey, plot.fast);
+      const effects = await effectsFor(tx, user.id);
+      const readyAt = plot.plantedAt.getTime() + growMsFor(plot.cropKey, plot.fast, effects.growth);
       const remainingMs = readyAt - Date.now();
       if (remainingMs > 0) {
         // The client renders this countdown directly, so it has to be exact.
@@ -181,15 +199,17 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         counters: { harvestedCount: 1 },
       });
       await logEvent(tx, user.id, 'act.harvest', { plotIndex: body.plotIndex, cropKey });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { g, questCompleted, cropKey, xp: crop.xp };
+      return { g, questCompleted, daily, cropKey, xp: crop.xp };
     });
 
     return res.send(
       await reply(user, {
         levelUps: result.g.levelUps,
+        levelRewards: result.g.levelRewards,
         questCompleted: result.questCompleted,
+        daily: result.daily,
         gained: { [result.cropKey]: 1 },
         xp: result.xp,
       }),
@@ -246,9 +266,16 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       let xp = 0;
 
       if (felled) {
+        // A better tool means more from the same tree. The bonus lands on the
+        // node's primary drop only, so a pick cannot conjure wood.
+        const effects = await effectsFor(tx, user.id);
+        const primary = expectedKind === 'oak' ? 'wood' : 'stone';
+        const bonus = expectedKind === 'oak' ? effects.axeBonus : effects.pickBonus;
+
         for (const [itemKey, qty] of Object.entries(def.yield) as [GoodKey, number][]) {
-          await addItem(tx, user.id, itemKey, qty);
-          gained[itemKey] = qty;
+          const total = qty + (itemKey === primary ? bonus : 0);
+          await addItem(tx, user.id, itemKey, total);
+          gained[itemKey] = total;
         }
         xp = expectedKind === 'oak' ? NODES.oak.xpOnFell : NODES.rock.xpOnBreak;
       }
@@ -263,9 +290,9 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         hp: Math.max(0, hp),
         felled,
       });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { g, questCompleted, gained, felled, hp: Math.max(0, hp), xp };
+      return { g, questCompleted, daily, gained, felled, hp: Math.max(0, hp), xp };
     });
   }
 
@@ -275,7 +302,9 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
     return res.send(
       await reply(user, {
         levelUps: r.g.levelUps,
+        levelRewards: r.g.levelRewards,
         questCompleted: r.questCompleted,
+        daily: r.daily,
         gained: r.gained,
         felled: r.felled,
         hp: r.hp,
@@ -290,7 +319,9 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
     return res.send(
       await reply(user, {
         levelUps: r.g.levelUps,
+        levelRewards: r.g.levelRewards,
         questCompleted: r.questCompleted,
+        daily: r.daily,
         gained: r.gained,
         felled: r.felled,
         hp: r.hp,
@@ -317,20 +348,26 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         throw conflict('INSUFFICIENT_ITEMS', `No ${itemKey} to sell.`, { have, need: 1 });
       }
 
-      const coins = sellPrice(itemKey) * have;
+      // The cellar's multiplier is applied here and nowhere else: deliveries
+      // deliberately keep paying $AMBER on the base value, so a coin upgrade
+      // can never inflate the token.
+      const effects = await effectsFor(tx, user.id);
+      const coins = Math.round(sellPrice(itemKey) * have * effects.sell);
       await addItem(tx, user.id, itemKey, -have);
 
       const g = await grant(tx, user.id, { coins, counters: { soldCount: 1 } });
       await logEvent(tx, user.id, 'act.sell', { itemKey, qty: have, coins });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { g, questCompleted, coins, qty: have };
+      return { g, questCompleted, daily, coins, qty: have };
     });
 
     return res.send(
       await reply(user, {
         levelUps: result.g.levelUps,
+        levelRewards: result.g.levelRewards,
         questCompleted: result.questCompleted,
+        daily: result.daily,
         coinsGained: result.coins,
         qtySold: result.qty,
       }),
@@ -370,15 +407,17 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         counters: { boughtSeeds: body.qty },
       });
       await logEvent(tx, user.id, 'act.buySeed', { cropKey, qty: body.qty, cost });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { g, questCompleted, cost };
+      return { g, questCompleted, daily, cost };
     });
 
     return res.send(
       await reply(user, {
         levelUps: result.g.levelUps,
+        levelRewards: result.g.levelRewards,
         questCompleted: result.questCompleted,
+        daily: result.daily,
         coinsSpent: result.cost,
       }),
     );

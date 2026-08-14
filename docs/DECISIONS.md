@@ -113,6 +113,48 @@ Screen-space canvas UI lives on a separate `HudScene`, because
 `setScrollFactor(0)` pins an object's position but does **not** exempt it from
 the camera's zoom.
 
+## The economy has two halves
+
+The first version of the game only ever added. Coins, $AMBER, wood and stone
+all accumulated, and the only thing that consumed any of them was a single
+one-time expansion — after which nothing in the game could be bought at all.
+An accumulating counter is not an economy, and a token with no sink cannot be
+priced.
+
+So every mechanic added since exists to take value back out:
+
+- **Upgrades** (`UPGRADES`) are the main sink. Coins carry the early tiers;
+  later ones also cost $AMBER, priced against what a delivery pays so a tier is
+  roughly a day of deliveries rather than a month.
+- **Recipes** (`RECIPES`) consume raw produce and pay a margin, which is what
+  finally gives wood, stone and surplus crops somewhere to go.
+- **Daily goals** are the reason to come back tomorrow. Progress is measured as
+  _counter now minus counter at the start of the day_, so they reuse the same
+  monotonic counters the quest chain already had and need only one row per
+  player — a baseline snapshot and a claimed bitmask. The goals themselves are
+  derived from the date and never stored.
+- **Level rewards** are paid inside `grant()`, the single function every
+  XP-granting action funnels through. Paying anywhere else would mean either
+  duplicating the "did we cross a level" check or silently missing a route.
+
+Spending $AMBER is a negative row on the append-only ledger, never an edit to a
+balance column. The balance stays `SUM(delta)` and a purchase stays auditable.
+
+The root cellar raises what the _market_ pays and deliberately does not touch
+delivery payouts: a coin-priced upgrade must never be able to inflate the
+token.
+
+## Buildings have verbs
+
+The dock, windmill, barn and house were drawn from the first phase and did
+nothing for five more. Each now carries exactly one verb — fish, mill, store,
+sleep — which is cheaper than new art and makes the map worth crossing.
+
+Sleeping is the one deliberately hollow verb: it winds the _client's_
+day/night clock to sunrise and nothing else. Growth, egg timers and respawns
+are all server-side wall-clock, and a client that could skip them would be the
+largest exploit in the game. It buys the view, and the toast says so.
+
 ## Known reconciliations
 
 `docs/AMBERVALE_HANDOFF.md` and `docs/prototype/ambervale2.html` were never

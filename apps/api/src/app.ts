@@ -12,6 +12,7 @@ import { actionRoutes } from './routes/actions';
 import { animalRoutes } from './routes/animals';
 import { authRoutes } from './routes/auth';
 import { deliveryRoutes } from './routes/deliveries';
+import { economyRoutes } from './routes/economy';
 import { farmRoutes } from './routes/farm';
 import { healthRoutes } from './routes/health';
 import { tutorialRoutes } from './routes/tutorial';
@@ -95,6 +96,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(farmRoutes);
   await app.register(actionRoutes);
   await app.register(deliveryRoutes);
+  await app.register(economyRoutes);
   await app.register(tutorialRoutes);
   await app.register(animalRoutes);
   await app.register(walletRoutes);

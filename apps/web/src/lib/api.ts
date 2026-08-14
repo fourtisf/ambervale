@@ -57,7 +57,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
 
   const text = await res.text();
-  const body: unknown = text ? JSON.parse(text) : {};
+
+  // A proxy in front of the API answers 502s with HTML. Parsing that blind
+  // surfaced as "Unexpected token '<'", which tells a player nothing; the
+  // failure is that the farm is unreachable, so say that instead.
+  let body: unknown = {};
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    throw new ApiRequestError(res.status, {
+      error: res.ok ? 'BAD_RESPONSE' : 'SERVER_UNREACHABLE',
+      message: 'The farm is not answering right now. Try again in a moment.',
+    });
+  }
 
   if (!res.ok) throw new ApiRequestError(res.status, body as ApiErrorShape);
   return body as T;
@@ -132,6 +144,61 @@ export interface FarmUser {
   counters: Record<string, number>;
 }
 
+export interface FarmUpgradeCost {
+  coins?: number;
+  amber?: number;
+  items?: Record<string, number>;
+}
+
+export interface FarmShopEntry {
+  key: string;
+  name: string;
+  blurb: string;
+  tier: number;
+  maxTier: number;
+  unlockLv: number;
+  effect: string | null;
+  next: { effect: string; cost: FarmUpgradeCost } | null;
+}
+
+export interface FarmEffects {
+  axeBonus: number;
+  pickBonus: number;
+  /** Below 1 means crops grow faster. */
+  growth: number;
+  /** Above 1 means the market pays more. */
+  sell: number;
+  hens: number;
+  canFish: boolean;
+  canCraft: boolean;
+}
+
+export interface FarmDailyGoal {
+  id: string;
+  text: string;
+  target: number;
+  current: number;
+  reward: { coins?: number; amber?: number };
+  done: boolean;
+}
+
+export interface FarmDaily {
+  day: number;
+  resetAt: number;
+  goals: FarmDailyGoal[];
+  streak: number;
+  allDone: boolean;
+}
+
+export interface FarmAway {
+  awayMs: number;
+  eggsLaid: number;
+  milkReady: boolean;
+  nodesRegrown: number;
+  cropsReady: number;
+  ordersRefreshed: number;
+}
+
 export interface FarmQuest {
   index: number;
   id: string;
@@ -152,6 +219,11 @@ export interface FarmState {
   seeds: Record<string, number>;
   deliverySlots: FarmDeliverySlot[];
   quest: FarmQuest | null;
+  upgrades: Record<string, number>;
+  shop: FarmShopEntry[];
+  effects: FarmEffects;
+  daily: FarmDaily;
+  away: FarmAway | null;
   /**
    * Client-only: when this snapshot arrived locally. Timers extrapolate from
    * `serverNow` using this, so a browser clock that is wrong (or wound

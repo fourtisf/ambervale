@@ -13,10 +13,9 @@ import { conflict, notFound, rateLimited } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 import { allowMutation, takeActionLock } from '../lib/rateLimit';
 import { parseBody } from '../lib/validate';
-import { addItem, grant, logEvent } from '../services/actions';
+import { addItem, evaluateProgress, grant, logEvent } from '../services/actions';
 import { materialiseAnimalYields, resetCowTimer } from '../services/animals';
 import { getFarmState } from '../services/farm';
-import { evaluateQuests } from '../services/quests';
 
 const EggBody = z.object({ groundItemId: z.string().min(1) });
 
@@ -43,9 +42,9 @@ export async function animalRoutes(app: FastifyInstance): Promise<void> {
       const g = await grant(tx, user.id, { xp, counters: { eggCount: 1 } });
 
       await logEvent(tx, user.id, 'act.collectEgg', { groundItemId: body.groundItemId });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { levelUps: g.levelUps, questCompleted, xp };
+      return { levelUps: g.levelUps, levelRewards: g.levelRewards, questCompleted, daily, xp };
     });
 
     const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
@@ -81,9 +80,9 @@ export async function animalRoutes(app: FastifyInstance): Promise<void> {
       await logEvent(tx, user.id, 'act.collectMilk', {
         intervalSec: ANIMALS.cow.milkIntervalSec,
       });
-      const questCompleted = await evaluateQuests(tx, user.id);
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { levelUps: g.levelUps, questCompleted, xp };
+      return { levelUps: g.levelUps, levelRewards: g.levelRewards, questCompleted, daily, xp };
     });
 
     const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });

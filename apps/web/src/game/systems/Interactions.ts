@@ -33,6 +33,13 @@ interface ActionReply {
   xp?: number;
   felled?: boolean;
   hp?: number;
+  seedGained?: string | null;
+  catchLabel?: string;
+  daily?: {
+    completed: { id: string; text: string; reward: { coins?: number; amber?: number } }[];
+    dayComplete: { streak: number; amber: number; coins: number } | null;
+  };
+  levelRewards?: { level: number; reward: { note?: string; coins?: number; amber?: number } }[];
 }
 
 /** Which seed to plant when the player presses the plant action. */
@@ -166,6 +173,40 @@ export class Interactions {
       board.y * TILE,
     );
 
+    // The buildings below used to be scenery. Each now carries one verb.
+    const dock = structureAt('dock');
+    consider(
+      {
+        kind: 'fish',
+        label: farm.effects.canFish ? 'Cast a line' : 'Need a rod',
+        target: 'dock',
+        enabled: farm.effects.canFish,
+      },
+      dock.x * TILE + TILE / 2,
+      dock.y * TILE + TILE / 2,
+    );
+
+    const mill = structureAt('windmill');
+    consider(
+      { kind: 'mill', label: 'The mill', target: 'windmill', enabled: true },
+      mill.x * TILE + TILE / 2,
+      mill.y * TILE,
+    );
+
+    const barn = structureAt('barn');
+    consider(
+      { kind: 'bag', label: 'Barn store', target: 'barn', enabled: true },
+      barn.x * TILE + TILE / 2,
+      barn.y * TILE,
+    );
+
+    const house = structureAt('house');
+    consider(
+      { kind: 'sleep', label: 'Sleep', target: 'house', enabled: true },
+      house.x * TILE + TILE / 2,
+      house.y * TILE,
+    );
+
     if (candidates.length === 0) return null;
     // Nearest wins, so standing between a plot and a tree does the obvious thing.
     candidates.sort((a, b) => a.distance - b.distance);
@@ -196,6 +237,9 @@ export class Interactions {
     // Buildings just open UI; no request, no lock.
     if (interaction.kind === 'sell') return void bridge.emit('modal', 'market');
     if (interaction.kind === 'deliver') return void bridge.emit('modal', 'deliveries');
+    if (interaction.kind === 'mill') return void bridge.emit('modal', 'mill');
+    if (interaction.kind === 'bag') return void bridge.emit('modal', 'bag');
+    if (interaction.kind === 'sleep') return void bridge.emit('sleep', undefined);
 
     this.busy = true;
     try {
@@ -269,6 +313,20 @@ export class Interactions {
         break;
       }
 
+      case 'fish': {
+        this.player.swing();
+        const r = await apiPost<ActionReply>('/act/fish', {});
+        audio.pickup();
+        const caught = r.gained?.['fish'] ?? 0;
+        this.effects.burst(px, py - 20, COLORS.amber, 10);
+        this.effects.float(px, py - 30, `+${caught} fish`, '#9fe8ff');
+        if (r.seedGained) {
+          bridge.toast('good', `You reeled in ${r.catchLabel ?? 'something rare'}.`);
+        }
+        this.commit(r, px, py);
+        break;
+      }
+
       case 'milk': {
         const r = await apiPost<ActionReply>('/act/collectMilk', {});
         audio.moo();
@@ -298,6 +356,33 @@ export class Interactions {
       this.effects.pulse(x, y - 20);
       bridge.emit('levelUp', [level]);
       bridge.toast('good', `Level ${level}!`);
+    }
+
+    for (const goal of reply.daily?.completed ?? []) {
+      audio.levelUp();
+      this.effects.pulse(x, y - 20, 0xf4b942);
+      const reward = goal.reward.amber
+        ? `+${goal.reward.amber} $AMBER`
+        : `+${goal.reward.coins ?? 0} coins`;
+      bridge.toast('good', `Daily done: ${goal.text} ${reward}`);
+    }
+
+    if (reply.daily?.dayComplete) {
+      const d = reply.daily.dayComplete;
+      audio.amber();
+      this.effects.flyToHud(x, y, COLORS.amber);
+      bridge.toast(
+        'good',
+        `All daily goals cleared — ${d.streak}-day streak, +${d.amber} $AMBER and +${d.coins} coins.`,
+      );
+    }
+
+    for (const lr of reply.levelRewards ?? []) {
+      const parts: string[] = [];
+      if (lr.reward.coins) parts.push(`+${lr.reward.coins} coins`);
+      if (lr.reward.amber) parts.push(`+${lr.reward.amber} $AMBER`);
+      if (lr.reward.note) parts.push(lr.reward.note);
+      if (parts.length > 0) bridge.toast('good', `Level ${lr.level}: ${parts.join(' · ')}`);
     }
 
     if (reply.questCompleted) {

@@ -55,6 +55,8 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
 
   const { user, quest } = farm;
   const xpProgress = user.xpForNext > 0 ? user.xpIntoLevel / user.xpForNext : 0;
+  // Unfinished daily goals, badged so there is a visible reason to look.
+  const dailyPending = farm.daily.goals.filter((g) => !g.done).length;
 
   return (
     <div className="hud">
@@ -80,6 +82,14 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
         <button type="button" onClick={() => onOpen('deliveries')} aria-label="Deliveries">
           Orders
         </button>
+        <button
+          type="button"
+          onClick={() => onOpen('daily')}
+          aria-label="Daily goals"
+          data-alert={dailyPending > 0 ? 'true' : 'false'}
+        >
+          Today{dailyPending > 0 && <span className="badge">{dailyPending}</span>}
+        </button>
         <button type="button" onClick={() => onOpen('settings')} aria-label="Settings">
           ⚙
         </button>
@@ -103,6 +113,22 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
       )}
 
       <style jsx>{`
+        .badge {
+          display: inline-grid;
+          place-items: center;
+          min-width: 1.05rem;
+          height: 1.05rem;
+          margin-left: 0.3rem;
+          padding: 0 0.25rem;
+          border-radius: 999px;
+          background: #f4b942;
+          color: #2a1a05;
+          font-size: 0.62rem;
+          font-weight: 800;
+        }
+        .buttons button[data-alert='true'] {
+          border-color: rgba(244, 185, 66, 0.55);
+        }
         .hud {
           position: fixed;
           inset: 0;
