@@ -1,0 +1,7 @@
+node_modules
+dist
+.next
+pnpm-lock.yaml
+docs/prototype
+apps/api/prisma/migrations
+logs

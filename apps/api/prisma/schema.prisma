@@ -1,0 +1,27 @@
+// AMBERVALE — Prisma schema.
+//
+// Phase 0 is scaffold only: the gameplay models (User, Plot, ResourceNode,
+// Animal, GroundItem, InventoryItem, SeedItem, DeliverySlot, AmberLedger,
+// Expansion) land in Phase 2 per handoff §5. EventLog exists from the start
+// because auth and bootstrap already need an audit trail.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Append-only audit trail. Every mutating action writes one row.
+model EventLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  kind      String
+  payload   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([kind, createdAt])
+}

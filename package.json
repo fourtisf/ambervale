@@ -1,0 +1,40 @@
+{
+  "name": "ambervale",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "predev": "pnpm --filter @ambervale/game-config build",
+    "dev": "concurrently -k -n config,api,web -c gray,cyan,magenta \"pnpm --filter @ambervale/game-config dev\" \"pnpm --filter @ambervale/api dev\" \"pnpm --filter @ambervale/web dev\"",
+    "build": "pnpm -r build",
+    "start": "pm2 start ecosystem.config.cjs",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "services:up": "docker compose up -d",
+    "services:down": "docker compose down",
+    "services:logs": "docker compose logs -f",
+    "db:migrate": "pnpm --filter @ambervale/api db:migrate",
+    "db:generate": "pnpm --filter @ambervale/api db:generate",
+    "db:studio": "pnpm --filter @ambervale/api db:studio",
+    "db:reset": "pnpm --filter @ambervale/api db:reset",
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^22.10.0",
+    "concurrently": "^10.0.4",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^15.14.0",
+    "pm2": "^7.0.3",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.67.0"
+  }
+}
