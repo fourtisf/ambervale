@@ -10,7 +10,6 @@
 import {
   CROPS,
   NODES,
-  PADDOCKS,
   PLOTS,
   TILE,
   plotAt,
@@ -20,6 +19,7 @@ import {
 import type Phaser from 'phaser';
 import type { FarmState } from '@/lib/api';
 import { CROP_STAGES, SPRITE_SCALE, cropTextureKey, rockTextureKey } from '../world/textures';
+import type { AnimalLife } from './AnimalLife';
 import type { DayNight } from './DayNight';
 
 /** Growth fraction → sprite stage. Stage 3 is harvest-ready. */
@@ -44,7 +44,8 @@ export class FarmView {
 
   private readonly plots = new Map<number, PlotView>();
   private readonly nodes = new Map<number, Phaser.GameObjects.Image>();
-  private readonly animals = new Map<number, Phaser.GameObjects.Image>();
+  /** Cosmetic animal behaviour; the server owns whether a yield exists. */
+  private animalLife?: AnimalLife;
   private readonly ground = new Map<string, Phaser.GameObjects.Image>();
 
   private state: FarmState | null = null;
@@ -52,9 +53,10 @@ export class FarmView {
   private clockSkewMs = 0;
   private elapsed = 0;
 
-  constructor(scene: Phaser.Scene, dayNight: DayNight) {
+  constructor(scene: Phaser.Scene, dayNight: DayNight, animalLife?: AnimalLife) {
     this.scene = scene;
     this.dayNight = dayNight;
+    this.animalLife = animalLife;
     this.buildPlots();
   }
 
@@ -158,21 +160,8 @@ export class FarmView {
 
   private syncAnimals(state: FarmState): void {
     for (const animal of state.animals) {
-      let sprite = this.animals.get(animal.index);
-      if (!sprite) {
-        const paddock = animal.kind === 'cow' ? PADDOCKS.cow : PADDOCKS.coop;
-        // Spread animals deterministically across their paddock.
-        const t = (animal.index + 1) / 5;
-        const x = (paddock.x + paddock.w * t) * TILE;
-        const y = (paddock.y + paddock.h * (0.3 + 0.4 * t)) * TILE;
-        sprite = this.scene.add
-          .image(x, y, animal.kind === 'cow' ? 'cow' : 'chicken')
-          .setOrigin(0.5, 1)
-          .setScale(SPRITE_SCALE)
-          .setDepth(y)
-          .setPipeline('Light2D');
-        this.animals.set(animal.index, sprite);
-      }
+      this.animalLife?.ensure(animal.index, animal.kind === 'cow' ? 'cow' : 'chicken');
+      if (animal.kind === 'cow') this.animalLife?.setMilkReady(animal.ready);
     }
   }
 
@@ -184,7 +173,7 @@ export class FarmView {
       if (this.ground.has(item.id)) continue;
 
       const sprite = this.scene.add
-        .image(item.x, item.y, item.itemKey === 'egg' ? 'egg' : 'egg')
+        .image(item.x, item.y, 'egg')
         .setOrigin(0.5, 1)
         .setScale(SPRITE_SCALE)
         .setDepth(item.y)
@@ -273,10 +262,8 @@ export class FarmView {
     }
     this.plots.clear();
     for (const s of this.nodes.values()) s.destroy();
-    for (const s of this.animals.values()) s.destroy();
     for (const s of this.ground.values()) s.destroy();
     this.nodes.clear();
-    this.animals.clear();
     this.ground.clear();
   }
 }

@@ -12,7 +12,9 @@ import { SPAWN, TILE, WORLD, baseZoom, structureAt } from '@ambervale/game-confi
 import * as Phaser from 'phaser';
 import type { FarmState } from '@/lib/api';
 import { bridge } from '../bridge';
+import { audio } from '@/lib/audio';
 import { Ambient } from '../systems/Ambient';
+import { AnimalLife } from '../systems/AnimalLife';
 import { CineCamera } from '../systems/CineCamera';
 import { DayNight } from '../systems/DayNight';
 import { Effects } from '../systems/Effects';
@@ -50,6 +52,7 @@ export class WorldScene extends Phaser.Scene {
   private interactions?: Interactions;
   private effects?: Effects;
   private tutorial?: TutorialGuide;
+  private animalLife?: AnimalLife;
   /** Last interaction pushed to the HUD, to avoid re-emitting every frame. */
   private lastInteractionKey = '';
   /** Bouncing "!" over the delivery board when an order can be filled. */
@@ -89,7 +92,8 @@ export class WorldScene extends Phaser.Scene {
 
     this.dayNight = new DayNight(this);
     this.ambient = new Ambient(this, this.map);
-    this.farmView = new FarmView(this, this.dayNight);
+    this.animalLife = new AnimalLife(this);
+    this.farmView = new FarmView(this, this.dayNight, this.animalLife);
 
     this.effects = new Effects(this);
     this.createPlayer();
@@ -217,7 +221,9 @@ export class WorldScene extends Phaser.Scene {
     this.dayNight?.update(delta);
     this.ambient.update(delta, this.dayNight?.nightAmount ?? 0);
     this.farmView?.update(delta);
+    this.animalLife?.update(delta);
     this.controller?.update(delta);
+    this.syncAmbience();
     this.tutorial?.update(delta);
     this.pushInteraction();
 
@@ -252,6 +258,16 @@ export class WorldScene extends Phaser.Scene {
     bridge.emit('interaction', interaction);
   }
 
+  /**
+   * Birds by day, crickets at night. Driven off the same cycle position the
+   * lighting uses, so sound and sky never disagree.
+   */
+  private syncAmbience(): void {
+    if (!bridge.started) return;
+    const night = this.dayNight?.nightAmount ?? 0;
+    audio.setAmbience(night > 0.5 ? 'night' : 'day');
+  }
+
   private updateDebugCamera(delta: number): void {
     if (!this.keys) return;
     const step = (DEBUG_CAM_SPEED * delta) / 1000;
@@ -266,6 +282,8 @@ export class WorldScene extends Phaser.Scene {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
     this.scale.off('resize', this.onResize, this);
+    audio.setAmbience(null);
+    this.animalLife?.destroy();
     this.tutorial?.destroy();
     this.controller?.destroy();
     this.dayNight?.destroy();

@@ -8,6 +8,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
+import { materialiseAnimalYields } from '../services/animals';
 import { ensureDeliverySlots } from '../services/deliveries';
 import { bootstrapFarm, getFarmState, repairNodes } from '../services/farm';
 
@@ -22,6 +23,7 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
     // someone looks, so no scheduler is needed for a farm left alone for days.
     await prisma.$transaction(async (tx) => {
       await repairNodes(tx, user.id);
+      await materialiseAnimalYields(tx, user.id);
       await ensureDeliverySlots(tx, user.id);
     });
 
