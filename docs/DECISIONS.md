@@ -208,6 +208,34 @@ Renown grants **no power at all**. It is a rank, and rank is what the boards
 sort on. Letting the only unbounded drain in the economy also buy an unbounded
 bonus would be the clearest possible way to ruin both.
 
+## Every number in this game was a guess
+
+`EventLog` has recorded every mutating action since the first phase, and until
+now nothing read a single row. Meanwhile thirty seconds for a sunflower, 220
+coins for the north meadow and 140 for the first point of renown were all
+chosen without watching one person play.
+
+`/admin/stats` is the cheapest possible correction: a nested funnel, a
+retention figure, and the economy's totals. Nothing is sampled or estimated.
+The intent is that what gets built next is argued from that page rather than
+from taste — including arguments against everything already built.
+
+The funnel is strictly nested; anything reached in any order is listed as a
+milestone instead. Mixing the two is not a cosmetic error: it produced a "200%
+of previous" row, which is a sequence announcing it was never a sequence.
+
+## Saying what $AMBER is
+
+The token can now be spent — upgrades, renown — and it still has no way out.
+That combination is worse than either alone: a player who burns 60 $AMBER on
+an axe today would rightly feel cheated if claims opened tomorrow.
+
+So the game says so, at the point of spending rather than in a settings panel
+nobody opens: $AMBER is an in-game balance, spending is permanent, and no date
+is promised. That is a disclosure, not a policy — the policy is still a
+decision the operator has to make, and `ENABLE_CLAIM` stays false until they
+have made it.
+
 ## Known reconciliations
 
 `docs/AMBERVALE_HANDOFF.md` and `docs/prototype/ambervale2.html` were never

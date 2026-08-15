@@ -60,8 +60,17 @@ export function UpgradesPanel() {
     }
   };
 
+  // Only worth saying once, and only when a tier in front of the player
+  // actually costs $AMBER.
+  const anyAmberCost = farm.shop.some((e) => (e.next?.cost.amber ?? 0) > 0);
+
   return (
     <>
+      {anyAmberCost && (
+        <p className="amberNote">
+          Tiers priced in $AMBER spend it permanently. There is no on-chain claim today.
+        </p>
+      )}
       <ul className="rows">
         {farm.shop.map((entry) => {
           const locked = farm.user.level < entry.unlockLv;
@@ -99,6 +108,16 @@ export function UpgradesPanel() {
       </ul>
 
       <style jsx>{`
+        .amberNote {
+          margin: 0 0 0.7rem;
+          padding: 0.5rem 0.7rem;
+          border-radius: 10px;
+          background: rgba(242, 160, 154, 0.12);
+          border: 1px solid rgba(242, 160, 154, 0.32);
+          color: #f2a09a;
+          font-size: 0.72rem;
+          line-height: 1.45;
+        }
         .rows {
           list-style: none;
           margin: 0;

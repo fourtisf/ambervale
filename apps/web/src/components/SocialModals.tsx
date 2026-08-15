@@ -245,6 +245,13 @@ export function ValeFundPanel() {
         Give to the vale for a name on the boards. Renown buys no advantage — only rank — and the
         next point always costs more than the last.
       </p>
+      {/* Spending $AMBER is permanent and there is currently no way to take it
+          out of the game. Saying so at the button is the only honest place:
+          a disclosure in a settings panel nobody opens is not a disclosure. */}
+      <p className="blurb warn">
+        $AMBER spent here is gone for good. It cannot be claimed on-chain today, and there is no
+        date for when it could be.
+      </p>
       <div className="give">
         <button
           type="button"
@@ -289,6 +296,10 @@ export function ValeFundPanel() {
           font-size: 0.72rem;
           opacity: 0.7;
           line-height: 1.45;
+        }
+        .warn {
+          color: #f2a09a;
+          opacity: 0.9;
         }
         .give {
           display: flex;

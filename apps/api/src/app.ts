@@ -9,6 +9,7 @@ import { ValidationError, sendValidationError } from './lib/validate';
 import authPlugin from './plugins/auth';
 import metricsPlugin from './plugins/metrics';
 import { actionRoutes } from './routes/actions';
+import { adminRoutes } from './routes/admin';
 import { animalRoutes } from './routes/animals';
 import { authRoutes } from './routes/auth';
 import { deliveryRoutes } from './routes/deliveries';
@@ -100,6 +101,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(tutorialRoutes);
   await app.register(animalRoutes);
   await app.register(walletRoutes);
+  await app.register(adminRoutes);
 
   return app;
 }

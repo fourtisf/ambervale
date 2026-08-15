@@ -79,6 +79,24 @@ Cloudflare: orange-cloud both hostnames, Full (strict) TLS, cache rule for
 ruleset. The Nginx config already trusts `CF-Connecting-IP` — without it every
 request looks like it comes from Cloudflare and the rate limiter is useless.
 
+## 2b. Watching it
+
+`ADMIN_PASSWORD` gates two operator reads. Empty disables both outright.
+
+```
+https://<host>/admin/stats        # the page: funnel, retention, economy
+https://<host>/admin/stats.json   # the same numbers, for graphing later
+```
+
+The funnel is the one worth opening. It is strictly nested — each row is a
+subset of the row above — and any step that keeps under half of the previous
+one is marked. That is where the game is losing people, and it beats any
+opinion about what to build next.
+
+Milestones are listed separately because they are reached in any order:
+claiming a meadow never required filling a delivery, and putting the two in
+one sequence produced ratios above 100% that meant nothing.
+
 ## 3. Smoke test
 
 Run against the real host after every deploy:
@@ -141,7 +159,7 @@ Honest account of what has and has not been run.
 
 | Check                               | Status                                                     |
 | ----------------------------------- | ---------------------------------------------------------- |
-| Abuse / regression suite (56 tests) | ✅ passing against a live Postgres + Redis                 |
+| Abuse / regression suite (59 tests) | ✅ passing against a live Postgres + Redis                 |
 | Ledger integrity (`SUM(delta)`)     | ✅ asserted in CI and verified by hand                     |
 | `/play` bundle budget               | ✅ 560 KB gzipped against a 1.5 MB budget                  |
 | Typecheck, lint, format             | ✅ clean across all three packages                         |

@@ -127,6 +127,8 @@ export interface FarmDeliverySlot {
   refillAt: number | null;
   unlocked: boolean;
   repRequired: number;
+  /** What the NPC says about this order. */
+  line: string;
 }
 
 export interface FarmUser {

@@ -16,6 +16,7 @@ import {
   PADDOCKS,
   PLOTS,
   TILE,
+  npcLine,
   titleFor,
   type CropKey,
 } from '@ambervale/game-config';
@@ -193,6 +194,9 @@ export interface FarmState {
     unlocked: boolean;
     /** Reputation needed to use this slot, for the locked-slot progress bar. */
     repRequired: number;
+    /** What the NPC says about this order. Chosen here so the seed stays
+        server-only — it is an audit record, not a display value. */
+    line: string;
   }[];
   /** Current quest and live progress toward it, or null when the chain ends. */
   quest: {
@@ -394,6 +398,7 @@ export async function getFarmState(
       // is waiting behind the reputation gate rather than an empty box.
       unlocked: slotUnlocked(s.slot, user.rep),
       repRequired: repRequiredFor(s.slot),
+      line: npcLine(s.npc, s.seed),
     })),
     quest: quest.quest
       ? {

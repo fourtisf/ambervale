@@ -196,6 +196,13 @@ export default function WalletPanel() {
         <b>{quota?.amberBalance ?? 0}</b>
       </div>
 
+      {!claimsOpen && (
+        <p className="hint">
+          $AMBER is an in-game balance today. Claims are not open, and no date is promised — spend
+          it in the vale rather than holding it for one.
+        </p>
+      )}
+
       <div className="row">
         <span>Claim</span>
         <button type="button" disabled title={claimsOpen ? undefined : 'Claims are not open yet.'}>

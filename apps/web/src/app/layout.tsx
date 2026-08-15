@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   title: 'AMBERVALE',
   description: DESCRIPTION,
   applicationName: 'AMBERVALE',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'AMBERVALE', statusBarStyle: 'black-translucent' },
   openGraph: {
     title: 'AMBERVALE',
     description: DESCRIPTION,

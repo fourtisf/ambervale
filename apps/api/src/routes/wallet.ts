@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { env } from '../env';
+import { requireAdmin } from '../lib/admin';
 import { ApiError, badRequest, conflict, rateLimited, unauthorized } from '../lib/errors';
 import { prisma } from '../lib/prisma';
 import { allowMutation, takeActionLock } from '../lib/rateLimit';
@@ -190,16 +191,7 @@ export async function walletRoutes(app: FastifyInstance): Promise<void> {
    * contract exists. Basic auth from env; not part of the player API.
    */
   app.get('/admin/claim-intents', async (req, res) => {
-    const header = req.headers.authorization ?? '';
-    const expected =
-      'Basic ' + Buffer.from(`${env.ADMIN_USER}:${env.ADMIN_PASSWORD}`).toString('base64');
-
-    if (!env.ADMIN_PASSWORD || header !== expected) {
-      return res
-        .status(401)
-        .header('www-authenticate', 'Basic realm="ambervale"')
-        .send('Unauthorized');
-    }
+    if (!requireAdmin(req, res)) return res;
 
     const intents = await prisma.claimIntent.findMany({
       where: { status: 'pending' },

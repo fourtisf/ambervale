@@ -97,6 +97,10 @@ export function DeliveriesModal({ onClose }: { onClose: () => void }) {
                   <b>{npc.name}</b>
                 </div>
 
+                {slot.unlocked && slot.state === 'open' && slot.line && (
+                  <p className="line">&ldquo;{slot.line}&rdquo;</p>
+                )}
+
                 {!slot.unlocked ? (
                   <div className="body">
                     <span className="muted">Needs {slot.repRequired} reputation</span>
@@ -161,6 +165,13 @@ export function DeliveriesModal({ onClose }: { onClose: () => void }) {
           display: flex;
           flex-direction: column;
           gap: 0.6rem;
+        }
+        .line {
+          margin: 0.15rem 0 0.5rem;
+          font-size: 0.76rem;
+          font-style: italic;
+          opacity: 0.68;
+          line-height: 1.45;
         }
         .slots li {
           padding: 0.7rem 0.8rem;

@@ -437,10 +437,72 @@ export function mulberry32(seed: number): () => number {
  * NOTE: names and tints are invented — the prototype was not available.
  * Reconcile against it when it lands; nothing depends on these but the UI.
  */
-export const DELIVERY_NPCS: readonly { name: string; tint: number }[] = [
-  { name: 'Maren', tint: 0xd0674a },
-  { name: 'Tobias', tint: 0x4a86b8 },
-  { name: 'Wren', tint: 0x6fd08c },
-  { name: 'Odell', tint: 0xd98cb3 },
-  { name: 'Sable', tint: 0xf4b942 },
+/**
+ * The people who order from you.
+ *
+ * They were names and a colour swatch, which is to say they were a randomised
+ * label on a quantity. A line each costs nothing and is the only thing in the
+ * game suggesting anybody else lives in the vale. Lines are picked by the
+ * order's stored seed, so the same order always comes with the same sentence
+ * — a face that says something different every render is not a character.
+ */
+export interface DeliveryNpc {
+  name: string;
+  tint: number;
+  /** What they say while the order is open. */
+  lines: readonly string[];
+}
+
+export const DELIVERY_NPCS: readonly DeliveryNpc[] = [
+  {
+    name: 'Maren',
+    tint: 0xd0674a,
+    lines: [
+      'The inn is full and the pot is empty. Help me out?',
+      'I promised a stew by dusk. I may have overpromised.',
+      'Whatever you can spare. I am not proud today.',
+    ],
+  },
+  {
+    name: 'Tobias',
+    tint: 0x4a86b8,
+    lines: [
+      'The cart leaves at first light, loaded or not.',
+      'Buyers downriver pay well. They also wait badly.',
+      'Fill this and I will put in a good word for you.',
+    ],
+  },
+  {
+    name: 'Wren',
+    tint: 0x6fd08c,
+    lines: [
+      'My own patch failed. Do not tell my mother.',
+      'I would grow it myself if the rabbits agreed.',
+      'You always have the good stuff. Name it and I will pay.',
+    ],
+  },
+  {
+    name: 'Odell',
+    tint: 0xd98cb3,
+    lines: [
+      'For the festival. Do not ask which one.',
+      'I need it fresh, and I need it quietly.',
+      'Old recipe, exact amounts. No substitutes.',
+    ],
+  },
+  {
+    name: 'Sable',
+    tint: 0xf4b942,
+    lines: [
+      'Amber for goods. No haggling, no questions.',
+      'I trade far from here. Your name travels with it.',
+      'Bring it whole and I will pay whole.',
+    ],
+  },
 ];
+
+/** The line for a given order, stable because the seed is stored on the row. */
+export function npcLine(npcIndex: number, seed: number): string {
+  const npc = DELIVERY_NPCS[npcIndex % DELIVERY_NPCS.length]!;
+  return npc.lines[Math.abs(seed) % npc.lines.length]!;
+}
