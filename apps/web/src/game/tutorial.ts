@@ -61,7 +61,17 @@ const boardPoint = () => {
   return px(s.x, s.y);
 };
 
-const counter = (farm: FarmState, key: string) => farm.user.counters[key] ?? 0;
+/**
+ * How much of a counter belongs to *this* run through the tutorial.
+ *
+ * Lifetime totals would make a replay finish itself: someone who has planted
+ * a hundred crops already satisfies "plant three" the instant they restart.
+ * The server snapshots the counters when the tutorial starts, and the steps
+ * read the difference. `tutorialBase` is absent for everyone who never
+ * replayed, which is the same as a baseline of zero.
+ */
+const counter = (farm: FarmState, key: string) =>
+  Math.max(0, (farm.user.counters[key] ?? 0) - (farm.user.tutorialBase?.[key] ?? 0));
 
 /** Milliseconds left on the earliest growing crop, or null. */
 export function soonestReadyMs(farm: FarmState): number | null {

@@ -37,6 +37,45 @@ const ms = (sec: number) => sec * 1000;
 export const COW_INDEX = ANIMALS.chicken.count;
 
 /**
+ * The counters the tutorial reads, snapshotted for a replay.
+ *
+ * Only these keys: a snapshot of everything would silently start baselining
+ * quests and titles too the day one of them starts reading it.
+ */
+export const TUTORIAL_COUNTERS = [
+  'plantedCount',
+  'harvestedCount',
+  'choppedCount',
+  'soldCount',
+  'boughtSeeds',
+  'deliveriesDone',
+] as const;
+
+/** Current values of the tutorial's counters, for storing as a baseline. */
+export function counterSnapshot(user: User): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const key of TUTORIAL_COUNTERS) out[key] = user[key];
+  return out;
+}
+
+/**
+ * Reads a stored baseline back.
+ *
+ * It is a Json column, so it could be anything at all — a hand-edited row, or
+ * a shape this code wrote two versions ago. Anything that is not a number is
+ * dropped rather than trusted, because a NaN here would make every tutorial
+ * step permanently incomplete.
+ */
+function readCounterSnapshot(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: Record<string, number> = {};
+  for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof raw === 'number' && Number.isFinite(raw)) out[key] = raw;
+  }
+  return out;
+}
+
+/**
  * Seeds a brand-new farm. Idempotent by the `bootstrapped` flag inside the
  * transaction, so two racing first requests cannot double-seed.
  */
@@ -229,6 +268,12 @@ export interface FarmState {
     title: string | null;
     handle: string;
     tutorialStep: number;
+    /**
+     * Counters as they stood when the tutorial last started. The steps read
+     * `counters - tutorialBase`, so replaying it asks for the work again
+     * instead of reading a lifetime total and completing itself.
+     */
+    tutorialBase: Record<string, number>;
     questIndex: number;
     firstPlantDone: boolean;
     counters: Record<string, number>;
@@ -460,6 +505,7 @@ export async function getFarmState(
       title: titleFor(user.renown),
       handle: handleFor(user.id),
       tutorialStep: user.tutorialStep,
+      tutorialBase: readCounterSnapshot(user.tutorialBase),
       questIndex: user.questIndex,
       firstPlantDone: user.firstPlantDone,
       counters: {

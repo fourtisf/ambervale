@@ -16,8 +16,21 @@ import { audio } from '@/lib/audio';
 export default function TutorialBanner() {
   const [farm, setFarm] = useState<FarmState | null>(bridge.farm);
   const [busy, setBusy] = useState(false);
+  /**
+   * Skip asks first.
+   *
+   * It is a small word next to a thumb on a phone, and until Settings grew a
+   * Replay row a stray tap ended the tutorial for good with no way back.
+   */
+  const [confirmSkip, setConfirmSkip] = useState(false);
 
   useEffect(() => bridge.on('farm', setFarm), []);
+
+  // The banner renders null between steps rather than unmounting, so without
+  // this the confirm would still be open when the tutorial came back — which
+  // it does now, from Settings.
+  const stepNow = farm?.user.tutorialStep ?? null;
+  useEffect(() => setConfirmSkip(false), [stepNow]);
 
   const advance = useCallback(async (step: number) => {
     setBusy(true);
@@ -30,6 +43,9 @@ export default function TutorialBanner() {
           ...current,
           user: { ...current.user, tutorialStep: step },
         });
+      }
+      if (step === TUTORIAL_DONE) {
+        bridge.toast('info', 'Tutorial skipped — you can replay it any time from Settings.');
       }
     } finally {
       setBusy(false);
@@ -49,14 +65,25 @@ export default function TutorialBanner() {
         <span className="count">
           Step {step + 1} of {TUTORIAL.length}
         </span>
-        <button
-          type="button"
-          className="skip"
-          disabled={busy}
-          onClick={() => void advance(TUTORIAL_DONE)}
-        >
-          Skip
-        </button>
+        {confirmSkip ? (
+          <span className="confirm">
+            <button type="button" className="skip" onClick={() => setConfirmSkip(false)}>
+              Keep it
+            </button>
+            <button
+              type="button"
+              className="skip yes"
+              disabled={busy}
+              onClick={() => void advance(TUTORIAL_DONE)}
+            >
+              Skip for good
+            </button>
+          </span>
+        ) : (
+          <button type="button" className="skip" onClick={() => setConfirmSkip(true)}>
+            Skip
+          </button>
+        )}
       </div>
 
       <p className="text">{current.text(farm)}</p>
@@ -123,6 +150,14 @@ export default function TutorialBanner() {
           font-size: 0.75rem;
           cursor: pointer;
           padding: 0.2rem 0.3rem;
+        }
+        .confirm {
+          display: flex;
+          gap: 0.2rem;
+        }
+        .yes {
+          color: #f2a09a;
+          opacity: 0.9;
         }
         .text {
           margin: 0 0 0.55rem;

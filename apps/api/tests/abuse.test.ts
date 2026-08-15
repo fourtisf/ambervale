@@ -249,6 +249,56 @@ describe('tutorial', () => {
     assert.equal(skip.status, 200);
     assert.equal(skip.body.tutorialStep, 99);
   });
+
+  it('can be replayed after a skip, without touching the farm', async () => {
+    const { client } = await newPlayer();
+    await growOne(client);
+
+    const before = (await client.call<FarmLike>('/farm')).body;
+    await paced(() => client.call('/tutorial/step', { step: 99 }, 'PATCH'));
+
+    const replay = await paced(() => client.call<{ farm: FarmLike }>('/tutorial/restart', {}));
+    assert.equal(replay.status, 200);
+    assert.equal(replay.body.farm.user.tutorialStep, 0);
+
+    // The farm is the player's; restarting the guide must not spend or grant.
+    assert.equal(replay.body.farm.user.coins, before.user.coins);
+    assert.equal(replay.body.farm.user.xp, before.user.xp);
+    assert.equal(
+      replay.body.farm.inventory['sunflower'] ?? 0,
+      before.inventory['sunflower'] ?? 0,
+      'a replay must not touch the bag',
+    );
+  });
+
+  it('baselines the counters so a replay does not complete itself', async () => {
+    // A veteran restarting the tutorial has already planted and harvested;
+    // read as lifetime totals, every step would be satisfied the moment it
+    // began. The baseline is what makes "plant three crops" mean three more.
+    const { client } = await newPlayer();
+    await growOne(client);
+
+    const replay = await paced(() => client.call<{ farm: FarmLike }>('/tutorial/restart', {}));
+    const { counters, tutorialBase } = replay.body.farm.user;
+
+    assert.ok(counters['plantedCount']! >= 1, 'the player really has planted');
+    assert.equal(
+      tutorialBase['plantedCount'],
+      counters['plantedCount'],
+      'the baseline must match the counter at restart, leaving a delta of zero',
+    );
+    assert.equal(tutorialBase['harvestedCount'], counters['harvestedCount']);
+  });
+
+  it('refuses a restart from a caller with no session', async () => {
+    const pass = await passHeader();
+    const res = await fetch(`${BASE}/tutorial/restart`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-invite-pass': pass },
+      body: '{}',
+    });
+    assert.equal(res.status, 401);
+  });
 });
 
 describe('claims', () => {

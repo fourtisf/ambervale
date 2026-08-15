@@ -33,6 +33,11 @@ model User {
   rep   Int @default(0)
 
   tutorialStep Int @default(0)
+  /// Counters as they stood when the tutorial last started, so a replay asks
+  /// for three crops planted *now* rather than reading a veteran's lifetime
+  /// total and skipping to the end. Null means "from zero", which is what
+  /// every account that never replayed it wants.
+  tutorialBase Json?
   questIndex   Int @default(0)
 
   /// The very first crop a player plants grows in FIRST_CROP_FAST_SEC.

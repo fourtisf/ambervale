@@ -179,6 +179,9 @@ export interface FarmUser {
   title: string | null;
   handle: string;
   tutorialStep: number;
+  /** Counters as they stood when the tutorial last started; steps read the
+   *  difference, so replaying it asks for the work again. */
+  tutorialBase: Record<string, number>;
   questIndex: number;
   firstPlantDone: boolean;
   counters: Record<string, number>;

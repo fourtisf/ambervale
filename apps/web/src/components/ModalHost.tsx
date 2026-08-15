@@ -10,6 +10,7 @@ import {
   type ItemKey,
 } from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
+import { TUTORIAL, TUTORIAL_DONE } from '@/game/tutorial';
 import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
@@ -383,9 +384,39 @@ function WalletModal({ onClose }: { onClose: () => void }) {
 }
 
 function SettingsModal({ onClose }: { onClose: () => void }) {
+  const farm = useFarm();
   const [muted, setMuted] = useState(audio.isMuted);
   const [confirmReset, setConfirmReset] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  /**
+   * Where the tutorial stands, in words.
+   *
+   * Worth saying out loud rather than only offering a button: someone who
+   * skipped it months ago has no way to tell whether the game has a tutorial
+   * at all, and that is exactly the question this row exists to answer.
+   */
+  const step = farm?.user.tutorialStep ?? 0;
+  const tutorialState =
+    step === TUTORIAL_DONE
+      ? 'Skipped'
+      : step >= TUTORIAL.length
+        ? 'Finished'
+        : `Step ${step + 1} of ${TUTORIAL.length}`;
+  const running = step !== TUTORIAL_DONE && step < TUTORIAL.length;
+
+  const replay = async () => {
+    setBusy(true);
+    try {
+      commit(await apiPost<ActionReply>('/tutorial/restart', {}));
+      bridge.toast('info', 'Tutorial restarted. Follow the marker.');
+      onClose();
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const toggleMute = () => {
     const next = !muted;
@@ -416,6 +447,15 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           {muted ? 'Muted' : 'On'}
         </button>
       </div>
+      <div className="row">
+        <span>
+          Tutorial
+          <em className="state">{tutorialState}</em>
+        </span>
+        <button type="button" disabled={busy} onClick={() => void replay()}>
+          {running ? 'Restart' : 'Replay'}
+        </button>
+      </div>
       <div className="row danger">
         <span>Reset run</span>
         {confirmReset ? (
@@ -435,8 +475,9 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
       </div>
 
       <p className="note">
-        Sound preference is saved on this device. Resetting deletes this farm — every plot, item and
-        $AMBER ledger entry — and cannot be undone.
+        Sound preference is saved on this device. Replaying the tutorial keeps your farm exactly as
+        it is — it only walks you through the ten steps again. Resetting deletes this farm — every
+        plot, item and $AMBER ledger entry — and cannot be undone.
       </p>
 
       <style jsx>{`
@@ -446,6 +487,13 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           justify-content: space-between;
           padding: 0.7rem 0;
           border-bottom: 1px solid rgba(245, 230, 200, 0.1);
+        }
+        .state {
+          display: block;
+          font-style: normal;
+          font-size: 0.72rem;
+          opacity: 0.55;
+          margin-top: 0.15rem;
         }
         .row button {
           padding: 0.45rem 1rem;

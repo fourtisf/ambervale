@@ -136,6 +136,7 @@ export interface FarmLike {
     title: string | null;
     handle: string;
     tutorialStep: number;
+    tutorialBase: Record<string, number>;
     counters: Record<string, number>;
   };
   plots: {

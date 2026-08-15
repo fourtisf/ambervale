@@ -347,6 +347,27 @@ reaching into the scene — `HudScene` is launched by `WorldScene`, so anything
 React does on its own schedule lands before there is a scene to talk to. The
 bridge mirrors the flag for exactly this reason.
 
+## The tutorial can be asked for again
+
+The step only ever moved forward, which is right — a client that could rewind
+it could replay whatever it handed out. But nothing in the tutorial _is_ handed
+out: every reward it points at comes from the action itself, which the player
+still has to perform. So the rule was protecting nothing, while leaving anyone
+who tapped Skip with a game that had visibly no tutorial and no way to ask for
+one. "Where is the tutorial?" is a fair question to be able to answer.
+
+`POST /tutorial/restart` is the deliberate rewind, and Settings now names the
+state out loud — _Skipped_, _Finished_, _Step 4 of 10_ — because a player who
+skipped it months ago cannot otherwise tell the game has one at all. Skip asks
+before it takes effect, and says where to find it again.
+
+The counters are the subtle part. The steps read `plantedCount >= 3`, which is
+a lifetime total, so a veteran restarting would watch the guide race to the
+last step in about four frames. `User.tutorialBase` snapshots those counters
+when the tutorial starts and the steps read the difference — the tutorial is
+about this run through it, not about a career. It is null for every account
+that never replayed, which reads as a baseline of zero, so nothing migrates.
+
 ## Known reconciliations
 
 `docs/AMBERVALE_HANDOFF.md` and `docs/prototype/ambervale2.html` were never
