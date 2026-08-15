@@ -131,22 +131,56 @@ If a build directory is already half-written:
 pnpm verify
 ```
 
-Ten checks, none of which can be satisfied by a process merely being up. It
-exits non-zero if anything fails, so it can be chained.
+Thirteen checks, none of which can be satisfied by a process merely being up.
+It exits non-zero if anything fails, so it can be chained.
 
+- **Which commit is answering.** Both halves are stamped by the deploy — the
+  api reads `dist/build-id.json` and reports it from `/health`, the web bakes
+  `<meta name="ambervale-rev">` into the HTML — and both are compared against
+  the checked-out `HEAD`. This is the check that makes "is the new code live?"
+  answerable at all. Everything else can pass while an old process holds the
+  port and answers every request perfectly.
 - **Never through the public domain.** Cloudflare will serve a cached 200 of
   the old page long after the origin changed. Every check speaks to
-  `localhost:4021` and `localhost:4022`.
+  `localhost:4021` and `localhost:4022`. To ask what the *edge* is serving:
+  `curl -s https://ambervale.fun/ | grep ambervale-rev` — the meta tag is the
+  same one, so a stale cache shows up as an old sha rather than as a hunch.
+- **Postgres and Redis, not just the event loop.** `/health/deep` touches
+  both; `/health` proves only that node is running.
+- **The database is not behind the code.** `prisma migrate status`, because a
+  schema one migration short is invisible to every other check while every
+  logged-in request 500s.
+- **The gate is locked, not merely answering.** `/auth/invite` replies with the
+  same shape whether the beta is shut or open to everyone, so the check reads
+  `"required":true`.
 - **A stylesheet that loads, not one that is named.** The half-built `.next`
   failure produces HTML that references CSS which does not exist; the check
   fetches it and asserts 200.
+- **The shipped bundle does not call localhost.** The one failure the operator
+  never sees and every visitor does: on the box, `localhost:4021` works.
 - **Two samples of the restart counter, three seconds apart.** "online" is not
   health — a crash loop is online between crashes. A counter that moves while
-  the check runs is a loop, and that is a fact rather than a threshold. This is
-  what catches an old process still holding the port, where `/health` answers
-  200 from the process being replaced.
+  the check runs is a loop, and that is a fact rather than a threshold.
 - **Placeholders.** `NEXT_PUBLIC_*` is baked at build time, so a wrong value is
   compiled into the HTML and no restart will clear it.
+
+### Known gaps, deliberately
+
+- **Nothing schedules `pnpm verify`.** It runs at deploy time and when you run
+  it. A crash loop that starts hours later is not detected by anything —
+  pm2's own unstable-restart window is `min_uptime * max_restarts` measured
+  from the last deliberate restart, so it expires 200s after a deploy by
+  design. Adding `*/10 * * * * cd /opt/ambervale && pnpm verify >> /var/log/ambervale-verify.log 2>&1`
+  is the cheap fix when the beta grows.
+- **Log rotation.** pm2 writes to plain files under `apps/*/logs/` with no
+  rotation. `pm2 install pm2-logrotate` once, on the box.
+- **Reboot.** `pnpm release` runs `pm2 save` after a verified deploy, but the
+  boot hook itself is installed once, by hand: `pm2 startup` and run the line
+  it prints.
+- **A migration that fails halfway** wedges every later deploy with `P3009`.
+  Recovery is `pnpm --filter @ambervale/api exec prisma migrate resolve
+  --rolled-back <migration_name>` after fixing the cause — never by editing
+  the `_prisma_migrations` table.
 
 Infrastructure:
 
