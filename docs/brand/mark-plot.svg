@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Ambervale plot mark">
+  <title>AMBERVALE — the plot</title>
+  <!--
+    The single action the whole game is built on: a tilled square with
+    something rising out of it. Soil values are the sprite's own — body
+    #6f5231, sunlit #8a663e, ridge crest #8f6b41, trough #5b4227.
+
+    The sunflower is deliberately oversized against the plot. At icon scale a
+    correctly-proportioned seedling is three brown lines and a speck.
+  -->
+  <defs>
+    <linearGradient id="pGrass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6fb257"/><stop offset="1" stop-color="#4e8b41"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="248" height="248" rx="58" fill="url(#pGrass)"/>
+
+  <!-- The tilled square, low in the frame so the flower has headroom. -->
+  <g>
+    <rect x="40" y="152" width="176" height="76" rx="18" fill="#4e3a23"/>
+    <rect x="40" y="144" width="176" height="76" rx="18" fill="#6f5231"/>
+    <rect x="48" y="150" width="160" height="26" rx="13" fill="#8a663e"/>
+    <g>
+      <rect x="58" y="172" width="140" height="8" rx="4" fill="#8f6b41" opacity="0.9"/>
+      <rect x="58" y="180" width="140" height="6" rx="3" fill="#5b4227" opacity="0.5"/>
+      <rect x="58" y="196" width="140" height="8" rx="4" fill="#8f6b41" opacity="0.9"/>
+      <rect x="58" y="204" width="140" height="6" rx="3" fill="#5b4227" opacity="0.5"/>
+    </g>
+    <g fill="#99724a" opacity="0.85">
+      <circle cx="74" cy="190" r="4.6"/><circle cx="182" cy="166" r="4"/><circle cx="150" cy="210" r="4.6"/>
+    </g>
+    <rect x="40" y="144" width="176" height="76" rx="18" fill="none" stroke="#0a2e3d" stroke-width="8"/>
+  </g>
+
+  <!-- Stem and leaves cross the plot's top edge; that overlap is what keeps
+       the whole thing from reading as a flat brown card. -->
+  <path d="M 128 176 L 128 96" fill="none" stroke="#3f7a3a" stroke-width="16"
+        stroke-linecap="round"/>
+  <g fill="#4f9142" stroke="#0a2e3d" stroke-width="7" stroke-linejoin="round">
+    <path d="M 124 150 C 90 150, 70 136, 64 108 C 100 104, 122 122, 124 150 Z"/>
+    <path d="M 132 134 C 166 134, 186 120, 192 92 C 156 88, 134 106, 132 134 Z"/>
+  </g>
+
+  <!-- The head, sized to be the thing you see first. -->
+  <circle cx="128" cy="76" r="46" fill="#f4c542" stroke="#0a2e3d" stroke-width="8"/>
+  <circle cx="128" cy="76" r="19" fill="#8a5a1e"/>
+</svg>

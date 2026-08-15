@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Ambervale valley mark">
+  <title>AMBERVALE — the vale</title>
+  <!--
+    A window onto the map: grass, the lane, one pine, the low sun. Held to
+    four shapes on purpose — the earlier version carried a plot and a
+    sunflower too, and at 20px the whole thing turned to noise.
+  -->
+  <defs>
+    <linearGradient id="vGrass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6fb257"/><stop offset="1" stop-color="#457f3a"/>
+    </linearGradient>
+    <clipPath id="vClip"><rect x="4" y="4" width="248" height="248" rx="58"/></clipPath>
+  </defs>
+
+  <rect x="4" y="4" width="248" height="248" rx="58" fill="url(#vGrass)"/>
+
+  <g clip-path="url(#vClip)">
+    <!-- The sun sits high and large; it is the only amber in the frame and
+         does most of the work of saying which game this is. -->
+    <circle cx="186" cy="66" r="46" fill="#f4b942"/>
+    <circle cx="186" cy="66" r="46" fill="none" stroke="#ffd479" stroke-width="8" opacity="0.55"/>
+
+    <!-- The lane, one stroke wide enough to survive being 20px tall. -->
+    <path d="M 100 268 C 104 210, 78 186, 96 152 C 112 122, 176 126, 268 106"
+          fill="none" stroke="#6f5334" stroke-width="52" stroke-linecap="round"/>
+    <path d="M 100 268 C 104 210, 78 186, 96 152 C 112 122, 176 126, 268 106"
+          fill="none" stroke="#8a6a44" stroke-width="30" stroke-linecap="round" opacity="0.55"/>
+
+    <!-- One pine, big enough to read as a tree and not a smudge. -->
+    <g stroke="#0a2e3d" stroke-width="8" stroke-linejoin="round">
+      <rect x="52" y="178" width="20" height="42" rx="6" fill="#6b4a2f"/>
+      <path d="M 62 84 L 104 152 L 20 152 Z" fill="#2f5f45"/>
+      <path d="M 62 126 L 112 196 L 12 196 Z" fill="#2f5f45"/>
+    </g>
+  </g>
+
+  <rect x="4" y="4" width="248" height="248" rx="58" fill="none" stroke="#0a2e3d" stroke-width="9"/>
+</svg>

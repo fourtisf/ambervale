@@ -18,14 +18,9 @@
         color: var(--ink);
         font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
       }
-      header { max-width: 1180px; margin: 0 auto 44px; }
-      h1 {
-        margin: 0 0 6px;
-        font-size: 1.15rem;
-        letter-spacing: 0.34em;
-        text-transform: uppercase;
-      }
-      header p { margin: 0; opacity: 0.6; font-size: 0.86rem; }
+      header { max-width: 1180px; margin: 0 auto 40px; }
+      h1 { margin: 0 0 6px; font-size: 1.15rem; letter-spacing: 0.34em; text-transform: uppercase; }
+      header p { margin: 0; opacity: 0.62; font-size: 0.86rem; line-height: 1.6; max-width: 62ch; }
 
       .sheet { max-width: 1180px; margin: 0 auto; }
       section {
@@ -36,118 +31,125 @@
         overflow: hidden;
       }
       .head {
-        display: flex;
-        align-items: baseline;
-        gap: 14px;
-        padding: 20px 26px;
-        border-bottom: 1px solid rgba(10, 46, 61, 0.1);
+        display: flex; align-items: baseline; gap: 14px;
+        padding: 20px 26px; border-bottom: 1px solid rgba(10, 46, 61, 0.1);
       }
       .num {
-        width: 26px; height: 26px;
-        display: grid; place-items: center;
-        border-radius: 50%;
-        background: var(--ink); color: var(--cream);
+        width: 26px; height: 26px; display: grid; place-items: center;
+        border-radius: 50%; background: var(--ink); color: var(--cream);
         font-size: 0.74rem; font-weight: 700;
       }
       .head h2 { margin: 0; font-size: 1rem; letter-spacing: 0.06em; }
       .head span { font-size: 0.8rem; opacity: 0.6; }
 
-      .stage {
-        display: grid;
-        grid-template-columns: 1.35fr 1fr;
-        min-height: 260px;
+      .lockup {
+        background: var(--ink);
+        display: flex; align-items: center; justify-content: center;
+        gap: 34px; padding: 40px 26px;
       }
-      .dark { background: var(--ink); }
-      .light { background: var(--paper); }
-      .stage > div {
-        display: grid;
-        place-items: center;
-        padding: 34px 26px;
-      }
-      .stage img { max-width: 100%; }
+      .lockup .stack { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+      .lockup img { display: block; }
 
       .sizes {
-        display: flex;
-        align-items: flex-end;
-        gap: 26px;
+        display: flex; align-items: flex-end; gap: 26px;
         padding: 20px 26px 24px;
         border-top: 1px solid rgba(10, 46, 61, 0.1);
         background: #fbf8f2;
       }
       .size { text-align: center; }
-      .size img { display: block; margin: 0 auto 7px; image-rendering: auto; }
+      .size img { display: block; margin: 0 auto 7px; }
       .size b { font-size: 0.66rem; opacity: 0.5; font-weight: 600; }
       .sizes .note {
-        margin-left: auto;
-        max-width: 330px;
-        font-size: 0.76rem;
-        line-height: 1.55;
-        opacity: 0.68;
-        text-align: left;
+        margin-left: auto; max-width: 340px;
+        font-size: 0.76rem; line-height: 1.55; opacity: 0.68; text-align: left;
       }
+      .wordmark-only { background: var(--ink); padding: 34px 26px; text-align: center; }
+      .wordmark-only img { max-width: 100%; }
     </style>
   </head>
   <body>
     <header>
       <h1>Ambervale</h1>
-      <p>Three logo directions, drawn as vectors. Same palette as the game: amber #f4b942, deep teal #0a2e3d, cream #f5e6c8.</p>
+      <p>
+        Three marks drawn out of the game's own sprites — the same straw, tunic, soil and grass
+        values the world is painted with — and one shared wordmark. Pick a mark; the wordmark is
+        the constant.
+      </p>
     </header>
 
     <div class="sheet">
       <section>
         <div class="head">
-          <span class="num">1</span>
-          <h2>The Seal</h2>
-          <span>Heritage stamp — ring type, harvest sun, single ear of wheat.</span>
+          <span class="num">0</span>
+          <h2>The Wordmark</h2>
+          <span>Heavy rounded strokes, ink outline, amber drop. Shared by all three marks.</span>
         </div>
-        <div class="stage">
-          <div class="dark"><img src="seal.svg" width="300" alt="" /></div>
-          <div class="light"><img src="seal.svg" width="210" alt="" /></div>
+        <div class="wordmark-only"><img src="wordmark-game.svg" width="640" alt="" /></div>
+      </section>
+
+      <section>
+        <div class="head">
+          <span class="num">1</span>
+          <h2>The Farmer</h2>
+          <span>The character you actually play — straw hat, blue tunic, two dot eyes.</span>
+        </div>
+        <div class="lockup">
+          <img src="mark-farmer.svg" width="150" alt="" />
+          <img src="wordmark-game.svg" width="440" alt="" />
         </div>
         <div class="sizes">
-          <div class="size"><img src="mark-seal.svg" width="96" alt="" /><b>96</b></div>
-          <div class="size"><img src="mark-seal.svg" width="48" alt="" /><b>48</b></div>
-          <div class="size"><img src="mark-seal.svg" width="32" alt="" /><b>32</b></div>
-          <div class="size"><img src="mark-seal.svg" width="20" alt="" /><b>20</b></div>
-          <p class="note">Carries its own dark field, so it sits on any background unchanged. The ring type is dropped from the icon below 64px — it would only turn to grey mush.</p>
+          <div class="size"><img src="mark-farmer.svg" width="96" alt="" /><b>96</b></div>
+          <div class="size"><img src="mark-farmer.svg" width="48" alt="" /><b>48</b></div>
+          <div class="size"><img src="mark-farmer.svg" width="32" alt="" /><b>32</b></div>
+          <div class="size"><img src="mark-farmer.svg" width="20" alt="" /><b>20</b></div>
+          <p class="note">
+            The straw-hat silhouette is the single most recognisable shape in the game. Costs
+            nothing to explain and survives being 20px tall in a browser tab.
+          </p>
         </div>
       </section>
 
       <section>
         <div class="head">
           <span class="num">2</span>
-          <h2>The Monoline Wordmark</h2>
-          <span>Custom geometric letterforms — the A's crossbar is a horizon.</span>
+          <h2>The Plot</h2>
+          <span>A tilled square with something coming out of it — the whole loop, once.</span>
         </div>
-        <div class="stage">
-          <div class="dark"><img src="wordmark.svg" width="520" alt="" /></div>
-          <div class="light"><img src="wordmark-ink.svg" width="380" alt="" /></div>
+        <div class="lockup">
+          <img src="mark-plot.svg" width="150" alt="" />
+          <img src="wordmark-game.svg" width="440" alt="" />
         </div>
         <div class="sizes">
-          <div class="size"><img src="mark-monogram.svg" width="96" alt="" /><b>96</b></div>
-          <div class="size"><img src="mark-monogram.svg" width="48" alt="" /><b>48</b></div>
-          <div class="size"><img src="mark-monogram.svg" width="32" alt="" /><b>32</b></div>
-          <div class="size"><img src="mark-monogram.svg" width="20" alt="" /><b>20</b></div>
-          <p class="note">Every letter is drawn, not typed, so the weight is identical throughout and nothing depends on a font being installed. The A stands alone as the app icon.</p>
+          <div class="size"><img src="mark-plot.svg" width="96" alt="" /><b>96</b></div>
+          <div class="size"><img src="mark-plot.svg" width="48" alt="" /><b>48</b></div>
+          <div class="size"><img src="mark-plot.svg" width="32" alt="" /><b>32</b></div>
+          <div class="size"><img src="mark-plot.svg" width="20" alt="" /><b>20</b></div>
+          <p class="note">
+            Soil ridges, clods and sunflower are the sprite's own colours. The sprout breaks the
+            plot's top edge on purpose — that overlap is what stops it reading as a flat card.
+          </p>
         </div>
       </section>
 
       <section>
         <div class="head">
           <span class="num">3</span>
-          <h2>The Amber Drop</h2>
-          <span>Resin drop holding the valley — hills, furrows, the windmill.</span>
+          <h2>The Vale</h2>
+          <span>A window onto the map: grass, the lane, a pine, the low sun.</span>
         </div>
-        <div class="stage">
-          <div class="dark"><img src="amberdrop.svg" width="200" alt="" /></div>
-          <div class="light"><img src="amberdrop.svg" width="150" alt="" /></div>
+        <div class="lockup">
+          <img src="mark-vale.svg" width="150" alt="" />
+          <img src="wordmark-game.svg" width="440" alt="" />
         </div>
         <div class="sizes">
-          <div class="size"><img src="mark-drop.svg" width="96" alt="" /><b>96</b></div>
-          <div class="size"><img src="mark-drop.svg" width="48" alt="" /><b>48</b></div>
-          <div class="size"><img src="mark-drop.svg" width="32" alt="" /><b>32</b></div>
-          <div class="size"><img src="mark-drop.svg" width="20" alt="" /><b>20</b></div>
-          <p class="note">The only one that says both halves of the name in a single shape. Highest contrast of the three, and the one that survives smallest.</p>
+          <div class="size"><img src="mark-vale.svg" width="96" alt="" /><b>96</b></div>
+          <div class="size"><img src="mark-vale.svg" width="48" alt="" /><b>48</b></div>
+          <div class="size"><img src="mark-vale.svg" width="32" alt="" /><b>32</b></div>
+          <div class="size"><img src="mark-vale.svg" width="20" alt="" /><b>20</b></div>
+          <p class="note">
+            Held to four shapes. An earlier pass carried a plot and a sunflower as well, and at
+            20px the whole thing turned to noise — this is what was left after cutting.
+          </p>
         </div>
       </section>
     </div>
