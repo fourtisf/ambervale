@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type Phaser from 'phaser';
 import { bridge } from '@/game/bridge';
-import { authGuest, type FarmState } from '@/lib/api';
+import { authGuest, fetchInvite, type FarmState } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import Controls from './Controls';
+import InviteGate from './InviteGate';
 import Hud from './Hud';
 import { AwayWatcher } from './EconomyModals';
 import ModalHost from './ModalHost';
@@ -39,11 +40,24 @@ export default function GameCanvas() {
   const [started, setStarted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** null while we do not yet know whether the door is locked. */
+  const [gated, setGated] = useState<boolean | null>(null);
 
   const connect = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Ask the gate first. Calling /auth/guest without a pass returns 403,
+      // and "Could not reach the farm" is the wrong thing to tell someone who
+      // simply has not typed their code yet.
+      const invite = await fetchInvite();
+      if (invite.required && !invite.ok) {
+        setGated(true);
+        setLoading(false);
+        return;
+      }
+      setGated(false);
+
       const { farm: state } = await authGuest();
       state.__receivedAt = Date.now();
       setFarm(state);
@@ -108,6 +122,17 @@ export default function GameCanvas() {
     setStarted(true);
     bridge.emit('start', undefined);
   }, []);
+
+  if (gated) {
+    return (
+      <InviteGate
+        onPass={() => {
+          setGated(false);
+          void connect();
+        }}
+      />
+    );
+  }
 
   return (
     <>

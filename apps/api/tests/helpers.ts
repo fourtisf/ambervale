@@ -9,6 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import type { PrismaClient } from '@prisma/client';
 
 export const BASE = process.env.TEST_API_URL ?? 'http://localhost:4021';
 
@@ -17,8 +18,16 @@ export interface Response<T = Record<string, unknown>> {
   body: T;
 }
 
-/** A browser-like client: its own deviceId and its own cookie jar. */
-export function createClient() {
+/**
+ * A browser-like client: its own deviceId and its own cookie jar.
+ *
+ * `ip` sets an X-Forwarded-For, which the API believes only because these
+ * tests connect from the loopback address it is configured to trust — the
+ * same position nginx occupies in production. It exists so a test about a
+ * per-IP limit can have an address to itself instead of sharing one budget
+ * with every other test in the run.
+ */
+export function createClient(opts: { ip?: string } = {}) {
   const jar = new Map<string, string>();
   const deviceId = randomUUID();
 
@@ -30,6 +39,7 @@ export function createClient() {
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'x-device-id': deviceId,
+      ...(opts.ip ? { 'x-forwarded-for': opts.ip } : {}),
     };
     const cookie = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
     if (cookie) headers['cookie'] = cookie;
@@ -61,9 +71,40 @@ export function createClient() {
 
 export type Client = ReturnType<typeof createClient>;
 
+/**
+ * The closed-beta code. Every client has to present it before the API will
+ * talk to it at all, so the helpers do it rather than each test remembering.
+ */
+export const INVITE_CODE = process.env.TEST_INVITE_CODE ?? '1990';
+
+/** Puts a pass in this client's cookie jar. Safe to call when the gate is off. */
+export async function passGate(client: Client): Promise<void> {
+  await client.call('/auth/invite', { code: INVITE_CODE });
+}
+
+/**
+ * A bare `cookie:` header carrying nothing but a gate pass.
+ *
+ * For the tests that call fetch by hand precisely because they are checking
+ * what happens with no session — they still have to get through the front
+ * door first, or they measure the gate instead of the thing they name.
+ */
+export async function passHeader(): Promise<string> {
+  const res = await fetch(`${BASE}/auth/invite`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ code: INVITE_CODE }),
+  });
+  for (const raw of res.headers.getSetCookie?.() ?? []) {
+    if (raw.startsWith('av_inv=')) return raw.split(';')[0]!;
+  }
+  return '';
+}
+
 /** Registers a fresh guest account and returns its client plus first farm. */
 export async function newPlayer(): Promise<{ client: Client; farm: FarmLike }> {
   const client = createClient();
+  await passGate(client);
   const res = await client.call<{ farm: FarmLike }>('/auth/guest', { deviceId: client.deviceId });
   return { client, farm: res.body.farm };
 }
@@ -190,9 +231,26 @@ export async function endow(
   }
 }
 
+/**
+ * Forgets the invite gate's per-IP failure tally.
+ *
+ * Every test here shares one IP, so a run that deliberately exhausts the
+ * budget would otherwise lock out the next run for the whole window.
+ */
+export async function clearInviteLimit(): Promise<void> {
+  const { default: Redis } = await import('ioredis');
+  const redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
+  try {
+    const keys = await redis.keys('invite:*');
+    if (keys.length > 0) await redis.del(...keys);
+  } finally {
+    redis.disconnect();
+  }
+}
+
 /** Runs a callback with a throwaway Prisma client, for direct state surgery. */
 export async function withDb<T>(
-  fn: (db: import('@prisma/client').PrismaClient) => Promise<T>,
+  fn: (db: PrismaClient) => Promise<T>,
 ): Promise<T> {
   const { PrismaClient } = await import('@prisma/client');
   const db = new PrismaClient();

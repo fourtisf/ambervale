@@ -237,6 +237,14 @@ export interface FarmState {
   __receivedAt?: number;
 }
 
+export interface InviteState {
+  required: boolean;
+  ok: boolean;
+  attemptsLeft: number | null;
+}
+
+export const fetchInvite = (): Promise<InviteState> => apiGet('/auth/invite');
+
 export const authGuest = (): Promise<{ created: boolean; farm: FarmState }> =>
   apiPost('/auth/guest', { deviceId: getDeviceId() });
 

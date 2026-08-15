@@ -45,6 +45,27 @@ const EnvSchema = z.object({
   SESSION_SECRET: z.string().min(32),
   ENABLE_CLAIM: boolish.default(false),
 
+  /**
+   * Which upstream hops may be believed about the caller's address.
+   *
+   * Accepts what Fastify accepts: a comma-separated list of addresses or CIDR
+   * blocks, one of the named ranges ('loopback', 'linklocal', 'uniquelocal'),
+   * or a hop count. The default is the single case this game actually ships
+   * in — nginx terminating TLS on the same host — and it is deliberately
+   * narrow, because widening it is how per-IP limits stop meaning anything.
+   */
+  TRUST_PROXY: z.string().min(1).default('loopback'),
+
+  /**
+   * Closed-beta gate. A player must present this before the API will create
+   * or resume an account.
+   *
+   * Defaults to a value rather than to empty, so a deploy that forgets to set
+   * it stays *closed*. Setting it to an empty string is the explicit way to
+   * open the game to everyone.
+   */
+  INVITE_CODE: z.string().default('1990'),
+
   /** Basic-auth credentials for the admin CSV export and /metrics. */
   ADMIN_USER: z.string().default('admin'),
   ADMIN_PASSWORD: z.string().default(''),

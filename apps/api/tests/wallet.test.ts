@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { PATRONAGE } from '@ambervale/game-config';
-import { createClient, endow, newPlayer, paced, withDb, type FarmLike } from './helpers';
+import { endow, newPlayer, paced, withDb, type Client, type FarmLike } from './helpers';
 
 type Nonce = { nonce: string; domain: string; userId: string };
 type SignIn = { outcome: string; address: string; farm: FarmLike };
@@ -37,7 +37,7 @@ function message(n: Nonce, address: string): string {
 
 /** Signs in with a wallet, the way the browser does. */
 async function connect(
-  client: ReturnType<typeof createClient>,
+  client: Client,
   account: ReturnType<typeof privateKeyToAccount>,
 ) {
   const n = await paced(() => client.call<Nonce>('/wallet/nonce', {}));
@@ -260,9 +260,7 @@ describe('the east meadow', () => {
       items: { wood: 200, stone: 200 },
     });
 
-    const res = await paced(() =>
-      client.call<{ error: string }>('/act/expand', { zone: 'east' }),
-    );
+    const res = await paced(() => client.call<{ error: string }>('/act/expand', { zone: 'east' }));
     assert.equal(res.status, 409);
     assert.equal(res.body.error, 'PLOT_LOCKED');
   });

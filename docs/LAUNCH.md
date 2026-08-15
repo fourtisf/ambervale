@@ -4,24 +4,54 @@ Everything needed to put AMBERVALE on a VPS and to take it back off again.
 
 ## 1. Environment matrix
 
-| Variable                        | api | web | Notes                                                                       |
-| ------------------------------- | :-: | :-: | --------------------------------------------------------------------------- |
-| `NODE_ENV`                      | ✅  | ✅  | `production` on the VPS. Flips the cookie to `Secure; SameSite=None`.       |
-| `DATABASE_URL`                  | ✅  |     | Postgres 16. Confirm the port with `pg_lsclusters` first — see below.       |
-| `REDIS_URL`                     | ✅  |     | Sessions, rate limits, action locks.                                        |
-| `WEB_ORIGIN`                    | ✅  |     | **Comma-separated allowlist.** Must include every host players use.         |
-| `SESSION_SECRET`                | ✅  |     | 32+ bytes. `openssl rand -hex 32`. Rotating it logs everyone out.           |
-| `ENABLE_CLAIM`                  | ✅  |     | **`false` at launch.** See §5.                                              |
-| `ADMIN_USER` / `ADMIN_PASSWORD` | ✅  |     | Guards `/metrics` and `/admin/claim-intents`. Empty password disables both. |
-| `SENTRY_DSN`                    | ✅  | ✅  | Empty disables error reporting entirely.                                    |
-| `NEXT_PUBLIC_API_URL`           |     | ✅  | Must be same-site with the page host — see the warning below.               |
-| `NEXT_PUBLIC_CHAIN_*`           |     | ✅  | Chain ids and RPCs. See `docs/DECISIONS.md`.                                |
+| Variable                        | api | web | Notes                                                                                  |
+| ------------------------------- | :-: | :-: | -------------------------------------------------------------------------------------- |
+| `NODE_ENV`                      | ✅  | ✅  | `production` on the VPS. Flips the cookie to `Secure; SameSite=None`.                  |
+| `DATABASE_URL`                  | ✅  |     | Postgres 16. Confirm the port with `pg_lsclusters` first — see below.                  |
+| `REDIS_URL`                     | ✅  |     | Sessions, rate limits, action locks.                                                   |
+| `WEB_ORIGIN`                    | ✅  |     | **Comma-separated allowlist.** Must include every host players use.                    |
+| `SESSION_SECRET`                | ✅  |     | 32+ bytes. `openssl rand -hex 32`. Rotating it logs everyone out.                      |
+| `ENABLE_CLAIM`                  | ✅  |     | **`false` at launch.** See §5.                                                         |
+| `INVITE_CODE`                   | ✅  |     | Closed beta. Defaults to a value, so a deploy that forgets it stays shut. See §1a.     |
+| `TRUST_PROXY`                   | ✅  |     | Which hops may be believed about a caller's IP. `loopback` for nginx on the same host. |
+| `ADMIN_USER` / `ADMIN_PASSWORD` | ✅  |     | Guards `/metrics` and `/admin/claim-intents`. Empty password disables both.            |
+| `SENTRY_DSN`                    | ✅  | ✅  | Empty disables error reporting entirely.                                               |
+| `NEXT_PUBLIC_API_URL`           |     | ✅  | Must be same-site with the page host — see the warning below.                          |
+| `NEXT_PUBLIC_CHAIN_*`           |     | ✅  | Chain ids and RPCs. See `docs/DECISIONS.md`.                                           |
 
 > **Cookie footgun.** The session cookie is `SameSite=Lax` in development.
 > `localhost` and `127.0.0.1` are _different sites_, so mixing them drops the
 > cookie on every request after login. In production `NODE_ENV=production`
 > switches the cookie to `Secure; SameSite=None`, which works across
 > subdomains — but the origin must still appear in `WEB_ORIGIN`.
+
+## 1a. The invite gate
+
+The game is closed. `INVITE_CODE` is checked by the API, not by the browser —
+every endpoint except `/health`, `/auth/invite`, `/admin` and `/metrics`
+answers `403 INVITE_REQUIRED` without a signed pass cookie. Skipping the
+landing page and calling the API by hand gets the same refusal, which is the
+only arrangement worth shipping: the web bundle is public, so a screen that
+only exists in the browser is decoration.
+
+Operating it:
+
+| To do this                | Do                                                                                                                                        |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Change the code           | Edit `INVITE_CODE`, restart the API. Every pass issued under the old code stops working, because the pass carries the code's fingerprint. |
+| Open the game to everyone | Set `INVITE_CODE=` (empty), restart. This is the _only_ way to open it; an unset variable stays closed on purpose.                        |
+| Check the door from here  | `curl -s https://api.<host>/auth/invite` → `{"required":true,"ok":false,…}`                                                               |
+
+**A four-digit code is a soft lock.** Ten thousand combinations is nothing to a
+script; what makes it hold at all is the attempt limiter — ten wrong guesses
+per address per five minutes, and sixty per minute across the whole site. That
+second ceiling is what stops a proxy pool, and it is why `TRUST_PROXY` matters:
+set it to `true` and callers can hand themselves a new address per request with
+an `X-Forwarded-For` header, which voids both limits silently. Keep it as
+narrow as the topology allows — `loopback` while nginx and the API share a host.
+
+If the beta grows past friends-and-family, lengthen the code rather than
+tightening the limiter. Length is the only defence that scales.
 
 ## 2. First deploy
 

@@ -236,6 +236,36 @@ is promised. That is a disclosure, not a policy — the policy is still a
 decision the operator has to make, and `ENABLE_CLAIM` stays false until they
 have made it.
 
+## The invite gate lives on the server
+
+The request was a code on the landing page. A code on the landing page is not a
+gate: the bundle that checks it is public, `/play` is one address bar away, and
+the API would happily create an account for anyone who typed a `curl`. So the
+check is in the API, the answer is a signed cookie, and the landing screen is a
+courtesy that saves someone a 403.
+
+The hook that enforces it is global, with a short allowlist of open prefixes,
+rather than a guard on each route. The alternative fails silently: a route
+added six months from now would be public by default and nobody would notice
+until it mattered. This way, being reachable without a pass is something a
+route has to be named to get.
+
+Two attempt limits, not one. The per-address budget assumes an attacker has one
+address; anyone with a proxy pool walks through it, and ten thousand
+combinations at full speed is minutes. The second ceiling — sixty failures a
+minute across the whole site — bounds the door itself, at the honest cost that
+someone hammering it can inconvenience real invitees for up to a minute.
+
+Both limits rested on knowing who is calling, and `trustProxy: true` meant not
+knowing: with every hop trusted, the address comes from the _leftmost_
+`X-Forwarded-For` entry, which the caller writes. Rotating that header bought a
+fresh budget per request and voided the cap entirely. Trust is now the single
+hop the game actually runs behind, so the address is the one nginx appended.
+
+None of this makes `1990` strong. Four digits is a soft lock, and the code says
+so where someone changing it will read it: the limiter buys days instead of
+minutes, and a longer code is the only real fix.
+
 ## Known reconciliations
 
 `docs/AMBERVALE_HANDOFF.md` and `docs/prototype/ambervale2.html` were never

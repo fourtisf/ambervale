@@ -6,6 +6,7 @@ import { env, isProd } from './env';
 import { ApiError } from './lib/errors';
 import { captureError } from './lib/sentry';
 import { ValidationError, sendValidationError } from './lib/validate';
+import { hasPass, inviteRequired } from './lib/invite';
 import authPlugin from './plugins/auth';
 import metricsPlugin from './plugins/metrics';
 import { actionRoutes } from './routes/actions';
@@ -16,12 +17,28 @@ import { deliveryRoutes } from './routes/deliveries';
 import { economyRoutes } from './routes/economy';
 import { farmRoutes } from './routes/farm';
 import { healthRoutes } from './routes/health';
+import { inviteRoutes } from './routes/invite';
 import { tutorialRoutes } from './routes/tutorial';
 import { walletRoutes } from './routes/wallet';
 
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
-    trustProxy: true,
+    /**
+     * Which hop to believe when working out who is calling.
+     *
+     * Not `true`. Trusting every hop means taking the *leftmost*
+     * X-Forwarded-For entry, and that entry is written by the caller — so
+     * anyone could hand themselves a fresh identity per request just by
+     * changing a header, which quietly voids every per-IP limit we have,
+     * the invite gate's included.
+     *
+     * Trusting only the proxy we actually run behind makes the address the
+     * one nginx appended, which the caller cannot forge. Configurable
+     * because the trusted hop is the loopback address only while nginx and
+     * the API share a host; put them in separate containers and it becomes
+     * the bridge network instead.
+     */
+    trustProxy: env.TRUST_PROXY,
     genReqId: () => randomUUID(),
     requestIdHeader: 'x-request-id',
     logger: {
@@ -92,7 +109,29 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(metricsPlugin);
   await app.register(authPlugin);
 
+  /**
+   * The closed-beta gate.
+   *
+   * Placed here rather than on each route because the failure mode of the
+   * alternative is silent: a new endpoint added later would be public by
+   * default and nobody would notice. This way a route has to be named below
+   * to be reachable without a pass.
+   */
+  const OPEN_PREFIXES = ['/health', '/auth/invite', '/admin', '/metrics'];
+
+  app.addHook('onRequest', async (req, reply) => {
+    if (!inviteRequired()) return;
+    if (req.method === 'OPTIONS') return;
+    if (OPEN_PREFIXES.some((p) => req.url.split('?')[0]?.startsWith(p))) return;
+    if (hasPass(req)) return;
+
+    return reply
+      .status(403)
+      .send({ error: 'INVITE_REQUIRED', message: 'This farm is invite-only right now.' });
+  });
+
   await app.register(healthRoutes);
+  await app.register(inviteRoutes);
   await app.register(authRoutes);
   await app.register(farmRoutes);
   await app.register(actionRoutes);

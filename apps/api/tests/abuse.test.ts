@@ -10,7 +10,16 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, describe, it } from 'node:test';
-import { createClient, newPlayer, paced, sleep, type FarmLike } from './helpers';
+import {
+  BASE,
+  createClient,
+  newPlayer,
+  paced,
+  passGate,
+  passHeader,
+  sleep,
+  type FarmLike,
+} from './helpers';
 
 /** Plants and harvests one fast crop, returning the farm afterwards. */
 async function growOne(client: ReturnType<typeof createClient>, plotIndex = 0) {
@@ -24,16 +33,20 @@ async function growOne(client: ReturnType<typeof createClient>, plotIndex = 0) {
 
 describe('authentication', () => {
   it('rejects a forged session cookie', async () => {
-    const res = await fetch(`${process.env.TEST_API_URL ?? 'http://localhost:4021'}/farm`, {
-      headers: { cookie: 'av_sess=forged.notavalidsignature' },
+    // Carries a gate pass, so a 401 here means the signature was rejected
+    // rather than the invite gate turning the request away first.
+    const pass = await passHeader();
+    const res = await fetch(`${BASE}/farm`, {
+      headers: { cookie: `${pass}; av_sess=forged.notavalidsignature` },
     });
     assert.equal(res.status, 401);
   });
 
   it('rejects an unauthenticated mutation', async () => {
-    const res = await fetch(`${process.env.TEST_API_URL ?? 'http://localhost:4021'}/act/plant`, {
+    const pass = await passHeader();
+    const res = await fetch(`${BASE}/act/plant`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie: pass },
       body: JSON.stringify({ plotIndex: 0, cropKey: 'sunflower' }),
     });
     assert.equal(res.status, 401);
@@ -48,6 +61,9 @@ describe('authentication', () => {
   it('restores the same account from a deviceId with no cookie', async () => {
     const { client, farm } = await newPlayer();
     const fresh = createClient();
+    // "No cookie" means no *session*; the gate pass is what any browser
+    // arriving at the site would already be carrying.
+    await passGate(fresh);
     const res = await fresh.call<{ created: boolean; farm: FarmLike }>('/auth/guest', {
       deviceId: client.deviceId,
     });

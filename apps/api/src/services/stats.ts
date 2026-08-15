@@ -86,6 +86,18 @@ export interface Stats {
 /** A farm that never planted anything is a page view, not a player. */
 const PLAYED = { bootstrapped: true, plantedCount: { gt: 0 } } as const;
 
+/**
+ * The cohort the level steps of the funnel are measured within.
+ *
+ * The level thresholds have to be intersected with this rather than counted
+ * across everyone, because XP is not only paid for harvesting — chopping,
+ * mining and collecting eggs all grant it, so a farm can reach level 3 having
+ * never taken a crop. Counting those farms under a step below them in the
+ * funnel is how you get a stage reporting more people than the one it
+ * supposedly drains from.
+ */
+const HARVESTED = { ...PLAYED, harvestedCount: { gt: 0 } } as const;
+
 export async function readStats(db: PrismaClient, windowDays = 14): Promise<Stats> {
   const now = Date.now();
   const since = new Date(now - windowDays * DAY_MS);
@@ -103,18 +115,19 @@ export async function readStats(db: PrismaClient, windowDays = 14): Promise<Stat
   // events, so it stays correct for farms that predate any given event kind.
   const [harvested, level3, delivered, level5, crafted, level8, expandedNorth, expandedEast] =
     await Promise.all([
-      db.user.count({ where: { ...PLAYED, harvestedCount: { gt: 0 } } }),
-      db.user.count({ where: { ...PLAYED, level: { gte: DELIVERIES.unlockLv } } }),
+      db.user.count({ where: { ...HARVESTED } }),
+      db.user.count({ where: { ...HARVESTED, level: { gte: DELIVERIES.unlockLv } } }),
       db.user.count({ where: { ...PLAYED, deliveriesDone: { gt: 0 } } }),
-      db.user.count({ where: { ...PLAYED, level: { gte: PATRONAGE.unlockLv } } }),
+      db.user.count({ where: { ...HARVESTED, level: { gte: PATRONAGE.unlockLv } } }),
       db.user.count({ where: { ...PLAYED, craftCount: { gt: 0 } } }),
-      db.user.count({ where: { ...PLAYED, level: { gte: 8 } } }),
+      db.user.count({ where: { ...HARVESTED, level: { gte: 8 } } }),
       db.user.count({ where: { ...PLAYED, expansion: { north: true } } }),
       db.user.count({ where: { ...PLAYED, expansion: { east: true } } }),
     ]);
 
   // Every step here is genuinely a subset of the one above: you cannot
-  // harvest without planting, or reach level 5 without passing level 3.
+  // harvest without planting, and each level step is counted inside the
+  // harvest cohort, so passing level 5 implies having passed level 3.
   const raw: [string, number][] = [
     ['Started a farm', total],
     ['Planted something', played],
