@@ -27,6 +27,23 @@ inkscape docs/brand/x-header.svg -w 1500 -h 500 -o docs/brand/x-header.png
 Check the result at the size it will be seen — the avatar is about 48px in a
 timeline, and the header's bottom-left disappears under the avatar.
 
+## What makes these not look cheap
+
+Flat vector art reads as clipart for three reasons, and all three are fixed
+here rather than decorated over:
+
+- **Every surface was one colour.** Now light lands on things: a warm glow
+  where the low sun is, gradients down each ridge and each garment, a ring
+  with a lit top edge and a dark underside so it reads as metal.
+- **No air between the layers.** Haze along each crest and a slight blur on
+  the far ones is what turns three stacked shapes into distance.
+- **No surface.** A film-grain overlay at 7–10% is the cheapest thing that
+  stops a large flat fill looking like a fill.
+
+The header also has the **farm in it** — the house, barn and windmill from
+`STRUCTURES`, with their windows lit, and fenced plots either side. Earlier
+drafts were hills and conifers, which could have belonged to any game.
+
 ## Two things the layout is built around
 
 **X crops the avatar to a circle.** The medallion is inset by 4% rather than

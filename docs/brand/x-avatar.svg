@@ -1,50 +1,114 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Ambervale">
-  <title>AMBERVALE — X profile picture</title>
+  <title>AMBERVALE — profile mark</title>
   <!--
-    The farmer mark, cut for an X profile picture.
+    The farmer, finished properly.
 
-    Two things differ from apps/web/public/brand/mark.svg, and both are about
-    where this ends up rather than about the drawing:
+    The flat version of this read as clipart, and the reason was that every
+    surface in it was one colour: a solid disc, a solid ring, a solid tunic.
+    What separates a mark from an icon is that light lands on it. So: a warm
+    glow behind the head where the low sun is, a shaded lower half, a ring
+    with a lit top edge and a dark underside so it reads as metal rather than
+    as a circle, an inner shadow around the rim, and grain over the whole
+    thing so the colour has a surface.
 
-    1. The square is filled, not transparent. X crops to a circle, but the
-       file is also shown square in places (some clients, link previews, the
-       upload preview itself), and transparent corners land as white on a
-       light surface and black on a dark one.
-    2. The medallion is inset by 4%. X's crop is the inscribed circle, so a
-       ring drawn hard against the edge is one rounding error away from being
-       shaved on one side and not the other — which is the kind of fault
-       nobody notices until it is everywhere.
+    Two constraints from where it ends up rather than from the drawing:
+    the square is filled, because X shows this file square in a few places and
+    transparent corners land white on a light client and black on a dark one;
+    and the medallion is inset, because X crops to the inscribed circle and a
+    ring on that exact line is one rounding error from being shaved on one
+    side only.
   -->
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#14495e"/>
-      <stop offset="1" stop-color="#07222e"/>
+    <radialGradient id="sky" cx="0.62" cy="0.30" r="0.95">
+      <stop offset="0" stop-color="#1d5a70"/>
+      <stop offset="0.45" stop-color="#124054"/>
+      <stop offset="1" stop-color="#06202c"/>
+    </radialGradient>
+    <radialGradient id="warm" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#f4b942" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#f4b942" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#ffd97e"/>
+      <stop offset="0.42" stop-color="#f4b942"/>
+      <stop offset="0.72" stop-color="#c98a22"/>
+      <stop offset="1" stop-color="#f7c65a"/>
     </linearGradient>
-    <clipPath id="clip"><circle cx="200" cy="200" r="188"/></clipPath>
+    <linearGradient id="hat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2d68a"/>
+      <stop offset="1" stop-color="#d4a94a"/>
+    </linearGradient>
+    <linearGradient id="crown" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e3b95c"/>
+      <stop offset="1" stop-color="#c1913c"/>
+    </linearGradient>
+    <linearGradient id="tunic" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5796c6"/>
+      <stop offset="1" stop-color="#356d99"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f7d6b0"/>
+      <stop offset="1" stop-color="#e5b78c"/>
+    </linearGradient>
+    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#68a851"/>
+      <stop offset="1" stop-color="#3f7a3c"/>
+    </linearGradient>
+
+    <clipPath id="clip"><circle cx="200" cy="200" r="182"/></clipPath>
+
+    <radialGradient id="inner" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.72" stop-color="#000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.5"/>
+    </radialGradient>
+
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="5" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="9"/></filter>
   </defs>
 
-  <rect width="400" height="400" fill="#0a2e3d"/>
-  <circle cx="200" cy="200" r="188" fill="url(#bg)"/>
+  <rect width="400" height="400" fill="#07222e"/>
+  <circle cx="200" cy="200" r="182" fill="url(#sky)"/>
 
   <g clip-path="url(#clip)">
-    <g transform="translate(200 200) scale(1.5625) translate(-128 -128)">
-      <path d="M -10 214 q 138 -30 276 0 L 266 280 L -10 280 Z" fill="#5a9a4a"/>
-      <path d="M -10 214 q 138 -30 276 0" fill="none" stroke="#68a851" stroke-width="6"/>
+    <!-- The low sun of the whole brand, behind his shoulder. -->
+    <circle cx="286" cy="150" r="150" fill="url(#warm)"/>
 
-      <g stroke="#f5e6c8" stroke-width="6" stroke-linejoin="round">
-        <path d="M 62 236 q 0 -58 66 -58 q 66 0 66 58 Z" fill="#4a86b8"/>
-        <circle cx="128" cy="132" r="46" fill="#f0c9a0"/>
-        <ellipse cx="128" cy="106" rx="80" ry="23" fill="#e8c46a"/>
-        <path d="M 84 100 q 8 -46 44 -46 q 36 0 44 46 Z" fill="#d4a94a"/>
-      </g>
+    <!-- The field he is standing in. -->
+    <path d="M -20 296 q 220 -46 440 0 L 420 420 L -20 420 Z" fill="url(#grass)"/>
+    <path d="M -20 296 q 220 -46 440 0" fill="none" stroke="#7cbb5e" stroke-width="7" opacity="0.65"/>
 
-      <path d="M 86 98 q 42 12 84 0 l 0 8 q -42 12 -84 0 Z" fill="#f4b942"/>
-      <g fill="#2a1a05">
-        <circle cx="112" cy="140" r="7"/>
-        <circle cx="146" cy="140" r="7"/>
-      </g>
+    <!-- The figure sits inside a margin rather than filling the disc. Space
+         between the brim and the ring is most of what separates an emblem
+         from a sticker; the first pass had the hat almost touching it. -->
+    <g transform="translate(200 212) scale(0.86) translate(-200 -212)">
+    <g stroke="#f5e6c8" stroke-width="9" stroke-linejoin="round">
+      <path d="M 97 369 q 0 -91 103 -91 q 103 0 103 91 Z" fill="url(#tunic)"/>
+      <circle cx="200" cy="206" r="72" fill="url(#skin)"/>
+      <ellipse cx="200" cy="166" rx="125" ry="36" fill="url(#hat)"/>
+      <path d="M 131 156 q 12 -72 69 -72 q 57 0 69 72 Z" fill="url(#crown)"/>
     </g>
+
+    <!-- Hat band, and the two dots the mark is known by. -->
+    <path d="M 134 153 q 66 19 132 0 l 0 13 q -66 19 -132 0 Z" fill="#f4b942"/>
+    <g fill="#2a1a05">
+      <circle cx="175" cy="219" r="11"/>
+      <circle cx="228" cy="219" r="11"/>
+    </g>
+    <!-- Shadow the brim casts on his face, which is what stops the head
+         reading as a flat disc with dots on it. -->
+    <path d="M 128 166 q 72 34 144 0 l 0 20 q -72 28 -144 0 Z" fill="#2a1a05" opacity="0.11"
+          filter="url(#soft)"/>
+    </g>
+
+    <circle cx="200" cy="200" r="182" fill="url(#inner)"/>
+    <rect width="400" height="400" filter="url(#grain)" opacity="0.10" style="mix-blend-mode:overlay"/>
   </g>
 
-  <circle cx="200" cy="200" r="188" fill="none" stroke="#f4b942" stroke-width="12"/>
+  <circle cx="200" cy="200" r="182" fill="none" stroke="url(#ring)" stroke-width="15"/>
+  <circle cx="200" cy="200" r="190" fill="none" stroke="#2a1a05" stroke-width="3" opacity="0.35"/>
+  <circle cx="200" cy="200" r="174.5" fill="none" stroke="#7a4f12" stroke-width="2" opacity="0.5"/>
 </svg>
