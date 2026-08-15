@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="AMBERVALE — The Drop">
+  <title>AMBERVALE — The Drop</title>
+  <!-- Amber itself, with a sprout in it. The crypto-native read: geometric, high contrast, no scene to lose at 16px. -->
+  <defs>
+    <linearGradient id="rim" x1="0.12" y1="0.02" x2="0.88" y2="0.98">
+      <stop offset="0" stop-color="#ffe9ae"/><stop offset="0.18" stop-color="#f7cd6a"/>
+      <stop offset="0.42" stop-color="#e0a637"/><stop offset="0.62" stop-color="#a9711b"/>
+      <stop offset="0.82" stop-color="#d8a13a"/><stop offset="1" stop-color="#f6d385"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffe4a0"/><stop offset="0.5" stop-color="#f4b942"/>
+      <stop offset="1" stop-color="#c07f1c"/>
+    </linearGradient>
+    <radialGradient id="enamel" cx="0.40" cy="0.30" r="0.92">
+      <stop offset="0" stop-color="#1c5b73"/><stop offset="0.42" stop-color="#0f3f55"/>
+      <stop offset="1" stop-color="#05202c"/>
+    </radialGradient>
+    <radialGradient id="recess" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.70" stop-color="#000" stop-opacity="0"/>
+      <stop offset="0.92" stop-color="#000" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.62"/>
+    </radialGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="5" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="tight"><feGaussianBlur stdDeviation="3"/></filter>
+    <clipPath id="field"><circle cx="200" cy="200" r="166"/></clipPath>
+</defs>
+  
+  <rect width="400" height="400" fill="#061c26"/>
+  <ellipse cx="200" cy="214" rx="186" ry="184" fill="#000" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="200" cy="200" r="184" fill="url(#rim)"/>
+  <circle cx="200" cy="200" r="184" fill="none" stroke="#5b3a0c" stroke-width="3" opacity="0.55"/>
+  <circle cx="200" cy="200" r="170" fill="none" stroke="#fff3cf" stroke-width="2.5" opacity="0.5"/>
+  <path d="M 64 122 A 152 152 0 0 1 196 46" fill="none" stroke="#fff8e4" stroke-width="7"
+        stroke-linecap="round" opacity="0.55" filter="url(#tight)"/>
+  <path d="M 330 262 A 152 152 0 0 1 232 350" fill="none" stroke="#fff2d0" stroke-width="5"
+        stroke-linecap="round" opacity="0.22" filter="url(#tight)"/>
+  <circle cx="200" cy="200" r="166" fill="url(#enamel)"/>
+
+  <g clip-path="url(#field)">
+    
+    <path d="M 200 92 C 252 158 286 196 286 236 a 86 86 0 0 1 -172 0 c 0 -40 34 -78 86 -144 Z"
+          fill="url(#gold)"/>
+    <path d="M 200 92 C 252 158 286 196 286 236 a 86 86 0 0 1 -172 0 c 0 -40 34 -78 86 -144 Z"
+          fill="none" stroke="#8a5a10" stroke-width="4" opacity="0.5"/>
+    <path d="M 200 300 L 200 214" stroke="#7a4f12" stroke-width="9" stroke-linecap="round"/>
+    <path d="M 200 236 q -42 -8 -50 -50 q 44 2 50 50 Z" fill="#2f6b34"/>
+    <path d="M 200 214 q 40 -12 46 -54 q -42 6 -46 54 Z" fill="#3d8340"/>
+    <ellipse cx="168" cy="164" rx="26" ry="38" transform="rotate(-22 168 164)" fill="#fff6dc" opacity="0.30"/>
+
+    
+    <circle cx="200" cy="200" r="166" fill="url(#recess)"/>
+    <ellipse cx="132" cy="112" rx="150" ry="104" transform="rotate(-24 132 112)"
+             fill="#ffffff" opacity="0.085" filter="url(#soft)"/>
+    <rect width="400" height="400" filter="url(#grain)" opacity="0.09" style="mix-blend-mode:overlay"/>
+
+  </g>
+</svg>

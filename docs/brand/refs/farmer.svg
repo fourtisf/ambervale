@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="AMBERVALE — The Farmer">
+  <title>AMBERVALE — The Farmer</title>
+  <!-- The mark you already picked, cut down: no shoulders, no outline, hat and face only, filling the frame. Simplifying is often what premium means. -->
+  <defs>
+    <linearGradient id="rim" x1="0.12" y1="0.02" x2="0.88" y2="0.98">
+      <stop offset="0" stop-color="#ffe9ae"/><stop offset="0.18" stop-color="#f7cd6a"/>
+      <stop offset="0.42" stop-color="#e0a637"/><stop offset="0.62" stop-color="#a9711b"/>
+      <stop offset="0.82" stop-color="#d8a13a"/><stop offset="1" stop-color="#f6d385"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffe4a0"/><stop offset="0.5" stop-color="#f4b942"/>
+      <stop offset="1" stop-color="#c07f1c"/>
+    </linearGradient>
+    <radialGradient id="enamel" cx="0.40" cy="0.30" r="0.92">
+      <stop offset="0" stop-color="#1c5b73"/><stop offset="0.42" stop-color="#0f3f55"/>
+      <stop offset="1" stop-color="#05202c"/>
+    </radialGradient>
+    <radialGradient id="recess" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.70" stop-color="#000" stop-opacity="0"/>
+      <stop offset="0.92" stop-color="#000" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.62"/>
+    </radialGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="5" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="tight"><feGaussianBlur stdDeviation="3"/></filter>
+    <clipPath id="field"><circle cx="200" cy="200" r="166"/></clipPath>
+</defs>
+  
+  <rect width="400" height="400" fill="#061c26"/>
+  <ellipse cx="200" cy="214" rx="186" ry="184" fill="#000" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="200" cy="200" r="184" fill="url(#rim)"/>
+  <circle cx="200" cy="200" r="184" fill="none" stroke="#5b3a0c" stroke-width="3" opacity="0.55"/>
+  <circle cx="200" cy="200" r="170" fill="none" stroke="#fff3cf" stroke-width="2.5" opacity="0.5"/>
+  <path d="M 64 122 A 152 152 0 0 1 196 46" fill="none" stroke="#fff8e4" stroke-width="7"
+        stroke-linecap="round" opacity="0.55" filter="url(#tight)"/>
+  <path d="M 330 262 A 152 152 0 0 1 232 350" fill="none" stroke="#fff2d0" stroke-width="5"
+        stroke-linecap="round" opacity="0.22" filter="url(#tight)"/>
+  <circle cx="200" cy="200" r="166" fill="url(#enamel)"/>
+
+  <g clip-path="url(#field)">
+    
+    <defs>
+      <linearGradient id="hatg" x1="0" y1="0" x2="0.2" y2="1">
+        <stop offset="0" stop-color="#f7dc9a"/><stop offset="1" stop-color="#bd8f34"/></linearGradient>
+      <linearGradient id="sking" x1="0.2" y1="0" x2="0.8" y2="1">
+        <stop offset="0" stop-color="#fadfbc"/><stop offset="1" stop-color="#dcaa7c"/></linearGradient>
+    </defs>
+    <circle cx="200" cy="228" r="96" fill="url(#sking)"/>
+    <ellipse cx="200" cy="176" rx="164" ry="46" fill="url(#hatg)"/>
+    <path d="M 112 162 q 16 -92 88 -92 q 72 0 88 92 Z" fill="url(#hatg)"/>
+    <path d="M 116 158 q 84 26 168 0 l 0 18 q -84 26 -168 0 Z" fill="#f4b942"/>
+    <g fill="#2a1a05"><circle cx="168" cy="244" r="14"/><circle cx="236" cy="244" r="14"/></g>
+    <path d="M 108 176 q 92 44 184 0 l 0 26 q -92 38 -184 0 Z" fill="#2a1a05" opacity="0.15" filter="url(#soft)"/>
+
+    
+    <circle cx="200" cy="200" r="166" fill="url(#recess)"/>
+    <ellipse cx="132" cy="112" rx="150" ry="104" transform="rotate(-24 132 112)"
+             fill="#ffffff" opacity="0.085" filter="url(#soft)"/>
+    <rect width="400" height="400" filter="url(#grain)" opacity="0.09" style="mix-blend-mode:overlay"/>
+
+  </g>
+</svg>

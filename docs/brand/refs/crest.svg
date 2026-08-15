@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="AMBERVALE — The Crest">
+  <title>AMBERVALE — The Crest</title>
+  <!-- Heraldic. A shield with the mill on it and two ears of wheat below. The most studio-like of the six, and the most formal. -->
+  <defs>
+    <linearGradient id="rim" x1="0.12" y1="0.02" x2="0.88" y2="0.98">
+      <stop offset="0" stop-color="#ffe9ae"/><stop offset="0.18" stop-color="#f7cd6a"/>
+      <stop offset="0.42" stop-color="#e0a637"/><stop offset="0.62" stop-color="#a9711b"/>
+      <stop offset="0.82" stop-color="#d8a13a"/><stop offset="1" stop-color="#f6d385"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffe4a0"/><stop offset="0.5" stop-color="#f4b942"/>
+      <stop offset="1" stop-color="#c07f1c"/>
+    </linearGradient>
+    <radialGradient id="enamel" cx="0.40" cy="0.30" r="0.92">
+      <stop offset="0" stop-color="#1c5b73"/><stop offset="0.42" stop-color="#0f3f55"/>
+      <stop offset="1" stop-color="#05202c"/>
+    </radialGradient>
+    <radialGradient id="recess" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.70" stop-color="#000" stop-opacity="0"/>
+      <stop offset="0.92" stop-color="#000" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#000" stop-opacity="0.62"/>
+    </radialGradient>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="5" result="n"/>
+      <feColorMatrix in="n" type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.5"/></feComponentTransfer>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="10"/></filter>
+    <filter id="tight"><feGaussianBlur stdDeviation="3"/></filter>
+    <clipPath id="field"><circle cx="200" cy="200" r="166"/></clipPath>
+</defs>
+  
+  <rect width="400" height="400" fill="#061c26"/>
+  <ellipse cx="200" cy="214" rx="186" ry="184" fill="#000" opacity="0.5" filter="url(#soft)"/>
+  <circle cx="200" cy="200" r="184" fill="url(#rim)"/>
+  <circle cx="200" cy="200" r="184" fill="none" stroke="#5b3a0c" stroke-width="3" opacity="0.55"/>
+  <circle cx="200" cy="200" r="170" fill="none" stroke="#fff3cf" stroke-width="2.5" opacity="0.5"/>
+  <path d="M 64 122 A 152 152 0 0 1 196 46" fill="none" stroke="#fff8e4" stroke-width="7"
+        stroke-linecap="round" opacity="0.55" filter="url(#tight)"/>
+  <path d="M 330 262 A 152 152 0 0 1 232 350" fill="none" stroke="#fff2d0" stroke-width="5"
+        stroke-linecap="round" opacity="0.22" filter="url(#tight)"/>
+  <circle cx="200" cy="200" r="166" fill="url(#enamel)"/>
+
+  <g clip-path="url(#field)">
+    
+    <path d="M 200 84 L 306 120 L 306 226 Q 306 296 200 336 Q 94 296 94 226 L 94 120 Z"
+          fill="#0c3346" stroke="url(#gold)" stroke-width="10"/>
+    <path d="M 200 102 L 290 132 L 290 224 Q 290 284 200 318 Q 110 284 110 224 L 110 132 Z"
+          fill="none" stroke="#f4b942" stroke-width="2" opacity="0.4"/>
+    <circle cx="200" cy="158" r="30" fill="url(#gold)"/>
+    <g stroke="url(#gold)" stroke-width="4.5" stroke-linecap="round" opacity="0.85">
+      <line x1="200" y1="112" x2="200" y2="120"/><line x1="200" y1="196" x2="200" y2="204"/>
+      <line x1="154" y1="158" x2="162" y2="158"/><line x1="238" y1="158" x2="246" y2="158"/>
+      <line x1="167" y1="125" x2="173" y2="131"/><line x1="227" y1="185" x2="233" y2="191"/>
+      <line x1="233" y1="125" x2="227" y2="131"/><line x1="173" y1="185" x2="167" y2="191"/>
+    </g>
+    <g transform="translate(0 34)">
+      <line x1="200" y1="290" x2="200" y2="230" stroke="url(#gold)" stroke-width="6" stroke-linecap="round"/>
+      <g fill="url(#gold)">
+        <path d="M 200 232 q 20 -6 26 -26 q -22 2 -26 26 Z"/>
+        <path d="M 200 232 q -20 -6 -26 -26 q 22 2 26 26 Z"/>
+        <path d="M 200 254 q 20 -6 26 -26 q -22 2 -26 26 Z"/>
+        <path d="M 200 254 q -20 -6 -26 -26 q 22 2 26 26 Z"/>
+        <path d="M 200 276 q 20 -6 26 -26 q -22 2 -26 26 Z"/>
+        <path d="M 200 276 q -20 -6 -26 -26 q 22 2 26 26 Z"/>
+        <path d="M 200 214 q 7 -12 0 -26 q -7 14 0 26 Z"/>
+      </g>
+    </g>
+
+    
+    <circle cx="200" cy="200" r="166" fill="url(#recess)"/>
+    <ellipse cx="132" cy="112" rx="150" ry="104" transform="rotate(-24 132 112)"
+             fill="#ffffff" opacity="0.085" filter="url(#soft)"/>
+    <rect width="400" height="400" filter="url(#grain)" opacity="0.09" style="mix-blend-mode:overlay"/>
+
+  </g>
+</svg>
