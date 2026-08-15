@@ -13,8 +13,28 @@ import { useCallback, useEffect, useState } from 'react';
  * since a wrong address on a game's own site is money lost by someone who
  * trusted it.
  */
+/**
+ * Does this look like a contract address anyone could actually use?
+ *
+ * Added after a placeholder from a copy-paste instruction — literally
+ * `0xALAMAT_ASLI_ANDA` — went live and the site spent an evening advertising
+ * an address that did not exist. A configuration value that reaches the public
+ * page unchecked is a configuration value that will eventually be wrong, and
+ * this is the one field where wrong means somebody sends money nowhere.
+ *
+ * Deliberately shape-only: EVM hex, or Solana-style base58. It cannot tell a
+ * real deployment from a typo'd one, but it catches every placeholder anyone
+ * would plausibly leave behind, and an unrecognised value falls back to
+ * "Coming soon" rather than being displayed on trust.
+ */
+function looksLikeAddress(value: string): boolean {
+  if (/^0x[a-fA-F0-9]{40}$/.test(value)) return true;
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+}
+
 export default function ContractRow({ compact = false }: { compact?: boolean }) {
-  const address = process.env.NEXT_PUBLIC_AMBER_CA?.trim() || null;
+  const configured = process.env.NEXT_PUBLIC_AMBER_CA?.trim() ?? '';
+  const address = looksLikeAddress(configured) ? configured : null;
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
