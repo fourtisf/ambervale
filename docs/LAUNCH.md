@@ -82,35 +82,71 @@ pnpm --filter @ambervale/api db:generate
 > suffix and fails with `invalid URI query parameter: "schema"`. Stripping the
 > query string is the whole fix.
 
-**Migration order matters.** Migrations run _before_ the new code starts, and
-must be backwards-compatible with the code still running:
+## 2b. Deploying
+
+One command, on the box:
 
 ```bash
-pnpm --filter @ambervale/api db:deploy   # 1. schema (never `migrate dev` in prod)
-pnpm build                               # 2. compile
-pm2 startOrReload ecosystem.config.cjs   # 3. swap processes
+cd /opt/ambervale && pnpm release
 ```
 
-**Run them chained, not pasted as three lines.** `pnpm deploy` is exactly the
-sequence above joined with `&&`, and the joining is the point: pasted
-separately, a build that fails still reaches `pm2`, which then restarts onto a
-half-written `.next`. Next.js serves that quite happily — the HTML renders and
-every stylesheet it names 404s, so the site comes back as unstyled text at full
-size. It looks like a catastrophic CSS bug and is really just a build that
-never finished.
+That is `ops/deploy.sh`: pull, install, migrate, build, `pm2 startOrReload
+--update-env`, then `ops/verify.sh`. It is `set -euo pipefail`, so the first
+failure stops everything behind it and the running site is left untouched.
 
-If it happens anyway: `rm -rf apps/web/.next && pnpm build && pm2 restart
-ambervale-web`.
+**Not `pnpm deploy`.** pnpm has a built-in command by that name — it deploys a
+workspace package into a directory — and a built-in shadows a script of the
+same name. It answers `ERR_PNPM_NOTHING_TO_DEPLOY` and nothing happens.
 
-> `migrate deploy` applies migrations to the database; it does **not**
-> regenerate the Prisma client, and `pnpm install` skips its postinstall when
-> no dependency changed. A schema column added in the same release therefore
-> exists in Postgres while `@prisma/client` has never heard of it, and the
-> build fails with `error TS2551: Property '<column>' does not exist`.
->
-> `pnpm build` now runs `prisma generate` first, so this cannot recur. On a
-> checkout that predates that change, run
-> `pnpm --filter @ambervale/api db:generate` before building.
+**Why one command rather than the four steps.** They were being pasted as
+separate lines, and a separate line does not care whether the one above it
+failed. Every production incident so far came out of that gap:
+
+| What failed                                | What the operator saw                        |
+| ------------------------------------------ | -------------------------------------------- |
+| build died, `pm2 restart` ran anyway        | unstyled text at full size; every CSS 404     |
+| migration applied, client not regenerated   | `error TS2551: Property 'x' does not exist`   |
+| old process still holding the port          | `curl /health` 200 — from the *old* process   |
+| `NEXT_PUBLIC_*` placeholder baked into HTML | a fake contract address on the landing page   |
+
+The individual steps, if one has to be run alone:
+
+```bash
+pnpm --filter @ambervale/api db:deploy   # schema (never `migrate dev` in prod)
+pnpm build                               # compile — runs `prisma generate` first
+pm2 startOrReload ecosystem.config.cjs --update-env
+pnpm verify                              # proves what is live
+```
+
+Migrations run **before** the new code starts and must be backwards-compatible
+with the code still serving during the swap: additive columns, nullable or
+defaulted, no renames.
+
+If a build directory is already half-written:
+`rm -rf apps/web/.next && pnpm build && pm2 restart ambervale-web`.
+
+## 2c. Proving a deploy landed
+
+```bash
+pnpm verify
+```
+
+Ten checks, none of which can be satisfied by a process merely being up. It
+exits non-zero if anything fails, so it can be chained.
+
+- **Never through the public domain.** Cloudflare will serve a cached 200 of
+  the old page long after the origin changed. Every check speaks to
+  `localhost:4021` and `localhost:4022`.
+- **A stylesheet that loads, not one that is named.** The half-built `.next`
+  failure produces HTML that references CSS which does not exist; the check
+  fetches it and asserts 200.
+- **Two samples of the restart counter, three seconds apart.** "online" is not
+  health — a crash loop is online between crashes. A counter that moves while
+  the check runs is a loop, and that is a fact rather than a threshold. This is
+  what catches an old process still holding the port, where `/health` answers
+  200 from the process being replaced.
+- **Placeholders.** `NEXT_PUBLIC_*` is baked at build time, so a wrong value is
+  compiled into the HTML and no restart will clear it.
 
 Infrastructure:
 
