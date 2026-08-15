@@ -142,7 +142,7 @@ It exits non-zero if anything fails, so it can be chained.
   port and answers every request perfectly.
 - **Never through the public domain.** Cloudflare will serve a cached 200 of
   the old page long after the origin changed. Every check speaks to
-  `localhost:4021` and `localhost:4022`. To ask what the *edge* is serving:
+  `localhost:4021` and `localhost:4022`. To ask what the _edge_ is serving:
   `curl -s https://ambervale.fun/ | grep ambervale-rev` — the meta tag is the
   same one, so a stale cache shows up as an old sha rather than as a hunch.
 - **Postgres and Redis, not just the event loop.** `/health/deep` touches
@@ -179,7 +179,7 @@ It exits non-zero if anything fails, so it can be chained.
   it prints.
 - **A migration that fails halfway** wedges every later deploy with `P3009`.
   Recovery is `pnpm --filter @ambervale/api exec prisma migrate resolve
-  --rolled-back <migration_name>` after fixing the cause — never by editing
+--rolled-back <migration_name>` after fixing the cause — never by editing
   the `_prisma_migrations` table.
 
 Infrastructure:
