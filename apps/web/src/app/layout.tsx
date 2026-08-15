@@ -8,10 +8,26 @@ const DESCRIPTION = 'A little farm, a long evening. Tend it, harvest it, earn $A
  * changes per page, and every crawler that matters fetches it cold — paying
  * for a render on each of those requests buys nothing.
  */
+/**
+ * Which commit this HTML was built from.
+ *
+ * Baked at build time by ops/deploy.sh, and emitted as a meta tag so that
+ * "is the new code actually live?" has an answer that survives every layer
+ * between here and a visitor — pm2 not having restarted, nginx holding a
+ * connection, Cloudflare serving its cache. `curl | grep` settles it.
+ *
+ * `||` rather than `??`: an env var that exists but is empty is the common
+ * case on a deploy box, and it must fall through to the default.
+ */
+const BUILD_REV = process.env.NEXT_PUBLIC_BUILD_REV || 'dev';
+
 export const metadata: Metadata = {
   // Without a base, Next resolves /og.png against localhost and every share
-  // card links at a machine nobody else can reach.
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://ambervale.fun'),
+  // card links at a machine nobody else can reach. `||`, not `??`: an empty
+  // NEXT_PUBLIC_SITE_URL would otherwise reach `new URL('')`, which throws and
+  // fails the whole build.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://ambervale.fun'),
+  other: { 'ambervale-rev': BUILD_REV },
   title: 'AMBERVALE',
   description: DESCRIPTION,
   applicationName: 'AMBERVALE',

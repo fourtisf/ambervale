@@ -6,7 +6,16 @@
  * never to compute a balance for itself.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4021';
+/**
+ * `||` rather than `??` deliberately.
+ *
+ * `??` only falls through on null/undefined, so a `NEXT_PUBLIC_API_URL=` line
+ * left empty in .env.local compiles to the empty string — and every call in
+ * this file then becomes a same-origin request to the web server, which
+ * answers HTML. The failure is silent, baked into the bundle, and survives
+ * every restart.
+ */
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4021';
 
 const DEVICE_KEY = 'ambervale.deviceId';
 

@@ -77,11 +77,24 @@ pnpm --filter @ambervale/api db:deploy || die "migration failed — the database
 WEB="$ROOT/apps/web"
 export NEXT_DIST_DIR=.next-build
 
+# Stamp both halves with the commit they were built from. Without this, "is
+# the new code live?" has no answer at all: pm2 reports that *a* process is
+# online, and an old one holding the port answers /health perfectly well.
+# NEXT_PUBLIC_* is baked at build time, which is exactly what is wanted here —
+# the revision belongs to the build, not to the process.
+export NEXT_PUBLIC_BUILD_REV="$after"
+
 step "building"
 rm -rf "$WEB/.next-build"
 pnpm build || die "build failed. Nothing was swapped or restarted — the running site is untouched. Fix the error and run again."
 
 [ -d "$WEB/.next-build" ] || die "the build reported success but wrote no $WEB/.next-build"
+
+# The api's half of the same stamp. dist/ is written by tsc, which knows
+# nothing about git, so it is put there afterwards; routes/health.ts reads it
+# once at boot and reports it.
+printf '{"rev":"%s","builtAt":"%s"}\n' "$after" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  > "$ROOT/apps/api/dist/build-id.json"
 
 # --- 5. swap the build in ------------------------------------------------------
 #
@@ -134,7 +147,15 @@ sleep 3
 # is on disk and the command to restore it is printed instead.
 
 step "verifying"
-if ! bash "$ROOT/ops/verify.sh"; then
+if bash "$ROOT/ops/verify.sh"; then
+  # Only after it verified. `pm2 save` writes the process list that `pm2
+  # resurrect` reads on boot, so saving a broken deploy would make the VPS
+  # come back to the broken deploy. (Run `pm2 startup` once, by hand, to
+  # install the boot hook itself — see docs/LAUNCH.md.)
+  if ! pm2 save --force >/dev/null 2>&1; then
+    printf '  (pm2 save failed — a reboot will not bring this back)\n'
+  fi
+else
   printf '\033[31mThe deploy landed but does not verify.\033[0m\n\n'
   printf 'Logs:      pm2 logs ambervale-api --lines 60\n'
   printf 'Roll back: cd %s && rm -rf .next && mv .next.old .next && pm2 restart ambervale-web --update-env\n' "$WEB"

@@ -73,10 +73,13 @@ propagate to both apps without a restart.
 | `pnpm format`        | Prettier write                                 |
 | `pnpm services:up`   | `docker compose up -d` (postgres, redis)       |
 | `pnpm services:down` | Stops the containers                           |
-| `pnpm db:migrate`    | `prisma migrate dev`                           |
+| `pnpm db:migrate`    | `prisma migrate dev` (refuses on production)   |
 | `pnpm db:studio`     | Prisma Studio                                  |
-| `pnpm db:reset`      | `prisma migrate reset` (destroys local data)   |
+| `pnpm db:reset`      | `prisma migrate reset` (refuses on production) |
+| `pnpm db:deploy`     | `prisma migrate deploy` — the production one   |
 | `pnpm test`          | Abuse and regression suite (needs services up) |
+| `pnpm release`       | The whole deploy, on the VPS. See below.       |
+| `pnpm verify`        | Proves what is actually live on this machine   |
 
 ## Ports
 
@@ -91,14 +94,26 @@ The API and web ports match the PM2 app definitions in `ecosystem.config.cjs`.
 
 ## Production
 
+One command, on the VPS:
+
 ```bash
-pnpm install --frozen-lockfile
-pnpm build
-pnpm --filter @ambervale/api db:deploy
-pm2 startOrReload ecosystem.config.cjs
+cd /opt/ambervale && pnpm release
 ```
 
-Nginx, Cloudflare, backups and the launch checklist are Phase 8.
+`ops/deploy.sh` pulls, installs, migrates, builds into a scratch directory,
+swaps it in, reloads pm2 and then runs `ops/verify.sh`, which proves what is
+live rather than that a process exists. It is `set -euo pipefail`: the first
+failure stops everything after it, and the running site is left untouched.
+
+Not `pnpm deploy` — pnpm has a built-in command by that name that shadows any
+script called the same thing, and answers `ERR_PNPM_NOTHING_TO_DEPLOY`.
+
+The steps used to be pasted as four separate lines, and every production
+incident so far came out of that: a failed build still reached pm2, which
+restarted onto a half-written `.next` and served the site as unstyled text.
+
+`docs/LAUNCH.md` has the environment matrix, nginx, Cloudflare, backups and
+the rollback procedure.
 
 ## Documentation
 

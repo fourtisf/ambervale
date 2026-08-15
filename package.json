@@ -21,10 +21,11 @@
     "services:up": "docker compose up -d",
     "services:down": "docker compose down",
     "services:logs": "docker compose logs -f",
-    "db:migrate": "pnpm --filter @ambervale/api db:migrate",
+    "db:deploy": "pnpm --filter @ambervale/api db:deploy",
+    "db:migrate": "node ops/guard-dev-db.cjs && pnpm --filter @ambervale/api db:migrate",
     "db:generate": "pnpm --filter @ambervale/api db:generate",
     "db:studio": "pnpm --filter @ambervale/api db:studio",
-    "db:reset": "pnpm --filter @ambervale/api db:reset",
+    "db:reset": "node ops/guard-dev-db.cjs && pnpm --filter @ambervale/api db:reset",
     "clean": "pnpm -r clean",
     "test": "pnpm --filter @ambervale/api test"
   },
