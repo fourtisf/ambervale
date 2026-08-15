@@ -11,7 +11,19 @@ import { ApiRequestError, apiPost } from '@/lib/api';
  * the API by hand gets a 403 either way — which is the only arrangement worth
  * shipping, because the bundle this screen lives in is public.
  */
-export default function InviteGate({ onPass }: { onPass: () => void }) {
+export default function InviteGate({
+  onPass,
+  variant = 'overlay',
+}: {
+  onPass: () => void;
+  /**
+   * `overlay` covers the whole viewport, for /play, where the world is
+   * already running behind it. `inline` drops the scrim and the fixed
+   * positioning so the same card can sit inside the landing page's hero —
+   * which has its own backdrop and its own layout to answer to.
+   */
+  variant?: 'overlay' | 'inline';
+}) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +56,23 @@ export default function InviteGate({ onPass }: { onPass: () => void }) {
     [busy, code, onPass],
   );
 
-  return (
-    <div className="gate">
-      <div className="card">
-        <img src="/brand/mark.svg" alt="" width={92} height={92} />
-        <img className="word" src="/brand/wordmark.svg" alt="AMBERVALE" />
+  const inline = variant === 'inline';
 
-        <p className="lead">The vale is closed for now. Enter your invite code.</p>
+  return (
+    <div className={inline ? 'gate inline' : 'gate'}>
+      <div className="card">
+        {!inline && (
+          <>
+            <img src="/brand/mark.svg" alt="" width={92} height={92} />
+            <img className="word" src="/brand/wordmark.svg" alt="AMBERVALE" />
+          </>
+        )}
+
+        <p className="lead">
+          {inline
+            ? 'The vale is invite-only while it is being built. Enter your code to come in.'
+            : 'The vale is closed for now. Enter your invite code.'}
+        </p>
 
         <form onSubmit={submit}>
           <input
@@ -105,6 +127,21 @@ export default function InviteGate({ onPass }: { onPass: () => void }) {
           -webkit-backdrop-filter: blur(2px);
           color: #f5e6c8;
           z-index: 50;
+        }
+        /* Inline: no scrim, no fixed positioning, no blur. The hero it sits
+           in already dims its own backdrop, and stacking a second wash on top
+           of that one buries the world twice over. */
+        .gate.inline {
+          position: static;
+          display: block;
+          padding: 0;
+          background: none;
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          z-index: auto;
+        }
+        .gate.inline .card {
+          width: 100%;
         }
         .card {
           width: min(22rem, 100%);

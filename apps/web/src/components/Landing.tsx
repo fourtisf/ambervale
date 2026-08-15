@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { fetchInvite } from '@/lib/api';
+import InviteGate from './InviteGate';
+import WorldBackdrop from './WorldBackdrop';
 
 /**
  * The front door.
@@ -13,12 +16,21 @@ import { fetchInvite } from '@/lib/api';
  * has. On a wide screen it was also mostly a flat green band, because a
  * decorative sliver sized for a phone becomes a quarter of a desktop viewport.
  *
- * The gate state is read once on mount so the button can say what it will
- * actually do. It does not put the code box here: /play shows the gate over
- * the running world, which is a better thing to look at while typing, and one
- * gate is easier to keep right than two. If the read fails the button still
- * works — /play does its own check, and a landing page that refuses to render
- * because a status call timed out is worse than one that is optimistic.
+ * The backdrop is the world itself, not a drawing of it: the same terrain and
+ * day cycle the game runs, rendering behind the front door. It needs no
+ * account to do that, so a visitor who has never played still arrives at a
+ * real place. The drawn scene stays underneath as the fallback for a device
+ * that would rather not have a second WebGL context.
+ *
+ * The code box lives here too. An earlier version sent people to /play to
+ * type it, on the grounds that one gate is easier to keep right than two —
+ * true, and beside the point: the door belongs at the front door. It is the
+ * same component /play uses, in an inline variant, so there is still only one
+ * of them.
+ *
+ * If the gate read fails the page still works: it shows Play, and /play does
+ * its own check. A landing page that refuses to render because a status call
+ * timed out is worse than one that is slightly optimistic.
  */
 export default function Landing() {
   const [required, setRequired] = useState<boolean | null>(null);
@@ -38,13 +50,21 @@ export default function Landing() {
     };
   }, []);
 
+  const router = useRouter();
   const locked = required === true && !passed;
   const x = process.env.NEXT_PUBLIC_X_URL;
+
+  // Straight into the game once the code lands. Anyone who just typed an
+  // invite code has said plainly what they came for.
+  const onPass = useCallback(() => {
+    setPassed(true);
+    router.push('/play');
+  }, [router]);
 
   return (
     <main>
       <section className="hero">
-        <div className="scene" aria-hidden />
+        <WorldBackdrop fallback="/brand/vale.svg" />
         <div className="veil" aria-hidden />
 
         <div className="lockup">
@@ -52,15 +72,18 @@ export default function Landing() {
           <img className="word" src="/brand/wordmark.svg" alt="AMBERVALE" />
           <p className="tag">A little farm, a long evening.</p>
 
-          <Link href="/play" className="cta">
-            {locked ? 'Enter your invite code' : 'Play'}
-          </Link>
-
-          <p className="note">
-            {locked
-              ? 'The vale is invite-only while it is being built.'
-              : 'Runs in the browser. No download, no install.'}
-          </p>
+          {locked ? (
+            <div className="gatebox">
+              <InviteGate variant="inline" onPass={onPass} />
+            </div>
+          ) : (
+            <>
+              <Link href="/play" className="cta">
+                Play
+              </Link>
+              <p className="note">Runs in the browser. No download, no install.</p>
+            </>
+          )}
         </div>
       </section>
 
@@ -158,33 +181,25 @@ export default function Landing() {
           padding: 3rem 1.5rem 4rem;
           overflow: hidden;
         }
-        /* The vale as a background image rather than an inline SVG element:
-           it is decoration, so it should not sit in the DOM a screen reader
-           walks, and a cover background keeps the horizon pinned to the
-           bottom on any shape of window. The old page's flat green band was a
-           fixed-height sliver, which is why a wide screen turned it into a
-           quarter of the page. */
-        .scene {
-          position: absolute;
-          inset: 0;
-          background: #0a2e3d url('/brand/vale.svg') center bottom / cover no-repeat;
-        }
         /* Two washes, doing different jobs. The radial one darkens behind the
-           lockup so cream text holds against sky, meadow and the low sun
-           alike; the linear one lands the hero on the next section's colour
-           so the seam between them is not a hard line across the page. The
-           first draft used one heavy radial for both and turned the vale into
-           a murky smear — which defeats showing it at all. */
+           lockup so cream text holds; the linear one lands the hero on the
+           next section's colour, so the seam between them is not a hard line
+           across the page.
+           Tuned against the *live* world rather than the drawn scene it
+           replaced: the game runs a day cycle, and a wash judged against a
+           dusk illustration leaves cream type sitting on lit midday meadow
+           with nothing under it. */
         .veil {
           position: absolute;
           inset: 0;
+          pointer-events: none;
           background:
-            linear-gradient(to bottom, rgba(6, 28, 38, 0) 62%, #061c26 100%),
+            linear-gradient(to bottom, rgba(6, 28, 38, 0) 66%, #061c26 100%),
             radial-gradient(
-              70% 55% at 50% 36%,
-              rgba(6, 28, 38, 0.58) 0%,
-              rgba(6, 28, 38, 0.18) 70%,
-              rgba(6, 28, 38, 0.34) 100%
+              78% 62% at 50% 34%,
+              rgba(6, 28, 38, 0.74) 0%,
+              rgba(6, 28, 38, 0.46) 62%,
+              rgba(6, 28, 38, 0.62) 100%
             );
         }
         .lockup {
@@ -192,6 +207,9 @@ export default function Landing() {
           z-index: 2;
           width: min(30rem, 100%);
           text-align: center;
+        }
+        .gatebox {
+          margin-top: 0.4rem;
         }
         .lockup :global(img) {
           display: block;
@@ -206,6 +224,7 @@ export default function Landing() {
           width: min(22rem, 90%);
           height: auto;
           margin-top: 0.85rem;
+          filter: drop-shadow(0 4px 18px rgba(4, 18, 26, 0.8));
         }
         /* The scene behind these two is whatever the viewport happens to
            crop to — sky on a wide window, meadow on a tall phone. A shadow

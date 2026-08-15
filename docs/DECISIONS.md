@@ -307,6 +307,17 @@ None of this makes `1990` strong. Four digits is a soft lock, and the code says
 so where someone changing it will read it: the limiter buys days instead of
 minutes, and a longer code is the only real fix.
 
+The gate is at the **front door**, and the world is behind it.
+
+An earlier version put the code box only on /play, reasoning that one gate is
+easier to keep right than two. True, and beside the point: a door belongs where
+people arrive. The landing page now carries the same component in an inline
+variant, so there is still only one of them, and the hero's backdrop is the
+running game rather than a drawing of it — the terrain comes from the map and
+needs no account, so a visitor who has never played still arrives at a real
+place. The drawn scene stays underneath for anything that would rather not have
+a second WebGL context, `prefers-reduced-motion` included.
+
 The gate is drawn **over** the world, never in place of it. That started as a
 bug: returning the gate instead of the game's tree unmounted the div Phaser had
 already been handed, so the game booted into a detached 0×0 parent, failed to
