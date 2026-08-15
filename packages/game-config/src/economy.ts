@@ -17,7 +17,7 @@ import { ANIMALS, CROPS, GOODS, mulberry32, type CropKey, type ItemKey } from '.
 // Upgrades
 // ---------------------------------------------------------------------------
 
-export type UpgradeKey = 'axe' | 'pick' | 'well' | 'coop' | 'cellar' | 'rod' | 'mill';
+export type UpgradeKey = 'axe' | 'pick' | 'well' | 'coop' | 'cellar' | 'rod' | 'mill' | 'scarecrow';
 
 export interface UpgradeCost {
   coins?: number;
@@ -87,6 +87,20 @@ export const UPGRADES: Record<UpgradeKey, UpgradeDef> = {
       { cost: { coins: 1500, amber: 12, items: { wood: 40 } }, effect: '+3 hens' },
     ],
   },
+  scarecrow: {
+    name: 'Scarecrow',
+    blurb: 'Crows keep their distance, so a ready field can be left a while longer.',
+    unlockLv: 2,
+    tiers: [
+      { cost: { coins: 140, items: { wood: 6 } }, effect: '+3 min before crows land' },
+      { cost: { coins: 420, items: { wood: 14, stone: 6 } }, effect: '+8 min before crows land' },
+      {
+        cost: { coins: 980, amber: 5, items: { wood: 24, stone: 14 } },
+        effect: '+20 min before crows land',
+      },
+    ],
+  },
+
   cellar: {
     name: 'Root Cellar',
     blurb: 'Keeps produce fresh, so the market pays a better price for it.',
@@ -141,6 +155,18 @@ export function nextTierCost(key: UpgradeKey, tier: number): UpgradeCost | null 
 
 /** Extra units yielded when a node is felled, from the axe/pick tier. */
 export const bonusNodeYield = (tier: number): number => Math.max(0, Math.min(3, tier));
+
+/**
+ * Extra quiet time before a crow lands, in ms, bought with the scarecrow.
+ *
+ * This is the only upgrade that buys *forgiveness* rather than throughput. It
+ * exists because crows are the first mechanic that can take something from a
+ * player, and a punishment with nothing to spend against it is just a tax.
+ */
+export function scarecrowGraceMs(tier: number): number {
+  const minutes = [0, 3, 8, 20];
+  return minutes[Math.max(0, Math.min(minutes.length - 1, tier))]! * 60 * 1000;
+}
 
 /** Multiplier applied to every crop's grow time by the well. */
 export function growthMultiplier(tier: number): number {

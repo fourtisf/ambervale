@@ -16,6 +16,7 @@ import {
   maxTier,
   nextTierCost,
   sellMultiplier,
+  scarecrowGraceMs,
   type UpgradeCost,
   type UpgradeKey,
   type ItemKey,
@@ -55,6 +56,8 @@ export interface UpgradeEffects {
   hens: number;
   canFish: boolean;
   canCraft: boolean;
+  /** Extra quiet time before a crow lands on a ready crop, in ms. */
+  scarecrowMs: number;
 }
 
 export function effectsOf(tiers: UpgradeTiers): UpgradeEffects {
@@ -66,6 +69,7 @@ export function effectsOf(tiers: UpgradeTiers): UpgradeEffects {
     hens: henCount(tierOf(tiers, 'coop')),
     canFish: tierOf(tiers, 'rod') >= 1,
     canCraft: tierOf(tiers, 'mill') >= 1,
+    scarecrowMs: scarecrowGraceMs(tierOf(tiers, 'scarecrow')),
   };
 }
 

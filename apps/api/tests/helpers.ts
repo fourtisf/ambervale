@@ -131,6 +131,10 @@ export interface FarmLike {
     cropKey: string | null;
     plantedAt: number | null;
     readyAt: number | null;
+    watered: boolean;
+    crow: boolean;
+    crowAt: number | null;
+    crowRuinsAt: number | null;
   }[];
   nodes: { index: number; kind: string; hp: number; respawnAt: number | null }[];
   animals: { index: number; kind: string; nextYieldAt: number; ready: boolean }[];
@@ -154,6 +158,13 @@ export interface FarmLike {
     maxTier: number;
     unlockLv: number;
     next: { effect: string; cost: Record<string, unknown> } | null;
+  }[];
+  prices: {
+    itemKey: string;
+    base: number;
+    price: number;
+    multiplier: number;
+    recoversAt: number | null;
   }[];
   effects: {
     axeBonus: number;
@@ -249,9 +260,7 @@ export async function clearInviteLimit(): Promise<void> {
 }
 
 /** Runs a callback with a throwaway Prisma client, for direct state surgery. */
-export async function withDb<T>(
-  fn: (db: PrismaClient) => Promise<T>,
-): Promise<T> {
+export async function withDb<T>(fn: (db: PrismaClient) => Promise<T>): Promise<T> {
   const { PrismaClient } = await import('@prisma/client');
   const db = new PrismaClient();
   try {

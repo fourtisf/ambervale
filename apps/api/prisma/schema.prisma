@@ -79,6 +79,7 @@ model User {
   claimIntents  ClaimIntent[]
   upgrades      Upgrade[]
   daily         DailyState?
+  market        MarketGood[]
 
   @@index([createdAt])
   @@index([renown])
@@ -101,7 +102,44 @@ model Plot {
   /// True when this plot is growing the player's accelerated first crop.
   fast      Boolean   @default(false)
 
+  /// When this crop was watered, or null. One watering per planting: cleared
+  /// on plant and on harvest, so it cannot be carried over or re-spent.
+  wateredAt  DateTime?
+  /// Milliseconds already taken off this crop's grow time by watering.
+  ///
+  /// Stored rather than recomputed from wateredAt because the cut depends on
+  /// how much time was left at the moment of watering — a number that stops
+  /// existing the instant the clock moves on.
+  waterCutMs Int       @default(0)
+
+  /// Crows stay away from this plot until this moment. Set by shooing one off,
+  /// and readable before the crop is even ready, so walking the field early is
+  /// worth doing.
+  guardedUntil DateTime?
+
   @@unique([userId, index])
+  @@index([userId])
+}
+
+/// How saturated one player's market is with one good.
+///
+/// Prices sag as a player floods the market and recover on their own, so the
+/// crop menu stops being a list sorted for you. Decay is computed lazily from
+/// `updatedAt` on every read — like respawns and egg laying, this needs no
+/// scheduler and a farm nobody opened for a week comes back correct.
+model MarketGood {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// ItemKey from game-config.
+  itemKey    String
+  /// Saturation at `updatedAt`. Decays from there; never stored decayed.
+  saturation Float  @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, itemKey])
   @@index([userId])
 }
 
@@ -187,7 +225,7 @@ model DeliverySlot {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  slot Int
+  slot  Int
   /// "open" | "done"
   state String @default("open")
 
@@ -301,7 +339,7 @@ model ClaimIntent {
 
   amount Int
   /// "pending" | "sent" | "failed"
-  status String @default("pending")
+  status String  @default("pending")
   txHash String?
 
   createdAt DateTime @default(now())

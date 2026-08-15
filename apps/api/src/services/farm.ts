@@ -16,6 +16,7 @@ import {
   PADDOCKS,
   PLOTS,
   TILE,
+  crowState,
   npcLine,
   titleFor,
   type CropKey,
@@ -27,6 +28,7 @@ import { handleFor } from './leaderboard';
 import { repRequiredFor, slotUnlocked } from './deliveries';
 import { amberBalance, levelFromTotalXp } from './progression';
 import { questProgress } from './quests';
+import { readPrices, type MarketPriceDto } from './market';
 import { effectsOf, readUpgrades, upgradesToDto, type UpgradeDto } from './upgrades';
 
 const ms = (sec: number) => sec * 1000;
@@ -142,6 +144,53 @@ export async function repairNodes(
   return due.length;
 }
 
+/**
+ * Clears crops a crow has finished off.
+ *
+ * The same lazy rule as respawns: nothing runs on a timer, so a field left
+ * ready overnight is reconciled the moment someone looks at it. The crop is
+ * gone and the plot is empty — the seed was spent when it was planted, and
+ * refunding it would make neglect free.
+ */
+export async function repairPlots(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  growthMul = 1,
+  scarecrowMs = 0,
+): Promise<number> {
+  const planted = await tx.plot.findMany({ where: { userId, cropKey: { not: null } } });
+  const now = Date.now();
+  let ruined = 0;
+
+  for (const plot of planted) {
+    const readyAt = readyAtFor(plot, growthMul);
+    const crow = crowState(now, readyAt, plot.guardedUntil?.getTime() ?? null, scarecrowMs);
+    if (!crow.ruined) continue;
+
+    await tx.plot.update({
+      where: { id: plot.id },
+      data: {
+        cropKey: null,
+        plantedAt: null,
+        fast: false,
+        wateredAt: null,
+        waterCutMs: 0,
+        guardedUntil: null,
+      },
+    });
+    await tx.eventLog.create({
+      data: {
+        userId,
+        kind: 'plot.ruined',
+        payload: { plotIndex: plot.index, cropKey: plot.cropKey },
+      },
+    });
+    ruined++;
+  }
+
+  return ruined;
+}
+
 // ---------------------------------------------------------------------------
 // Read model
 // ---------------------------------------------------------------------------
@@ -154,6 +203,14 @@ export interface FarmPlotDto {
   fast: boolean;
   /** When this crop becomes harvestable, or null if the plot is empty. */
   readyAt: number | null;
+  /** This crop has already been watered; it cannot be watered again. */
+  watered: boolean;
+  /** A crow is on this plot right now, eating into what it is worth. */
+  crow: boolean;
+  /** When a crow lands, so the client can warn before it happens. */
+  crowAt: number | null;
+  /** When the crop is destroyed if the crow is left alone. */
+  crowRuinsAt: number | null;
 }
 
 export interface FarmState {
@@ -222,7 +279,16 @@ export interface FarmState {
     hens: number;
     canFish: boolean;
     canCraft: boolean;
+    scarecrowMs: number;
   };
+  /**
+   * What every good fetches right now, saturation and cellar included.
+   *
+   * Sent with the farm rather than fetched when the Market opens: a price that
+   * only exists once you have walked to the stall is a mechanic a player meets
+   * as a number that went wrong.
+   */
+  prices: MarketPriceDto[];
   daily: DailyDto;
   /** What happened while the player was away, or null if they were not. */
   away: AwayReport | null;
@@ -242,6 +308,8 @@ export interface AwayReport {
   milkReady: boolean;
   nodesRegrown: number;
   cropsReady: number;
+  /** Crops the crows destroyed while nobody was here. */
+  cropsRuined: number;
   ordersRefreshed: number;
 }
 
@@ -261,27 +329,65 @@ export function growMsFor(cropKey: string, fast: boolean, growthMul = 1): number
   return Math.round(ms(crop ? crop.growSec : 0) * growthMul);
 }
 
-export function plotToDto(
-  plot: {
-    index: number;
-    zone: string;
-    cropKey: string | null;
-    plantedAt: Date | null;
-    fast: boolean;
-  },
-  growthMul = 1,
-): FarmPlotDto {
-  const plantedAt = plot.plantedAt?.getTime() ?? null;
+/** Everything about a plot's timing, in one place so nothing can disagree. */
+export interface PlotTiming {
+  index: number;
+  zone: string;
+  cropKey: string | null;
+  plantedAt: Date | null;
+  fast: boolean;
+  waterCutMs: number;
+  wateredAt: Date | null;
+  guardedUntil: Date | null;
+}
+
+/**
+ * When a crop is ready, watering included.
+ *
+ * The single source of that answer. The harvest check and the read model both
+ * call it, and a disagreement between them is a crop the client renders as
+ * ready and the server refuses — the exact bug class this exists to prevent.
+ */
+export function readyAtFor(plot: PlotTiming, growthMul = 1): number | null {
+  if (plot.plantedAt === null || !plot.cropKey) return null;
+  const grow = growMsFor(plot.cropKey, plot.fast, growthMul);
+  return plot.plantedAt.getTime() + Math.max(0, grow - plot.waterCutMs);
+}
+
+export function plotToDto(plot: PlotTiming, growthMul = 1, scarecrowMs = 0): FarmPlotDto {
+  const readyAt = readyAtFor(plot, growthMul);
+  const crow = crowState(Date.now(), readyAt, plot.guardedUntil?.getTime() ?? null, scarecrowMs);
+
+  // A ruined crop reads as gone from the moment it is ruined, not from
+  // whenever repairPlots next runs. Otherwise an action response would show a
+  // crop the very next harvest attempt refuses — the read model and the rules
+  // disagreeing is the one thing this DTO exists to prevent.
+  if (crow.ruined) {
+    return {
+      index: plot.index,
+      zone: plot.zone,
+      cropKey: null,
+      plantedAt: null,
+      fast: false,
+      readyAt: null,
+      watered: false,
+      crow: false,
+      crowAt: null,
+      crowRuinsAt: null,
+    };
+  }
+
   return {
     index: plot.index,
     zone: plot.zone,
     cropKey: plot.cropKey,
-    plantedAt,
+    plantedAt: plot.plantedAt?.getTime() ?? null,
     fast: plot.fast,
-    readyAt:
-      plantedAt !== null && plot.cropKey
-        ? plantedAt + growMsFor(plot.cropKey, plot.fast, growthMul)
-        : null,
+    readyAt,
+    watered: plot.wateredAt !== null,
+    crow: crow.present,
+    crowAt: crow.landsAt,
+    crowRuinsAt: crow.ruinsAt,
   };
 }
 
@@ -335,6 +441,9 @@ export async function getFarmState(
 
   const effects = effectsOf(tiers);
   const lv = levelFromTotalXp(user.xp);
+  // After `effects`, because the shown price includes the cellar multiplier —
+  // a player should read the number they will actually be paid.
+  const prices = await readPrices(db, userId, effects.sell);
 
   return {
     serverNow: Date.now(),
@@ -370,7 +479,8 @@ export async function getFarmState(
       },
     },
     expansion: { north: expansion?.north ?? false, east: expansion?.east ?? false },
-    plots: plots.map((p) => plotToDto(p, effects.growth)),
+    plots: plots.map((p) => plotToDto(p, effects.growth, effects.scarecrowMs)),
+    prices,
     nodes: nodes.map((n) => ({
       index: n.index,
       kind: n.kind,

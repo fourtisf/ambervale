@@ -21,6 +21,7 @@ import {
   getFarmState,
   growMsFor,
   repairNodes,
+  repairPlots,
   type AwayReport,
 } from '../services/farm';
 import { effectsFor } from '../services/upgrades';
@@ -46,6 +47,11 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
       const cropsReady = reportable ? await countCropsReadyDuring(tx, user.id, lastSeen, now) : 0;
 
       const nodesRegrown = await repairNodes(tx, user.id);
+      // Crops the crows finished off while nobody was watching. Same lazy
+      // rule, and reported rather than silently vanished: a field that is
+      // three plots emptier than you left it needs to say why.
+      const effects = await effectsFor(tx, user.id);
+      const cropsRuined = await repairPlots(tx, user.id, effects.growth, effects.scarecrowMs);
       const yields = await materialiseAnimalYields(tx, user.id);
       const ordersRefreshed = await ensureDeliverySlots(tx, user.id);
       await ensureDaily(tx, user.id, now);
@@ -60,6 +66,7 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
         milkReady: yields.milkReady,
         nodesRegrown,
         cropsReady,
+        cropsRuined,
         ordersRefreshed,
       };
 
@@ -70,6 +77,7 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
         report.milkReady ||
         report.nodesRegrown > 0 ||
         report.cropsReady > 0 ||
+        report.cropsRuined > 0 ||
         report.ordersRefreshed > 0;
 
       return anything ? report : null;

@@ -36,10 +36,7 @@ function message(n: Nonce, address: string): string {
 }
 
 /** Signs in with a wallet, the way the browser does. */
-async function connect(
-  client: Client,
-  account: ReturnType<typeof privateKeyToAccount>,
-) {
+async function connect(client: Client, account: ReturnType<typeof privateKeyToAccount>) {
   const n = await paced(() => client.call<Nonce>('/wallet/nonce', {}));
   const signature = await account.signMessage({ message: message(n.body, account.address) });
   return paced(() =>

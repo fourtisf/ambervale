@@ -7,12 +7,15 @@
 
 import {
   CROPS,
+  CROWS,
   NODES,
   NODE_HIT_COOLDOWN_MS,
+  WATERING,
+  crowState,
   isCropKey,
   isItemKey,
   nodeSlotAt,
-  sellPrice,
+  waterCutMs,
   type CropKey,
   type GoodKey,
 } from '@ambervale/game-config';
@@ -33,8 +36,9 @@ import {
   seedQty,
 } from '../services/actions';
 import type { DailyOutcome } from '../services/daily';
-import { getFarmState, growMsFor, plotToDto, repairNodes } from '../services/farm';
+import { getFarmState, plotToDto, readyAtFor, repairNodes } from '../services/farm';
 import type { QuestCompletion } from '../services/quests';
+import { quoteSale, recordSale } from '../services/market';
 import { effectsFor } from '../services/upgrades';
 
 /**
@@ -135,7 +139,16 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       const fast = !fresh.firstPlantDone;
       const updated = await tx.plot.update({
         where: { id: plot.id },
-        data: { cropKey, plantedAt: new Date(), fast },
+        // A fresh planting starts clean: the previous crop's watering and any
+        // leftover guard belong to a crop that no longer exists.
+        data: {
+          cropKey,
+          plantedAt: new Date(),
+          fast,
+          wateredAt: null,
+          waterCutMs: 0,
+          guardedUntil: null,
+        },
       });
 
       if (fast) {
@@ -146,7 +159,13 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       await logEvent(tx, user.id, 'act.plant', { plotIndex: body.plotIndex, cropKey, fast });
       const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { plot: plotToDto(updated, effects.growth), g, questCompleted, daily, fast };
+      return {
+        plot: plotToDto(updated, effects.growth, effects.scarecrowMs),
+        g,
+        questCompleted,
+        daily,
+        fast,
+      };
     });
 
     return res.send(
@@ -157,6 +176,144 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         daily: result.daily,
         plot: result.plot,
         fast: result.fast,
+      }),
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Water — the second verb in the field
+  // -------------------------------------------------------------------------
+  //
+  // Before this the whole game was one gesture: stand next to a thing, press
+  // the button. Watering is the same gesture, but it is the first one whose
+  // value depends on *when* you do it — the cut is a fraction of the time
+  // remaining, so watering the moment you plant is worth the most and watering
+  // a nearly-grown crop is worth almost nothing. That is a decision, and the
+  // thirty seconds a player used to spend standing still is where it is made.
+  app.post('/act/water', async (req, res) => {
+    const body = parseBody(PlotBody, req);
+    const user = await guard(req, 'water', body.plotIndex);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const plot = await tx.plot.findUnique({
+        where: { userId_index: { userId: user.id, index: body.plotIndex } },
+      });
+      if (!plot) throw notFound(`No plot ${body.plotIndex}.`);
+      if (!plot.cropKey || !plot.plantedAt) {
+        throw conflict('PLOT_EMPTY', 'Nothing is growing here.');
+      }
+      if (plot.wateredAt) {
+        throw conflict('ALREADY_WATERED', 'This one has been watered already.');
+      }
+
+      const effects = await effectsFor(tx, user.id);
+      const readyAt = readyAtFor(plot, effects.growth);
+      const now = Date.now();
+      const cut = waterCutMs(now, readyAt ?? now);
+      if (cut <= 0) {
+        throw conflict('ALREADY_READY', 'This one is ready — pick it instead.');
+      }
+
+      const updated = await tx.plot.update({
+        where: { id: plot.id },
+        // Compare-and-set on wateredAt would be the belt-and-braces version,
+        // but the action lock already covers one plot per player and the
+        // unique row makes a double-write idempotent in effect.
+        data: { wateredAt: new Date(), waterCutMs: plot.waterCutMs + cut },
+      });
+
+      const g = await grant(tx, user.id, { xp: WATERING.xp });
+      await logEvent(tx, user.id, 'act.water', { plotIndex: body.plotIndex, cutMs: cut });
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
+
+      return {
+        g,
+        questCompleted,
+        daily,
+        cut,
+        plot: plotToDto(updated, effects.growth, effects.scarecrowMs),
+      };
+    });
+
+    return res.send(
+      await reply(user, {
+        levelUps: result.g.levelUps,
+        levelRewards: result.g.levelRewards,
+        questCompleted: result.questCompleted,
+        daily: result.daily,
+        plot: result.plot,
+        cutMs: result.cut,
+        xp: WATERING.xp,
+      }),
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // Shoo — chasing a crow off
+  // -------------------------------------------------------------------------
+  app.post('/act/shoo', async (req, res) => {
+    const body = parseBody(PlotBody, req);
+    const user = await guard(req, 'shoo', body.plotIndex);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const plot = await tx.plot.findUnique({
+        where: { userId_index: { userId: user.id, index: body.plotIndex } },
+      });
+      if (!plot) throw notFound(`No plot ${body.plotIndex}.`);
+      if (!plot.cropKey || !plot.plantedAt) {
+        throw conflict('PLOT_EMPTY', 'Nothing here for a crow to want.');
+      }
+
+      const effects = await effectsFor(tx, user.id);
+      const now = Date.now();
+      const readyAt = readyAtFor(plot, effects.growth);
+      const crow = crowState(
+        now,
+        readyAt,
+        plot.guardedUntil?.getTime() ?? null,
+        effects.scarecrowMs,
+      );
+      if (crow.ruined) {
+        throw conflict('CROP_RUINED', 'Too late — there is nothing left to save.');
+      }
+
+      // Guarding from *now* rather than extending an existing guard: two shoos
+      // in a row must not stack into an afternoon of immunity.
+      const guardedUntil = new Date(now + CROWS.guardMs);
+      const updated = await tx.plot.update({
+        where: { id: plot.id },
+        data: { guardedUntil },
+      });
+
+      // Paid only for chasing a real crow off. Paying for the gesture itself
+      // would make an empty field a free XP button.
+      const xp = crow.present ? CROWS.shooXp : 0;
+      const g = await grant(tx, user.id, xp > 0 ? { xp } : {});
+      await logEvent(tx, user.id, 'act.shoo', {
+        plotIndex: body.plotIndex,
+        hadCrow: crow.present,
+      });
+      const { questCompleted, daily } = await evaluateProgress(tx, user.id);
+
+      return {
+        g,
+        questCompleted,
+        daily,
+        hadCrow: crow.present,
+        xp,
+        plot: plotToDto(updated, effects.growth, effects.scarecrowMs),
+      };
+    });
+
+    return res.send(
+      await reply(user, {
+        levelUps: result.g.levelUps,
+        levelRewards: result.g.levelRewards,
+        questCompleted: result.questCompleted,
+        daily: result.daily,
+        plot: result.plot,
+        hadCrow: result.hadCrow,
+        xp: result.xp,
       }),
     );
   });
@@ -178,8 +335,8 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       }
 
       const effects = await effectsFor(tx, user.id);
-      const readyAt = plot.plantedAt.getTime() + growMsFor(plot.cropKey, plot.fast, effects.growth);
-      const remainingMs = readyAt - Date.now();
+      const readyAt = readyAtFor(plot, effects.growth);
+      const remainingMs = (readyAt ?? 0) - Date.now();
       if (remainingMs > 0) {
         // The client renders this countdown directly, so it has to be exact.
         throw conflict('NOT_READY', 'Not ready yet.', { remainingMs, readyAt });
@@ -188,20 +345,57 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       const cropKey = plot.cropKey as CropKey;
       const crop = CROPS[cropKey];
 
+      // A crow does not stop the harvest, it devalues it. Losing the crop
+      // outright is what the ruin window is for, and repairPlots has usually
+      // already cleared those — this branch is the race where it has not.
+      const crow = crowState(
+        Date.now(),
+        readyAt,
+        plot.guardedUntil?.getTime() ?? null,
+        effects.scarecrowMs,
+      );
+      if (crow.ruined) {
+        await tx.plot.update({
+          where: { id: plot.id },
+          data: {
+            cropKey: null,
+            plantedAt: null,
+            fast: false,
+            wateredAt: null,
+            waterCutMs: 0,
+            guardedUntil: null,
+          },
+        });
+        throw conflict('CROP_RUINED', 'The crows got to this one. Nothing left to harvest.');
+      }
+
+      const xp = crow.present ? Math.max(1, Math.round(crop.xp * CROWS.peckedXp)) : crop.xp;
+
       await addItem(tx, user.id, cropKey, 1);
       await tx.plot.update({
         where: { id: plot.id },
-        data: { cropKey: null, plantedAt: null, fast: false },
+        data: {
+          cropKey: null,
+          plantedAt: null,
+          fast: false,
+          wateredAt: null,
+          waterCutMs: 0,
+          guardedUntil: null,
+        },
       });
 
       const g = await grant(tx, user.id, {
-        xp: crop.xp,
+        xp,
         counters: { harvestedCount: 1 },
       });
-      await logEvent(tx, user.id, 'act.harvest', { plotIndex: body.plotIndex, cropKey });
+      await logEvent(tx, user.id, 'act.harvest', {
+        plotIndex: body.plotIndex,
+        cropKey,
+        pecked: crow.present,
+      });
       const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { g, questCompleted, daily, cropKey, xp: crop.xp };
+      return { g, questCompleted, daily, cropKey, xp, pecked: crow.present };
     });
 
     return res.send(
@@ -212,6 +406,7 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         daily: result.daily,
         gained: { [result.cropKey]: 1 },
         xp: result.xp,
+        pecked: result.pecked,
       }),
     );
   });
@@ -348,18 +543,27 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         throw conflict('INSUFFICIENT_ITEMS', `No ${itemKey} to sell.`, { have, need: 1 });
       }
 
-      // The cellar's multiplier is applied here and nowhere else: deliveries
-      // deliberately keep paying $AMBER on the base value, so a coin upgrade
-      // can never inflate the token.
+      // Two multipliers, deliberately separate. Saturation is what this
+      // player has already done to this good's price; the cellar is what they
+      // bought. Deliveries keep paying $AMBER on the base value, so neither
+      // one can ever inflate the token.
       const effects = await effectsFor(tx, user.id);
-      const coins = Math.round(sellPrice(itemKey) * have * effects.sell);
+      const quote = await quoteSale(tx, user.id, itemKey, have);
+      const coins = Math.round(quote.coins * effects.sell);
+
       await addItem(tx, user.id, itemKey, -have);
+      await recordSale(tx, user.id, itemKey, quote.saturationAfter);
 
       const g = await grant(tx, user.id, { coins, counters: { soldCount: 1 } });
-      await logEvent(tx, user.id, 'act.sell', { itemKey, qty: have, coins });
+      await logEvent(tx, user.id, 'act.sell', {
+        itemKey,
+        qty: have,
+        coins,
+        marketMul: Number(quote.multiplier.toFixed(3)),
+      });
       const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
-      return { g, questCompleted, daily, coins, qty: have };
+      return { g, questCompleted, daily, coins, qty: have, multiplier: quote.multiplier };
     });
 
     return res.send(
@@ -370,6 +574,7 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         daily: result.daily,
         coinsGained: result.coins,
         qtySold: result.qty,
+        marketMultiplier: result.multiplier,
       }),
     );
   });

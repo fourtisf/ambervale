@@ -16,7 +16,6 @@ import {
   UPGRADES,
   dailyPicks,
   dayIndex,
-  sellPrice,
 } from '@ambervale/game-config';
 import { endow, newPlayer, paced, sleep, withDb, type FarmLike } from './helpers';
 
@@ -143,24 +142,39 @@ describe('upgrades', () => {
   });
 
   it('applies the root cellar to market prices but not to $AMBER', async () => {
-    const { client, farm } = await newPlayer();
-    await endow(farm.user.id, {
-      xp: 100000,
-      coins: 0,
-      items: { wood: 10 },
-      upgrades: { cellar: 1 },
-    });
+    // Two players, same goods, same untouched market — so the only difference
+    // between what they are paid is the cellar. Asserting an absolute figure
+    // instead would silently be measuring market saturation as well, and would
+    // have to be rewritten every time either one is retuned.
+    const sell = async (cellarTier: number) => {
+      const { client, farm } = await newPlayer();
+      await endow(farm.user.id, {
+        xp: 100000,
+        coins: 0,
+        items: { wood: 10 },
+        ...(cellarTier > 0 ? { upgrades: { cellar: cellarTier } } : {}),
+      });
 
-    const res = await paced(() =>
-      client.call<{ farm: FarmLike; coinsGained: number }>('/act/sell', {
-        itemKey: 'wood',
-        qty: 'all',
-      }),
+      const res = await paced(() =>
+        client.call<{ farm: FarmLike; coinsGained: number }>('/act/sell', {
+          itemKey: 'wood',
+          qty: 'all',
+        }),
+      );
+      assert.equal(res.status, 200);
+      return res.body;
+    };
+
+    const plain = await sell(0);
+    const cellared = await sell(1);
+
+    assert.ok(plain.coinsGained > 0, 'the control sale must actually pay something');
+    assert.equal(
+      cellared.coinsGained,
+      Math.round(plain.coinsGained * 1.05),
+      'tier 1 must be worth exactly +5% over the same sale without it',
     );
-
-    assert.equal(res.status, 200);
-    assert.equal(res.body.coinsGained, Math.round(sellPrice('wood') * 10 * 1.05));
-    assert.equal(res.body.farm.user.amberBalance, 0);
+    assert.equal(cellared.farm.user.amberBalance, 0, 'a coin upgrade must never mint $AMBER');
   });
 
   it('shortens grow times with the well, and the harvest gate agrees', async () => {
