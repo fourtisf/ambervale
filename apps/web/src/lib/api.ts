@@ -94,6 +94,24 @@ export interface FarmPlot {
   plantedAt: number | null;
   fast: boolean;
   readyAt: number | null;
+  /** Already watered; it cannot be watered twice. */
+  watered: boolean;
+  /** A crow is on it right now, halving what the harvest pays. */
+  crow: boolean;
+  /** When a crow lands, so the field can warn before it costs anything. */
+  crowAt: number | null;
+  /** When the crop is destroyed if the crow is left alone. */
+  crowRuinsAt: number | null;
+}
+
+/** What one good fetches right now, saturation and cellar included. */
+export interface FarmPrice {
+  itemKey: string;
+  /** List price before saturation, for showing how far a price has fallen. */
+  base: number;
+  price: number;
+  multiplier: number;
+  recoversAt: number | null;
 }
 
 export interface FarmNode {
@@ -176,6 +194,8 @@ export interface FarmEffects {
   hens: number;
   canFish: boolean;
   canCraft: boolean;
+  /** Extra quiet time the scarecrow buys before a crow lands. */
+  scarecrowMs: number;
 }
 
 export interface FarmDailyGoal {
@@ -201,6 +221,8 @@ export interface FarmAway {
   milkReady: boolean;
   nodesRegrown: number;
   cropsReady: number;
+  /** Crops the crows destroyed while nobody was here. */
+  cropsRuined: number;
   ordersRefreshed: number;
 }
 
@@ -226,6 +248,7 @@ export interface FarmState {
   quest: FarmQuest | null;
   upgrades: Record<string, number>;
   shop: FarmShopEntry[];
+  prices: FarmPrice[];
   effects: FarmEffects;
   daily: FarmDaily;
   away: FarmAway | null;

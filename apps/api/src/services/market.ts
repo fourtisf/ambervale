@@ -85,7 +85,7 @@ export interface MarketPriceDto {
   price: number;
   /** Saturation multiplier alone, so the UI can show why a price moved. */
   multiplier: number;
-  /** When this good is back to full price, or null if it already is. */
+  /** When this good is worth selling again, or null if it already is. */
   recoversAt: number | null;
 }
 
@@ -117,21 +117,25 @@ export async function readPrices(
       base,
       price: Math.round(base * multiplier * sellMul),
       multiplier,
-      recoversAt: saturation > 0 ? now + recoveryMs(saturation) : null,
+      recoversAt: recoveryMs(saturation) > 0 ? now + recoveryMs(saturation) : null,
     };
   });
 }
 
 /**
- * Roughly when saturation will have decayed back to nothing.
+ * When this good is worth selling again.
  *
- * Reported so the player can decide to come back rather than guess. It is the
- * time to reach the epsilon below which the price is par again, not a true
- * zero — exponential decay never actually arrives.
+ * Deliberately the time to *nearly* recovered rather than to par. Exponential
+ * decay approaches par and never arrives, so quoting the last few percent
+ * turns a twenty-minute wait into a ninety-minute number and reads as a
+ * punishment when it is meant to be advice. A player asking "when is this
+ * worth selling again" is answered by 90%, not by 99.9%.
  */
+const RECOVERED_AT = 1 / 0.9 - 1;
+
 function recoveryMs(saturation: number): number {
-  if (saturation <= MARKET.epsilon) return 0;
-  const halves = Math.log(saturation / MARKET.epsilon) / Math.log(2);
+  if (saturation <= RECOVERED_AT) return 0;
+  const halves = Math.log(saturation / RECOVERED_AT) / Math.log(2);
   return Math.round(halves * MARKET.halfLifeMs);
 }
 

@@ -578,6 +578,36 @@ const soil: Painter = (g, s) => {
   }
 };
 
+/**
+ * The crow, sitting on a crop it is busy ruining.
+ *
+ * Drawn dark and squat rather than as a detailed bird: at this sprite scale
+ * the shape has to read from across the field in one glance, and the only
+ * thing a player needs to recognise is "something black is on my plot".
+ */
+const crow: Painter = (g, s) => {
+  shadow(g, s, 13, 21, 8);
+
+  // Body and tail as one wedge, so the silhouette stays legible when small.
+  g.fillStyle(0x1c2230, 1);
+  g.fillEllipse(13 * s, 13 * s, 16 * s, 12 * s);
+  g.fillTriangle(19 * s, 12 * s, 26 * s, 9 * s, 20 * s, 17 * s);
+
+  // Head, set forward and slightly higher than the body's centre line.
+  g.fillCircle(8 * s, 8 * s, 5.2 * s);
+
+  // Beak: the one warm note, and what makes it a bird rather than a blob.
+  g.fillStyle(0xe8a33d, 1);
+  g.fillTriangle(3.6 * s, 8 * s, 0.5 * s, 9.4 * s, 4 * s, 10.4 * s);
+
+  // A folded wing, a shade lighter so the body does not read as flat.
+  g.fillStyle(0x2b3446, 1);
+  g.fillEllipse(14 * s, 12.5 * s, 10 * s, 6.5 * s);
+
+  g.fillStyle(0xf5e6c8, 1);
+  g.fillCircle(6.8 * s, 7 * s, 1.15 * s);
+};
+
 /** The dashed highlight ring drawn under a harvest-ready crop. */
 const readyRing: Painter = (g, s) => {
   g.lineStyle(3 * s, 0xf4d35e, 0.95);
@@ -793,6 +823,7 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'bush', w: 52, h: 42, paint: bush },
   { key: 'soil', w: 64, h: 64, paint: soil },
   { key: 'readyRing', w: 68, h: 68, paint: readyRing },
+  { key: 'crow', w: 28, h: 24, paint: crow },
   { key: 'player', w: 40, h: 56, paint: player },
   { key: 'chicken', w: 34, h: 30, paint: chicken },
   { key: 'cow', w: 62, h: 44, paint: cow },

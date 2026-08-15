@@ -35,6 +35,8 @@ interface PlotView {
   soil: Phaser.GameObjects.Image;
   crop: Phaser.GameObjects.Image;
   ring: Phaser.GameObjects.Image;
+  /** The crow, created lazily — most plots never see one. */
+  crow?: Phaser.GameObjects.Image;
   /** Point light for starglow at night, created lazily. */
   light?: Phaser.GameObjects.Light;
 }
@@ -232,6 +234,34 @@ export class FarmView {
 
       view.crop.setTexture(cropTextureKey(plot.cropKey, stage));
 
+      // The crow, and the warning that one is coming.
+      //
+      // Made lazily because the overwhelming majority of plots never have one,
+      // and a hidden sprite per plot is a real cost on a field of twenty-one.
+      if (plot.crow) {
+        if (!view.crow) {
+          const slot = plotAt(plot.index)!;
+          view.crow = this.scene.add
+            .image(slot.x * TILE + TILE / 2, slot.y * TILE + TILE / 2 - 6, 'crow')
+            .setOrigin(0.5, 1)
+            .setScale(SPRITE_SCALE)
+            // Above the crop it is sitting on, so it is never half-hidden by it.
+            .setDepth(slot.y * TILE + 6)
+            .setPipeline('Light2D');
+        }
+        // A small hop, on its own phase per plot so a field of crows does not
+        // move as one block.
+        view.crow.y =
+          plotAt(plot.index)!.y * TILE +
+          TILE / 2 -
+          6 -
+          Math.abs(Math.sin(this.elapsed / 320 + plot.index)) * 4;
+        view.crow.setFlipX(plot.index % 2 === 0);
+      } else if (view.crow) {
+        view.crow.destroy();
+        view.crow = undefined;
+      }
+
       const ready = progress >= 1;
       view.ring.setVisible(ready);
       if (ready) {
@@ -274,6 +304,7 @@ export class FarmView {
       this.clearLight(view);
       view.soil.destroy();
       view.crop.destroy();
+      view.crow?.destroy();
       view.ring.destroy();
     }
     this.plots.clear();

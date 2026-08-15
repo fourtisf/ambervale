@@ -1,7 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { CROPS, CROP_KEYS, sellPrice, type CropKey, type ItemKey } from '@ambervale/game-config';
+import {
+  CROPS,
+  CROP_KEYS,
+  saleQuote,
+  sellPrice,
+  type CropKey,
+  type ItemKey,
+} from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
 import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
@@ -52,6 +59,35 @@ function MarketModal({ onClose }: { onClose: () => void }) {
     number,
   ][];
 
+  // Prices come from the server, which is the only thing that knows how far
+  // this player has depressed each good. game-config's list price is used only
+  // as a fallback for a snapshot that predates the field, never as the truth.
+  const marketOf = (key: ItemKey) => farm.prices?.find((p) => p.itemKey === key);
+  const priceOf = (key: ItemKey): number =>
+    marketOf(key)?.price ?? Math.round(sellPrice(key) * farm.effects.sell);
+  const glut = (key: ItemKey): boolean => (marketOf(key)?.multiplier ?? 1) < 0.97;
+
+  /**
+   * What "sell all" will actually pay.
+   *
+   * Not `price × qty`: the sale itself pushes the price down as it goes, so
+   * quoting the current unit price would overstate every bulk sale and the
+   * player would watch the number arrive short every single time.
+   */
+  const estimate = (key: ItemKey, qty: number): number => {
+    const m = marketOf(key);
+    if (!m) return Math.round(sellPrice(key) * qty * farm.effects.sell);
+    const start = Math.max(0, 1 / Math.max(m.multiplier, 1e-6) - 1);
+    return Math.round(m.base * qty * saleQuote(start, qty).multiplier * farm.effects.sell);
+  };
+
+  const recovers = (key: ItemKey): string | null => {
+    const at = marketOf(key)?.recoversAt;
+    if (!at) return null;
+    const mins = Math.ceil((at - Date.now()) / 60000);
+    return mins > 0 ? `${mins} min` : null;
+  };
+
   return (
     <Modal title="Market" onClose={onClose}>
       <div className="tabs">
@@ -85,7 +121,7 @@ function MarketModal({ onClose }: { onClose: () => void }) {
                       ? `Unlocks at level ${crop.unlockLv}`
                       : `${crop.seedCost} coins · grows ${Math.round(
                           crop.growSec * farm.effects.growth,
-                        )}s · sells ${crop.sell}`}
+                        )}s · sells ${priceOf(key)}`}
                   </small>
                 </div>
                 <div className="actions">
@@ -118,13 +154,24 @@ function MarketModal({ onClose }: { onClose: () => void }) {
               <div className="name">
                 <b>{key}</b>
                 <small>
-                  {Math.round(sellPrice(key) * farm.effects.sell)} coins each · {qty} in bag
+                  {priceOf(key)} coins each · {qty} in bag
                   {farm.effects.sell > 1 && <em> (cellar)</em>}
                 </small>
+                {/*
+                  A sagging price has to say so here, or the mechanic is only
+                  ever met as coins that came out lower than expected.
+                */}
+                {glut(key) && (
+                  <small className="glut">
+                    ▼ {Math.round((1 - (marketOf(key)?.multiplier ?? 1)) * 100)}% — you have sold a
+                    lot of these lately
+                    {recovers(key) ? `, worth selling again in ${recovers(key)}` : ''}
+                  </small>
+                )}
               </div>
               <div className="actions">
                 <button type="button" disabled={busy} onClick={() => void sell(key)}>
-                  Sell all ({Math.round(sellPrice(key) * qty * farm.effects.sell)})
+                  Sell all ({estimate(key, qty)})
                 </button>
               </div>
             </li>
@@ -133,6 +180,12 @@ function MarketModal({ onClose }: { onClose: () => void }) {
       )}
 
       <style jsx>{`
+        .glut {
+          display: block;
+          margin-top: 0.15rem;
+          color: #f2a09a;
+          font-size: 0.72rem;
+        }
         .tabs {
           display: flex;
           gap: 0.4rem;

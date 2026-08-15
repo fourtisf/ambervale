@@ -382,7 +382,9 @@ export class WorldScene extends Phaser.Scene {
   private syncAmbience(): void {
     if (!bridge.started) return;
     const night = this.dayNight?.nightAmount ?? 0;
-    audio.setAmbience(night > 0.5 ? 'night' : 'day');
+    const mode = night > 0.5 ? 'night' : 'day';
+    audio.setAmbience(mode);
+    audio.setMusic(mode);
   }
 
   private updateDebugCamera(delta: number): void {
@@ -399,7 +401,7 @@ export class WorldScene extends Phaser.Scene {
     for (const off of this.unsubscribe) off();
     this.unsubscribe = [];
     this.scale.off('resize', this.onResize, this);
-    audio.setAmbience(null);
+    audio.stop();
     this.animalLife?.destroy();
     this.occlusion?.destroy();
     this.tutorial?.destroy();

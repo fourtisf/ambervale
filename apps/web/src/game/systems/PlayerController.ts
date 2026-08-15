@@ -180,7 +180,18 @@ export class PlayerController {
       // minimum speed so a barely-nudged stick still walks rather than crawls.
       const scale = Math.min(1, magnitude);
       const speedScale = Math.max(JOYSTICK.minSpeedScale, scale);
-      const step = PLAYER.speed * speedScale * dt;
+
+      // The paths are quicker than the meadow.
+      //
+      // Most of a session is spent walking between things that are far apart,
+      // and that walk was dead time. Rather than move the world — every
+      // building coordinate and plot position is fixed in game-config, and
+      // shuffling them would invalidate the map people already know — the
+      // roads that were already drawn now mean something. Crossing open grass
+      // stays possible and is still the short way to a near plot; the path is
+      // the fast way across the vale.
+      const onPath = this.collision.onPath(this.sprite.x, this.sprite.y);
+      const step = PLAYER.speed * (onPath ? PLAYER.pathSpeedMul : 1) * speedScale * dt;
 
       const nx = (vx / magnitude) * step;
       const ny = (vy / magnitude) * step;

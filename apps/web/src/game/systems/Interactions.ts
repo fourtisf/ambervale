@@ -35,6 +35,12 @@ interface ActionReply {
   hp?: number;
   seedGained?: string | null;
   catchLabel?: string;
+  /** Milliseconds a watering took off the crop. */
+  cutMs?: number;
+  /** Whether a shoo actually chased something off. */
+  hadCrow?: boolean;
+  /** Whether a harvest came from under a crow, and so paid less. */
+  pecked?: boolean;
   daily?: {
     completed: { id: string; text: string; reward: { coins?: number; amber?: number } }[];
     dayComplete: { streak: number; amber: number; coins: number } | null;
@@ -44,10 +50,16 @@ interface ActionReply {
 
 /** Which seed to plant when the player presses the plant action. */
 function preferredSeed(farm: FarmState): CropKey | null {
+  // Sorted by what the market will actually pay right now, not by the list
+  // price. Once prices sag under supply those two stop agreeing, and a quick
+  // plant that keeps choosing the crop the player has already flooded would
+  // be quietly working against them.
+  const priceOf = (key: CropKey): number =>
+    farm.prices?.find((p) => p.itemKey === key)?.price ?? CROPS[key].sell;
+
   const owned = (Object.entries(farm.seeds) as [CropKey, number][])
     .filter(([key, qty]) => qty > 0 && CROPS[key] && farm.user.level >= CROPS[key].unlockLv)
-    // Most valuable crop the player can actually plant.
-    .sort((a, b) => CROPS[b[0]].sell - CROPS[a[0]].sell);
+    .sort((a, b) => priceOf(b[0]) - priceOf(a[0]));
   return owned[0]?.[0] ?? null;
 }
 
@@ -109,17 +121,31 @@ export class Interactions {
         );
       } else if (plot.readyAt !== null) {
         const remainingMs = plot.readyAt - this.serverNow(farm);
-        consider(
-          {
-            kind: 'harvest',
-            label: remainingMs > 0 ? 'Growing' : `Harvest ${plot.cropKey}`,
-            target: plot.index,
-            enabled: remainingMs <= 0,
-            ...(remainingMs > 0 ? { remainingMs } : {}),
-          },
-          x,
-          y,
-        );
+
+        // Order matters, and it is the order of urgency rather than of the
+        // data. A crow is the only one of these that is costing the player
+        // something right now, so it takes the button whatever else is true.
+        if (plot.crow) {
+          consider(
+            { kind: 'shoo', label: 'Shoo the crow', target: plot.index, enabled: true },
+            x,
+            y,
+          );
+        } else if (remainingMs > 0 && !plot.watered) {
+          consider({ kind: 'water', label: 'Water', target: plot.index, enabled: true }, x, y);
+        } else {
+          consider(
+            {
+              kind: 'harvest',
+              label: remainingMs > 0 ? 'Growing' : `Harvest ${plot.cropKey}`,
+              target: plot.index,
+              enabled: remainingMs <= 0,
+              ...(remainingMs > 0 ? { remainingMs } : {}),
+            },
+            x,
+            y,
+          );
+        }
       }
     }
 
@@ -266,6 +292,27 @@ export class Interactions {
           cropKey,
         });
         this.effects.dust(px, py);
+        this.commit(r, px, py);
+        break;
+      }
+
+      case 'water': {
+        this.player.swing();
+        const r = await apiPost<ActionReply>('/act/water', { plotIndex: interaction.target });
+        audio.water();
+        this.effects.burst(px, py - 14, COLORS.water, 10);
+        if (r.cutMs) {
+          this.effects.float(px, py - 30, `-${Math.round(r.cutMs / 1000)}s`, '#9fe8ff');
+        }
+        this.commit(r, px, py);
+        break;
+      }
+
+      case 'shoo': {
+        this.player.swing();
+        const r = await apiPost<ActionReply>('/act/shoo', { plotIndex: interaction.target });
+        audio.shoo();
+        if (r.hadCrow) this.effects.float(px, py - 30, 'Shooed!', '#f4b942');
         this.commit(r, px, py);
         break;
       }

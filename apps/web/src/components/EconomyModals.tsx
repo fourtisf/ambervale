@@ -532,6 +532,11 @@ export function AwayModal({ onClose }: { onClose: () => void }) {
   if (away.nodesRegrown > 0) lines.push(`${away.nodesRegrown} oaks and rocks came back`);
   if (away.ordersRefreshed > 0) lines.push(`${away.ordersRefreshed} new orders on the board`);
 
+  // Kept out of the list above and given its own line: a loss reported in the
+  // same breath as the good news reads as good news, and a field three plots
+  // emptier than it was left owes the player an explanation.
+  const ruined = away.cropsRuined ?? 0;
+
   return (
     <Modal title="While you were away" onClose={onClose}>
       <p className="gap">You were gone {humanGap(away.awayMs)}.</p>
@@ -540,11 +545,27 @@ export function AwayModal({ onClose }: { onClose: () => void }) {
           <li key={line}>{line}</li>
         ))}
       </ul>
+      {ruined > 0 && (
+        <p className="loss">
+          Crows took {ruined} {ruined === 1 ? 'crop' : 'crops'} that were left standing. A scarecrow
+          buys more time.
+        </p>
+      )}
       <button type="button" className="go" onClick={onClose}>
         Back to work
       </button>
 
       <style jsx>{`
+        .loss {
+          margin: 0.9rem 0 0;
+          padding: 0.6rem 0.75rem;
+          border-radius: 10px;
+          background: rgba(242, 160, 154, 0.12);
+          border: 1px solid rgba(242, 160, 154, 0.3);
+          color: #f2a09a;
+          font-size: 0.82rem;
+          line-height: 1.45;
+        }
         .gap {
           margin: 0 0 0.75rem;
           opacity: 0.7;

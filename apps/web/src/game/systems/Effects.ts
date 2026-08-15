@@ -126,6 +126,7 @@ export const COLORS = {
   wood: 0x8b5a2b,
   stone: 0x8a8f98,
   leaf: 0x57a44c,
+  water: 0x6fc3e8,
 } as const;
 
 export const blend = Phaser.BlendModes;

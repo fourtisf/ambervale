@@ -18,7 +18,16 @@ export const TILE = 64;
 export const WORLD = { w: 56, h: 44 } as const;
 
 /** Player movement tuning. `reach` is the interaction radius in pixels. */
-export const PLAYER = { speed: 195, reach: 74 } as const;
+/**
+ * `pathSpeedMul` is what the dirt roads are worth to walk on.
+ *
+ * The vale is wide and most of a session was spent crossing it, which is dead
+ * time. Raising the base speed instead would have made the farm itself feel
+ * skittish to move around; making the roads faster keeps the field calm and
+ * gives the paths — already drawn, already the natural lines across the map —
+ * a reason to exist beyond decoration.
+ */
+export const PLAYER = { speed: 195, reach: 74, pathSpeedMul: 1.45 } as const;
 
 /** Virtual joystick geometry. Inputs below `minSpeedScale` are clamped up. */
 export const JOYSTICK = { radius: 46, minSpeedScale: 0.35 } as const;

@@ -22,6 +22,8 @@ export interface ToastMessage {
 export interface Interaction {
   kind:
     | 'plant'
+    | 'water'
+    | 'shoo'
     | 'harvest'
     | 'chop'
     | 'mine'

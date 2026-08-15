@@ -113,6 +113,47 @@ Screen-space canvas UI lives on a separate `HudScene`, because
 `setScrollFactor(0)` pins an object's position but does **not** exempt it from
 the camera's zoom.
 
+## The minute, not the menu
+
+Six systems were added before anyone asked whether the loop underneath them was
+worth repeating: crafting, dailies, renown, patronage, fishing, boards. Then the
+game was played and the verdict was that it was boring, which those six systems
+had done nothing about — they added breadth to a minute that was empty.
+
+Three things were wrong, and all three were measurable rather than matters of
+taste:
+
+- **One verb.** Thirteen interaction kinds — plant, harvest, chop, mine, fish,
+  mill, sell, deliver — were the same gesture with different labels: stand next
+  to a thing, press the button. Nothing asked for timing, aim, or a decision
+  under pressure.
+- **A menu, not a choice.** Coins per second rose strictly with grow time
+  (0.23 → 0.26 → 0.40 → 0.58), so the best unlocked crop was always the answer.
+  Nothing made a shorter crop worth planting, because ready crops never spoiled.
+- **Nothing could be lost.** No withering, no theft, no failure of any kind
+  existed anywhere in the codebase. A game that cannot be lost is a spreadsheet
+  that goes up, and it never needs to be watched.
+
+So: prices sag under supply, crows arrive, and watering is a second verb whose
+value depends on when it is done. The scarecrow buys forgiveness rather than
+throughput — a punishment with nothing to spend against it is just a tax.
+
+The market is **per player**. A shared order book is more interesting and is the
+obvious later move, but it coordinates strangers: one whale could flatten a
+market for everyone and grief would become a strategy. A player has to be able
+to read the mechanic off their own actions before anything more elaborate earns
+its complexity.
+
+A sale is priced as the **average over the sale** rather than at its opening
+price. The alternative makes one sale of a hundred pay more than a hundred sales
+of one, which rewards exactly the flooding the mechanic exists to discourage.
+
+Crow windows are longer than the longest crop on purpose. Ten minutes of ruin
+against a six-minute starglow means nothing is ever lost by someone playing —
+only by someone who walked away from a ready field, which is the behaviour being
+priced. Losses are reported in the away card rather than silently applied: a
+field three plots emptier than it was left owes an explanation.
+
 ## The economy has two halves
 
 The first version of the game only ever added. Coins, $AMBER, wood and stone

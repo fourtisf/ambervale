@@ -157,6 +157,8 @@ export function generateWorld(): WorldMap {
 export interface Collision {
   /** True when a world-pixel position is blocked. */
   blocked(px: number, py: number): boolean;
+  /** True on the dirt paths, which are quicker to walk than open meadow. */
+  onPath(px: number, py: number): boolean;
 }
 
 /**
@@ -190,6 +192,13 @@ export function buildCollision(map: WorldMap): Collision {
         if (px >= s.x0 && px <= s.x1 && py >= s.y0 && py <= s.y1) return true;
       }
       return false;
+    },
+
+    onPath(px: number, py: number): boolean {
+      const tx = Math.floor(px / TILE);
+      const ty = Math.floor(py / TILE);
+      if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) return false;
+      return map.tiles[ty * map.w + tx] === Tile.Dirt;
     },
   };
 }
