@@ -91,6 +91,17 @@ pnpm build                               # 2. compile
 pm2 startOrReload ecosystem.config.cjs   # 3. swap processes
 ```
 
+**Run them chained, not pasted as three lines.** `pnpm deploy` is exactly the
+sequence above joined with `&&`, and the joining is the point: pasted
+separately, a build that fails still reaches `pm2`, which then restarts onto a
+half-written `.next`. Next.js serves that quite happily — the HTML renders and
+every stylesheet it names 404s, so the site comes back as unstyled text at full
+size. It looks like a catastrophic CSS bug and is really just a build that
+never finished.
+
+If it happens anyway: `rm -rf apps/web/.next && pnpm build && pm2 restart
+ambervale-web`.
+
 > `migrate deploy` applies migrations to the database; it does **not**
 > regenerate the Prisma client, and `pnpm install` skips its postinstall when
 > no dependency changed. A schema column added in the same release therefore
