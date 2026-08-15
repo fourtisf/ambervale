@@ -1,24 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { fetchInvite } from '@/lib/api';
-import InviteGate from './InviteGate';
 
 /**
  * The front door.
  *
  * The gate state is read once on mount so the button can say what it will
- * actually do, rather than sending someone to /play only to bounce them back
- * with a code prompt. If the read fails the button still works — /play does
- * its own check, and a landing page that refuses to render because a status
- * call timed out is worse than one that is slightly optimistic.
+ * actually do. It does not put the code box here, though: /play shows the
+ * gate over the running world, which is a better thing to look at while
+ * typing than a flat page, and one gate is easier to keep right than two.
+ * If the read fails the button still works — /play does its own check, and a
+ * landing page that refuses to render because a status call timed out is
+ * worse than one that is slightly optimistic.
  */
 export default function Landing() {
-  const router = useRouter();
   const [required, setRequired] = useState<boolean | null>(null);
   const [passed, setPassed] = useState(false);
-  const [showGate, setShowGate] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -34,18 +33,6 @@ export default function Landing() {
     };
   }, []);
 
-  const enter = useCallback(() => {
-    if (required && !passed) {
-      setShowGate(true);
-      return;
-    }
-    router.push('/play');
-  }, [required, passed, router]);
-
-  if (showGate) {
-    return <InviteGate onPass={() => router.push('/play')} />;
-  }
-
   const locked = required === true && !passed;
 
   return (
@@ -56,9 +43,9 @@ export default function Landing() {
 
         <p className="tag">A little farm, a long evening.</p>
 
-        <button type="button" onClick={enter}>
+        <Link href="/play" className="cta">
           {locked ? 'Enter your invite code' : 'Play'}
-        </button>
+        </Link>
 
         {locked && <p className="note">The vale is invite-only while it is being built.</p>}
       </div>
@@ -102,17 +89,17 @@ export default function Landing() {
           color: #f4b942;
           letter-spacing: 0.04em;
         }
-        button {
+        .stack :global(.cta) {
+          display: block;
           width: 100%;
           padding: 0.95rem 1rem;
-          border: 0;
           border-radius: 999px;
           background: #f4b942;
           color: #2a1a05;
           font-size: 1.05rem;
           font-weight: 700;
           letter-spacing: 0.04em;
-          cursor: pointer;
+          text-decoration: none;
           box-shadow: 0 8px 24px rgba(4, 18, 26, 0.45);
         }
         .note {

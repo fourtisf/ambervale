@@ -86,19 +86,36 @@ export default function InviteGate({ onPass }: { onPass: () => void }) {
       </div>
 
       <style jsx>{`
+        /* A scrim, not a page. The vale is rendering underneath — dimmed
+           enough that cream text on it stays readable over both a sunlit
+           meadow and dark water, and blurred so the eye settles on the
+           card rather than on the trees. */
         .gate {
           position: fixed;
           inset: 0;
           display: grid;
           place-items: center;
           padding: 1.5rem;
-          background: radial-gradient(120% 100% at 50% 6%, #14495e 0%, #0a2e3d 55%, #061c26 100%);
+          background: radial-gradient(
+            85% 65% at 50% 45%,
+            rgba(6, 28, 38, 0.28) 0%,
+            rgba(6, 28, 38, 0.62) 100%
+          );
+          backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
           color: #f5e6c8;
           z-index: 50;
         }
         .card {
           width: min(22rem, 100%);
+          padding: 1.75rem 1.5rem 1.5rem;
+          border-radius: 22px;
           text-align: center;
+          /* Its own panel, because a blur alone does not survive a bright
+             patch of meadow passing behind the input. */
+          background: rgba(6, 26, 35, 0.86);
+          border: 1px solid rgba(245, 230, 200, 0.12);
+          box-shadow: 0 18px 50px rgba(2, 12, 18, 0.6);
         }
         .card :global(img) {
           display: block;

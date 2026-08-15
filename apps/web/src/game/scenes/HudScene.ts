@@ -10,6 +10,7 @@
  */
 
 import * as Phaser from 'phaser';
+import { bridge } from '../bridge';
 import { Minimap } from '../systems/Minimap';
 import { SkyOverlays } from '../systems/SkyOverlays';
 import type { WorldMap } from '../world/tilemap';
@@ -69,7 +70,15 @@ export class HudScene extends Phaser.Scene {
         .setDepth(200);
     }
 
+    // The invite gate covers the world, and a minimap floating in the corner
+    // of a code prompt reads as a stray artefact rather than as the game.
+    // Read the mirrored flag rather than only subscribing: this scene is
+    // launched by WorldScene, so the gate is nearly always decided already.
+    this.minimap.setVisible(!bridge.gated);
+    const offGated = bridge.on('gated', (gated) => this.minimap.setVisible(!gated));
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      offGated();
       this.sky.destroy();
       this.minimap.destroy();
     });

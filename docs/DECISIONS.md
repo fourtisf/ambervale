@@ -266,6 +266,20 @@ None of this makes `1990` strong. Four digits is a soft lock, and the code says
 so where someone changing it will read it: the limiter buys days instead of
 minutes, and a longer code is the only real fix.
 
+The gate is drawn **over** the world, never in place of it. That started as a
+bug: returning the gate instead of the game's tree unmounted the div Phaser had
+already been handed, so the game booted into a detached 0×0 parent, failed to
+build a framebuffer and never started a scene. The gate worked perfectly on top
+of a permanently black screen — and it only surfaced because a screenshot was
+taken of the running game rather than of the component.
+
+Keeping the host mounted fixes that and pays for itself: the vale renders
+behind the code box, because terrain comes from the map and needs no account.
+Only the canvas HUD stands down, told through the bridge rather than by
+reaching into the scene — `HudScene` is launched by `WorldScene`, so anything
+React does on its own schedule lands before there is a scene to talk to. The
+bridge mirrors the flag for exactly this reason.
+
 ## Known reconciliations
 
 `docs/AMBERVALE_HANDOFF.md` and `docs/prototype/ambervale2.html` were never

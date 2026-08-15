@@ -67,6 +67,8 @@ export interface BridgeEvents {
   modal: string | null;
   /** The player slept at the house; the world skips its clock to dawn. */
   sleep: void;
+  /** The invite gate is up; canvas-drawn HUD hides behind it. */
+  gated: boolean;
 }
 
 type Handler<K extends keyof BridgeEvents> = (payload: BridgeEvents[K]) => void;
@@ -93,6 +95,16 @@ class GameBridge {
 
   /** Set while a modal is open, so world input stays inert underneath it. */
   openModal: string | null = null;
+
+  /**
+   * Whether the invite gate is covering the world.
+   *
+   * Mirrored rather than only emitted because HudScene is launched by
+   * WorldScene, not by the game boot — so React invariably decides the gate
+   * before there is any scene to tell, and an event alone would be shouted
+   * into an empty room.
+   */
+  gated = false;
 
   /**
    * When the world last rendered a frame, as `Date.now()`.
@@ -123,6 +135,7 @@ class GameBridge {
     if (event === 'start') this.started = true;
     if (event === 'interaction') this.interaction = payload as Interaction | null;
     if (event === 'modal') this.openModal = payload as string | null;
+    if (event === 'gated') this.gated = payload as boolean;
 
     for (const handler of this.handlers.get(event) ?? []) {
       (handler as Handler<K>)(payload);
@@ -140,6 +153,7 @@ class GameBridge {
     this.started = false;
     this.interaction = null;
     this.openModal = null;
+    this.gated = false;
     this.input.moveX = 0;
     this.input.moveY = 0;
     this.lastFrameAt = 0;

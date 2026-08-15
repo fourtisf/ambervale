@@ -107,6 +107,18 @@ export default function GameCanvas() {
     };
   }, []);
 
+  /**
+   * Tell the canvas HUD to stand down while the gate is up.
+   *
+   * Through the bridge rather than by reaching for the scene directly: the
+   * HUD is launched by WorldScene, well after the game object exists, so
+   * anything React does to it on a timer of its own lands too early. The
+   * bridge mirrors this flag, so the scene reads it whenever it does start.
+   */
+  useEffect(() => {
+    if (gated !== null) bridge.emit('gated', gated);
+  }, [gated]);
+
   // Strict Mode double-invokes effects in dev; one auth call is enough.
   // (watchContext is defined below the component, next to its constants.)
   const connectedRef = useRef(false);
@@ -123,17 +135,6 @@ export default function GameCanvas() {
     bridge.emit('start', undefined);
   }, []);
 
-  if (gated) {
-    return (
-      <InviteGate
-        onPass={() => {
-          setGated(false);
-          void connect();
-        }}
-      />
-    );
-  }
-
   return (
     <>
       <div
@@ -148,7 +149,26 @@ export default function GameCanvas() {
           overflow: 'hidden',
         }}
       />
-      {!started ? (
+
+      {/*
+        The gate is laid over the world, never in place of it.
+        Returning it instead of this tree unmounted the div Phaser had already
+        been handed, so the game booted into a detached 0x0 parent, failed to
+        build a framebuffer and never started a scene — a black screen behind
+        a working code box. Keeping the host mounted also means the vale
+        itself is what someone looks at while they type: the terrain comes
+        from the map, which needs no account.
+      */}
+      {gated && (
+        <InviteGate
+          onPass={() => {
+            setGated(false);
+            void connect();
+          }}
+        />
+      )}
+
+      {gated ? null : !started ? (
         <TitleScreen
           farm={farm}
           loading={loading}
