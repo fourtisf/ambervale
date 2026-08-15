@@ -24,7 +24,10 @@ export default function TitleScreen({
   return (
     <div className="title-root">
       <div className="title-logo">
-        <h1>AMBERVALE</h1>
+        {/* Static art, so plain <img> rather than next/image: fixed intrinsic
+            size, no layout shift to solve, and an SVG that scales itself. */}
+        <img className="title-mark" src="/brand/mark.svg" alt="" width={112} height={112} />
+        <img className="title-word" src="/brand/wordmark.svg" alt="AMBERVALE" />
         <p>A little farm, a long evening.</p>
       </div>
 
@@ -82,18 +85,29 @@ export default function TitleScreen({
           z-index: 20;
         }
         .title-logo {
-          margin-top: max(6vh, 2rem);
+          margin-top: max(5vh, 1.5rem);
           text-align: center;
-          text-shadow: 0 3px 18px rgba(4, 18, 26, 0.75);
         }
-        .title-logo h1 {
-          margin: 0;
-          font-size: clamp(2.6rem, 11vw, 5rem);
-          letter-spacing: 0.14em;
-          color: #f5e6c8;
+        .title-logo :global(.title-mark) {
+          display: block;
+          margin: 0 auto 0.6rem;
+          width: clamp(4.5rem, 17vw, 7rem);
+          height: auto;
+          filter: drop-shadow(0 6px 20px rgba(4, 18, 26, 0.6));
+        }
+        .title-logo :global(.title-word) {
+          display: block;
+          margin: 0 auto;
+          /* Carries its own outline and drop, so no text-shadow — one on top
+             of the other reads as a smudge. This is the microtype-free cut;
+             the strapline below already says it, in a size that survives
+             being laid over bright grass. */
+          width: min(24rem, 78vw);
+          height: auto;
         }
         .title-logo p {
-          margin: 0.35rem 0 0;
+          margin: 0.5rem 0 0;
+          text-shadow: 0 2px 12px rgba(4, 18, 26, 0.8);
           color: #f4b942;
           letter-spacing: 0.06em;
           font-size: 0.95rem;

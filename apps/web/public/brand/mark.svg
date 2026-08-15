@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Ambervale farmer mark">
-  <title>AMBERVALE</title>
+  <title>AMBERVALE — the farmer</title>
   <!--
-    Favicon build of the farmer mark. Heavier outlines and no field line: at
-    32px the lockup's 6px strokes fall under a pixel and the grass behind him
-    is just noise. Kept in sync with docs/brand/mark-farmer.svg by hand — if
-    the mark changes, this changes with it.
+    The character, not a crop. Every colour here is lifted straight from the
+    player sprite in textures.ts — straw #e8c46a over #d4a94a, tunic #4a86b8,
+    skin #f0c9a0, ink #2a1a05 — so the icon and the thing it stands for are
+    literally the same palette.
   -->
   <defs>
     <linearGradient id="fBg" x1="0" y1="0" x2="0" y2="1">
@@ -17,7 +17,12 @@
   <circle cx="128" cy="128" r="120" fill="url(#fBg)"/>
 
   <g clip-path="url(#fClip)">
-    <g stroke="#f5e6c8" stroke-width="9" stroke-linejoin="round">
+    <!-- A field line behind him, so he is standing somewhere rather than
+         floating in a void. -->
+    <path d="M -10 214 q 138 -30 276 0 L 266 280 L -10 280 Z" fill="#5a9a4a"/>
+    <path d="M -10 214 q 138 -30 276 0" fill="none" stroke="#68a851" stroke-width="6"/>
+
+    <g stroke="#f5e6c8" stroke-width="6" stroke-linejoin="round">
       <!-- shoulders -->
       <path d="M 62 236 q 0 -58 66 -58 q 66 0 66 58 Z" fill="#4a86b8"/>
       <!-- head -->
@@ -30,10 +35,10 @@
     <!-- Hat band in the game's amber, and the two dot eyes it is known by. -->
     <path d="M 86 98 q 42 12 84 0 l 0 8 q -42 12 -84 0 Z" fill="#f4b942"/>
     <g fill="#2a1a05">
-      <circle cx="112" cy="140" r="8.5"/>
-      <circle cx="146" cy="140" r="8.5"/>
+      <circle cx="112" cy="140" r="7"/>
+      <circle cx="146" cy="140" r="7"/>
     </g>
   </g>
 
-  <circle cx="128" cy="128" r="120" fill="none" stroke="#f4b942" stroke-width="12"/>
+  <circle cx="128" cy="128" r="120" fill="none" stroke="#f4b942" stroke-width="8"/>
 </svg>
