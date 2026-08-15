@@ -30,6 +30,14 @@ export interface Response<T = Record<string, unknown>> {
 export function createClient(opts: { ip?: string } = {}) {
   const jar = new Map<string, string>();
   const deviceId = randomUUID();
+  /**
+   * The invite pass, held per client the way a browser tab holds it.
+   *
+   * It is a header rather than a cookie, deliberately — the gate is meant to
+   * be asked for on every arrival — so the jar does not carry it and this has
+   * to be tracked alongside.
+   */
+  let pass: string | null = null;
 
   async function call<T = Record<string, unknown>>(
     path: string,
@@ -39,6 +47,7 @@ export function createClient(opts: { ip?: string } = {}) {
     const headers: Record<string, string> = {
       'content-type': 'application/json',
       'x-device-id': deviceId,
+      ...(pass ? { 'x-invite-pass': pass } : {}),
       ...(opts.ip ? { 'x-forwarded-for': opts.ip } : {}),
     };
     const cookie = [...jar.entries()].map(([k, v]) => `${k}=${v}`).join('; ');
@@ -66,7 +75,13 @@ export function createClient(opts: { ip?: string } = {}) {
     return { status: res.status, body: body as T };
   }
 
-  return { call, deviceId };
+  return {
+    call,
+    deviceId,
+    setPass: (value: string | null) => {
+      pass = value;
+    },
+  };
 }
 
 export type Client = ReturnType<typeof createClient>;
@@ -77,17 +92,17 @@ export type Client = ReturnType<typeof createClient>;
  */
 export const INVITE_CODE = process.env.TEST_INVITE_CODE ?? '1990';
 
-/** Puts a pass in this client's cookie jar. Safe to call when the gate is off. */
+/** Gets this client through the gate. Safe to call when the gate is off. */
 export async function passGate(client: Client): Promise<void> {
-  await client.call('/auth/invite', { code: INVITE_CODE });
+  const res = await client.call<{ pass?: string }>('/auth/invite', { code: INVITE_CODE });
+  client.setPass(res.body.pass ?? null);
 }
 
 /**
- * A bare `cookie:` header carrying nothing but a gate pass.
- *
- * For the tests that call fetch by hand precisely because they are checking
- * what happens with no session — they still have to get through the front
- * door first, or they measure the gate instead of the thing they name.
+ * A gate pass, for the tests that call fetch by hand precisely because they
+ * are checking what happens with no session — they still have to get through
+ * the front door first, or they measure the gate instead of the thing they
+ * name.
  */
 export async function passHeader(): Promise<string> {
   const res = await fetch(`${BASE}/auth/invite`, {
@@ -95,10 +110,8 @@ export async function passHeader(): Promise<string> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ code: INVITE_CODE }),
   });
-  for (const raw of res.headers.getSetCookie?.() ?? []) {
-    if (raw.startsWith('av_inv=')) return raw.split(';')[0]!;
-  }
-  return '';
+  const body = (await res.json()) as { pass?: string };
+  return body.pass ?? '';
 }
 
 /** Registers a fresh guest account and returns its client plus first farm. */

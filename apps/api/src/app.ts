@@ -65,7 +65,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     origin: env.WEB_ORIGIN,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['content-type', 'x-device-id', 'x-request-id'],
+    allowedHeaders: ['content-type', 'x-device-id', 'x-request-id', 'x-invite-pass'],
     maxAge: 86400,
   });
 

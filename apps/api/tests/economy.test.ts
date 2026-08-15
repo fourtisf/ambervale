@@ -9,14 +9,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import {
-  CROPS,
-  DAILY,
-  RECIPES,
-  UPGRADES,
-  dailyPicks,
-  dayIndex,
-} from '@ambervale/game-config';
+import { CROPS, DAILY, RECIPES, UPGRADES, dailyPicks, dayIndex } from '@ambervale/game-config';
 import { endow, newPlayer, paced, sleep, withDb, type FarmLike } from './helpers';
 
 const farmOf = async (client: { call: <T>(p: string) => Promise<{ body: T }> }) =>

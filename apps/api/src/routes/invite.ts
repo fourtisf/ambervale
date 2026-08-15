@@ -12,9 +12,9 @@ import {
   attemptsLeft,
   checkCode,
   clearAttempts,
-  grantPass,
   hasPass,
   inviteRequired,
+  passToken,
   takeFailure,
 } from '../lib/invite';
 import { parseBody } from '../lib/validate';
@@ -35,8 +35,7 @@ export async function inviteRoutes(app: FastifyInstance): Promise<void> {
     const body = parseBody(CodeBody, req);
 
     if (!inviteRequired()) {
-      grantPass(res);
-      return res.send({ ok: true, required: false });
+      return res.send({ ok: true, required: false, pass: passToken() });
     }
 
     // Check the budget before spending it, so someone already locked out is
@@ -55,12 +54,23 @@ export async function inviteRoutes(app: FastifyInstance): Promise<void> {
     // Right answer: forget the tally so a few typos on the way in do not
     // count against the next person on this connection.
     await clearAttempts(req.ip);
-    grantPass(res);
     req.server.log.info({ ip: req.ip }, 'invite accepted');
-    return res.send({ ok: true, required: true });
+
+    // The token goes in the body, not a Set-Cookie: the client holds it in
+    // memory for as long as the page lives and no longer. That is the whole
+    // point of the change — a browser that keeps re-presenting a pass is a
+    // browser that is never asked again.
+    return res.send({ ok: true, required: true, pass: passToken() });
   });
 
-  // Kept for symmetry with /auth/logout: useful when testing the gate itself.
+  /**
+   * Clears the cookie the previous scheme used to set.
+   *
+   * The pass is a header now, so there is nothing server-side to forget — but
+   * browsers that were issued the old month-long cookie are still carrying it,
+   * and leaving it there is a stale credential sitting in people's browsers
+   * for no reason.
+   */
   app.post('/auth/invite/forget', async (_req, res) => {
     res.clearCookie('av_inv', { path: '/' });
     return res.send({ ok: true });

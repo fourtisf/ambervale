@@ -11,6 +11,20 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4021';
 const DEVICE_KEY = 'ambervale.deviceId';
 
 /**
+ * The invite pass, held in memory only.
+ *
+ * Deliberately not localStorage, not sessionStorage, and not a cookie. The
+ * closed beta asks for the code every time someone arrives, and the only way
+ * to mean that is for the client to genuinely forget — a refresh clears this
+ * module, and the gate is asked again.
+ */
+let invitePass: string | null = null;
+
+export function setInvitePass(pass: string | null): void {
+  invitePass = pass;
+}
+
+/**
  * A stable per-browser id. Survives cookie clearing, which is what lets a
  * player get their farm back without ever creating an account.
  */
@@ -52,6 +66,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: {
       'content-type': 'application/json',
       'x-device-id': getDeviceId(),
+      // Present on every call, because the gate guards every endpoint. Absent
+      // until the code is typed, and absent again after a refresh.
+      ...(invitePass ? { 'x-invite-pass': invitePass } : {}),
       ...(init.headers ?? {}),
     },
   });
@@ -264,6 +281,13 @@ export interface InviteState {
   required: boolean;
   ok: boolean;
   attemptsLeft: number | null;
+}
+
+export interface InvitePass {
+  ok: boolean;
+  required: boolean;
+  /** The token to present on later calls. Held in memory, never stored. */
+  pass?: string;
 }
 
 export const fetchInvite = (): Promise<InviteState> => apiGet('/auth/invite');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ApiRequestError, apiPost } from '@/lib/api';
+import { ApiRequestError, apiPost, setInvitePass, type InvitePass } from '@/lib/api';
 
 /**
  * The closed-beta door.
@@ -41,7 +41,10 @@ export default function InviteGate({
       setBusy(true);
       setError(null);
       try {
-        await apiPost('/auth/invite', { code: code.trim() });
+        const res = await apiPost<InvitePass>('/auth/invite', { code: code.trim() });
+        // Held in memory for the life of this page and no longer, which is
+        // what makes the code get asked for on the next visit.
+        setInvitePass(res.pass ?? null);
         onPass();
       } catch (err) {
         setError(

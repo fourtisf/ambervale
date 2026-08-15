@@ -307,6 +307,21 @@ None of this makes `1990` strong. Four digits is a soft lock, and the code says
 so where someone changing it will read it: the limiter buys days instead of
 minutes, and a longer code is the only real fix.
 
+The pass is a **header held in memory**, not a cookie.
+
+It began as a month-long signed cookie, which meant the door was asked about
+once and then never again — from the inside, indistinguishable from having no
+door at all. The pass is now a token returned in the response body, kept in a
+module variable, and presented on every call. A refresh loses it. Closing the
+tab loses it. The code is asked for on every arrival, which is what a closed
+beta actually wants and what a cookie can never give you, because the browser's
+whole job is to keep sending it.
+
+The token is derived from the code rather than random, so rotating
+`INVITE_CODE` invalidates every outstanding pass with no server-side storage —
+no session table, no cleanup. It is not a secret worth more than the code:
+anyone holding one has already typed the code it comes from.
+
 The gate is at the **front door**, and the world is behind it.
 
 An earlier version put the code box only on /play, reasoning that one gate is

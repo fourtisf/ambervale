@@ -54,11 +54,15 @@ describe('invite gate', () => {
     const denied = await client.call('/auth/guest', { deviceId: client.deviceId });
     assert.equal(denied.status, 403, 'a failed attempt must not hand out a pass');
 
-    const right = await client.call<{ ok: boolean }>('/auth/invite', { code: CODE });
+    const right = await client.call<{ ok: boolean; pass?: string }>('/auth/invite', {
+      code: CODE,
+    });
     assert.equal(right.status, 200);
     assert.equal(right.body.ok, true);
+    assert.ok(right.body.pass, 'a correct code must hand back a pass to present');
 
-    // The pass rides on the cookie jar, so the same client now gets through.
+    // The pass is a header the client holds, not a cookie the browser keeps.
+    client.setPass(right.body.pass!);
     const allowed = await client.call('/auth/guest', { deviceId: client.deviceId });
     assert.equal(allowed.status, 200);
   });
@@ -71,10 +75,31 @@ describe('invite gate', () => {
     assert.equal(before.body.ok, false);
     assert.ok(!JSON.stringify(before.body).includes(CODE), 'the code must never be echoed');
 
-    await client.call('/auth/invite', { code: CODE });
+    const res = await client.call<{ pass?: string }>('/auth/invite', { code: CODE });
+    client.setPass(res.body.pass ?? null);
 
     const after = await client.call<{ ok: boolean }>('/auth/invite');
     assert.equal(after.body.ok, true);
+  });
+
+  it('does not leave a pass behind in the browser', async () => {
+    // The whole point of the change from a cookie: a client that forgets its
+    // pass — a refresh, a new tab, a fresh browser — is asked again. If the
+    // API ever set a Set-Cookie here, that would stop being true silently.
+    const res = await fetch(`${BASE}/auth/invite`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code: CODE }),
+    });
+    assert.equal(res.status, 200);
+
+    const setCookie = (res.headers.getSetCookie?.() ?? []).join('; ');
+    assert.ok(!setCookie.includes('av_inv'), `a pass cookie was issued: ${setCookie}`);
+
+    // And a client that presents nothing is refused, however recently someone
+    // else got through.
+    const bare = await fetch(`${BASE}/farm`);
+    assert.equal(bare.status, 403);
   });
 
   it('caps guessing', async () => {

@@ -3,8 +3,8 @@
  *
  * A gate that only exists in the browser is not a gate: the bundle is public,
  * and anyone can skip the screen by calling the API directly. So the code is
- * checked here, and the pass it grants is a signed cookie that the API itself
- * demands before it will create or resume any account.
+ * checked here, and the pass it grants is a token the API itself demands
+ * before it will create or resume any account.
  *
  * The code is short, which means it is guessable — 1990 is one of ten
  * thousand. The only thing standing between that and a scripted sweep is the
@@ -12,14 +12,21 @@
  */
 
 import { timingSafeEqual } from 'node:crypto';
-import type { FastifyReply, FastifyRequest } from 'fastify';
-import { env, isProd } from '../env';
+import type { FastifyRequest } from 'fastify';
+import { env } from '../env';
 import { redis } from './redis';
 
-export const INVITE_COOKIE = 'av_inv';
-
-/** A pass lasts a month; long enough that a beta tester types it once. */
-export const INVITE_TTL_SEC = 60 * 60 * 24 * 30;
+/**
+ * The header a client presents its pass in.
+ *
+ * The pass used to be a month-long cookie, which meant the door was asked
+ * about once and then never again — indistinguishable, from the inside, from
+ * having no door. It is a token the client holds in memory now: a refresh
+ * loses it, closing the tab loses it, and the code is asked for every time
+ * someone arrives. That is the intended behaviour for a closed beta, not an
+ * oversight; it is also why the token is cheap to re-obtain.
+ */
+export const INVITE_HEADER = 'x-invite-pass';
 
 /**
  * Wrong guesses allowed per IP, and the window they expire over.
@@ -118,22 +125,26 @@ export function checkCode(given: string): boolean {
   return inviteRequired() && codeMatches(given.trim());
 }
 
-/** True when this request already carries a valid, signed pass. */
+/**
+ * True when this request carries a valid pass.
+ *
+ * Header only. A cookie was the obvious mechanism and the wrong one: the
+ * browser keeps sending it, which is exactly the property we do not want.
+ * Old cookies from the previous scheme are ignored rather than honoured, so
+ * the change takes effect for everyone at once instead of only for people
+ * who happen to clear their cookies.
+ */
 export function hasPass(req: FastifyRequest): boolean {
   if (!inviteRequired()) return true;
 
-  const raw = req.cookies[INVITE_COOKIE];
-  if (!raw) return false;
+  const header = req.headers[INVITE_HEADER];
+  const value = Array.isArray(header) ? header[0] : header;
+  if (!value) return false;
 
-  const unsigned = req.unsignCookie(raw);
-  if (!unsigned.valid || !unsigned.value) return false;
-
-  // The pass carries the code's own fingerprint, so rotating INVITE_CODE
-  // invalidates every pass issued under the old one without touching Redis.
-  return unsigned.value === passValue();
+  return value === passValue();
 }
 
-/** What a valid pass cookie contains. Never the code itself. */
+/** What a valid pass contains. Never the code itself. */
 function passValue(): string {
   let h = 2166136261;
   for (let i = 0; i < env.INVITE_CODE.length; i++) {
@@ -143,15 +154,15 @@ function passValue(): string {
   return `v1.${(h >>> 0).toString(36)}`;
 }
 
-export function grantPass(reply: FastifyReply): void {
-  reply.setCookie(INVITE_COOKIE, passValue(), {
-    httpOnly: true,
-    signed: true,
-    // Same cross-site constraints as the session cookie: the game is served
-    // from a different origin than the API.
-    sameSite: isProd ? 'none' : 'lax',
-    secure: isProd,
-    path: '/',
-    maxAge: INVITE_TTL_SEC,
-  });
+/**
+ * The token a client presents on subsequent requests.
+ *
+ * Derived from the code rather than random, so rotating INVITE_CODE
+ * invalidates every outstanding pass without any server-side storage — there
+ * is no session table to keep, and no cleanup to forget. It is not a secret
+ * worth more than the code itself: anyone holding it has already typed the
+ * code it comes from.
+ */
+export function passToken(): string {
+  return passValue();
 }

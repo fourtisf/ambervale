@@ -37,7 +37,7 @@ describe('authentication', () => {
     // rather than the invite gate turning the request away first.
     const pass = await passHeader();
     const res = await fetch(`${BASE}/farm`, {
-      headers: { cookie: `${pass}; av_sess=forged.notavalidsignature` },
+      headers: { 'x-invite-pass': pass, cookie: 'av_sess=forged.notavalidsignature' },
     });
     assert.equal(res.status, 401);
   });
@@ -46,7 +46,7 @@ describe('authentication', () => {
     const pass = await passHeader();
     const res = await fetch(`${BASE}/act/plant`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', cookie: pass },
+      headers: { 'content-type': 'application/json', 'x-invite-pass': pass },
       body: JSON.stringify({ plotIndex: 0, cropKey: 'sunflower' }),
     });
     assert.equal(res.status, 401);

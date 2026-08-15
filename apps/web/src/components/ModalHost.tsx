@@ -353,6 +353,35 @@ function BagModal({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * The wallet, on its own.
+ *
+ * `WalletPanel` already did the linking; it just lived inside Settings, where
+ * it sat under the sound toggle and above "reset run" — three unrelated things
+ * in one drawer, only one of which decides whether a farm survives a cleared
+ * browser.
+ */
+function WalletModal({ onClose }: { onClose: () => void }) {
+  return (
+    <Modal title="Wallet" onClose={onClose}>
+      <p className="blurb">
+        Linking a wallet makes this farm yours rather than this browser&apos;s. It moves nothing and
+        grants nothing in game — it is an identity, so a cleared browser or a new device can get the
+        same farm back.
+      </p>
+      <WalletPanel />
+      <style jsx>{`
+        .blurb {
+          margin: 0 0 1rem;
+          font-size: 0.88rem;
+          line-height: 1.6;
+          opacity: 0.78;
+        }
+      `}</style>
+    </Modal>
+  );
+}
+
 function SettingsModal({ onClose }: { onClose: () => void }) {
   const [muted, setMuted] = useState(audio.isMuted);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -387,7 +416,6 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           {muted ? 'Muted' : 'On'}
         </button>
       </div>
-      <WalletPanel />
       <div className="row danger">
         <span>Reset run</span>
         {confirmReset ? (
@@ -474,6 +502,8 @@ export default function ModalHost() {
       return <LeaderboardModal onClose={close} />;
     case 'away':
       return <AwayModal onClose={close} />;
+    case 'wallet':
+      return <WalletModal onClose={close} />;
     case 'settings':
       return <SettingsModal onClose={close} />;
     default:

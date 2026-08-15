@@ -93,6 +93,12 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
         <button type="button" onClick={() => onOpen('leaderboard')} aria-label="Leaderboard">
           Ranks
         </button>
+        {/* Its own button rather than a row inside Settings. A wallet is the
+            thing that makes a farm survive a cleared browser, and nobody goes
+            looking for that under a gear icon. */}
+        <button type="button" onClick={() => onOpen('wallet')} aria-label="Wallet">
+          Wallet
+        </button>
         <button type="button" onClick={() => onOpen('settings')} aria-label="Settings">
           ⚙
         </button>
