@@ -1,85 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Ambervale">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="AMBERVALE — The Farmer">
   <title>AMBERVALE — profile mark</title>
   <!--
-    The farmer, struck as a coin.
-    Earlier passes kept treating this as an icon that needed better shading,
-    and it kept coming back looking like a sticker. The problem was the
-    category, not the polish: a flat disc with a drawing on it has no reason
-    to feel expensive. So this is a physical object instead — a minted badge
-    with a bevelled rim, a recessed enamel field, and a dome of glass over it.
+    The farmer, cut down to what survives.
 
-    What sells that, in order of how much each contributes:
-      1. The rim is lit from one direction. Bright at ten o'clock, dark at
-         four, with a thin bright line on its inner edge and a dark line on
-         its outer. That single relationship is what makes metal read as
-         metal rather than as a yellow circle.
-      2. The field is recessed — an inner shadow all the way round, heavier
-         where the rim is lit, because that is where the wall casts.
-      3. A dome highlight: one soft ellipse across the upper-left at low
-         opacity, which is what enamel under curved glass actually looks like.
-      4. Grain, so nothing is a pure fill.
+    The full figure — shoulders, tunic, cream outline, a field behind him —
+    was legible at 400px and a smear at 32. This keeps the two things that
+    identify him, the brim and the two dots, and lets them fill the frame.
+    Simplifying was the thing that made it read as a mark rather than as an
+    illustration of a mark.
 
-    Layout constraints come from where it ends up: the square is filled
-    (X shows this file square in places, and transparent corners land white
-    on a light client and black on a dark one), and the badge is inset from
-    the edge (X crops to the inscribed circle, and a rim on that exact line
-    is one rounding error from being shaved on one side only).
+    The coin treatment does the rest: a bevelled rim lit from ten o'clock and
+    dark at four, a recessed enamel field, and one dome highlight across the
+    upper left. Layout answers to X — the square is filled, because the file
+    is shown square in places and transparent corners land white on a light
+    client and black on a dark one; and the badge is inset, because X crops to
+    the inscribed circle and a rim on that line is one rounding error from
+    being shaved on one side only.
   -->
   <defs>
-    <!-- Rim: lit from the upper left, so the gradient runs corner to corner. -->
     <linearGradient id="rim" x1="0.12" y1="0.02" x2="0.88" y2="0.98">
-      <stop offset="0" stop-color="#ffe9ae"/>
-      <stop offset="0.18" stop-color="#f7cd6a"/>
-      <stop offset="0.42" stop-color="#e0a637"/>
-      <stop offset="0.62" stop-color="#a9711b"/>
-      <stop offset="0.82" stop-color="#d8a13a"/>
-      <stop offset="1" stop-color="#f6d385"/>
+      <stop offset="0" stop-color="#ffe9ae"/><stop offset="0.18" stop-color="#f7cd6a"/>
+      <stop offset="0.42" stop-color="#e0a637"/><stop offset="0.62" stop-color="#a9711b"/>
+      <stop offset="0.82" stop-color="#d8a13a"/><stop offset="1" stop-color="#f6d385"/>
     </linearGradient>
-
+    <linearGradient id="gold" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ffe4a0"/><stop offset="0.5" stop-color="#f4b942"/>
+      <stop offset="1" stop-color="#c07f1c"/>
+    </linearGradient>
     <radialGradient id="enamel" cx="0.40" cy="0.30" r="0.92">
-      <stop offset="0" stop-color="#1c5b73"/>
-      <stop offset="0.42" stop-color="#0f3f55"/>
+      <stop offset="0" stop-color="#1c5b73"/><stop offset="0.42" stop-color="#0f3f55"/>
       <stop offset="1" stop-color="#05202c"/>
     </radialGradient>
-
-    <radialGradient id="sunglow" cx="0.5" cy="0.5" r="0.5">
-      <stop offset="0" stop-color="#f4b942" stop-opacity="0.62"/>
-      <stop offset="0.55" stop-color="#f4b942" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#f4b942" stop-opacity="0"/>
-    </radialGradient>
-
-    <!-- The recess. Heavier at the top-left, where the lit wall casts down. -->
     <radialGradient id="recess" cx="0.5" cy="0.5" r="0.5">
       <stop offset="0.70" stop-color="#000" stop-opacity="0"/>
       <stop offset="0.92" stop-color="#000" stop-opacity="0.30"/>
       <stop offset="1" stop-color="#000" stop-opacity="0.62"/>
     </radialGradient>
-
-    <linearGradient id="hatTop" x1="0" y1="0" x2="0.25" y2="1">
-      <stop offset="0" stop-color="#f7dc9a"/>
-      <stop offset="0.55" stop-color="#e0bc63"/>
-      <stop offset="1" stop-color="#bd8f34"/>
-    </linearGradient>
-    <linearGradient id="crown" x1="0.1" y1="0" x2="0.9" y2="1">
-      <stop offset="0" stop-color="#eac878"/>
-      <stop offset="1" stop-color="#b8862f"/>
-    </linearGradient>
-    <linearGradient id="tunic" x1="0.15" y1="0" x2="0.85" y2="1">
-      <stop offset="0" stop-color="#6aa7d2"/>
-      <stop offset="0.6" stop-color="#4380ae"/>
-      <stop offset="1" stop-color="#2d5f89"/>
-    </linearGradient>
-    <linearGradient id="skin" x1="0.2" y1="0" x2="0.8" y2="1">
-      <stop offset="0" stop-color="#fadfbc"/>
-      <stop offset="1" stop-color="#dfae82"/>
-    </linearGradient>
-    <linearGradient id="grass" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#74b558"/>
-      <stop offset="1" stop-color="#38702f"/>
-    </linearGradient>
-
-    <clipPath id="field"><circle cx="200" cy="200" r="166"/></clipPath>
-
     <filter id="grain" x="0" y="0" width="100%" height="100%">
       <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="3" seed="5" result="n"/>
       <feColorMatrix in="n" type="saturate" values="0"/>
@@ -87,53 +43,40 @@
     </filter>
     <filter id="soft"><feGaussianBlur stdDeviation="10"/></filter>
     <filter id="tight"><feGaussianBlur stdDeviation="3"/></filter>
-  </defs>
-
+    <clipPath id="field"><circle cx="200" cy="200" r="166"/></clipPath>
+</defs>
+  
   <rect width="400" height="400" fill="#061c26"/>
-
-  <!-- The badge's own shadow on the backing. -->
   <ellipse cx="200" cy="214" rx="186" ry="184" fill="#000" opacity="0.5" filter="url(#soft)"/>
-
   <circle cx="200" cy="200" r="184" fill="url(#rim)"/>
-  <!-- Outer dark line and inner bright line: the two edges of a bevel. -->
   <circle cx="200" cy="200" r="184" fill="none" stroke="#5b3a0c" stroke-width="3" opacity="0.55"/>
   <circle cx="200" cy="200" r="170" fill="none" stroke="#fff3cf" stroke-width="2.5" opacity="0.5"/>
-  <!-- Specular arcs, where a round metal edge catches the light. -->
   <path d="M 64 122 A 152 152 0 0 1 196 46" fill="none" stroke="#fff8e4" stroke-width="7"
         stroke-linecap="round" opacity="0.55" filter="url(#tight)"/>
   <path d="M 330 262 A 152 152 0 0 1 232 350" fill="none" stroke="#fff2d0" stroke-width="5"
         stroke-linecap="round" opacity="0.22" filter="url(#tight)"/>
-
   <circle cx="200" cy="200" r="166" fill="url(#enamel)"/>
 
   <g clip-path="url(#field)">
-    <circle cx="286" cy="140" r="150" fill="url(#sunglow)"/>
+    
+    <defs>
+      <linearGradient id="hatg" x1="0" y1="0" x2="0.2" y2="1">
+        <stop offset="0" stop-color="#f7dc9a"/><stop offset="1" stop-color="#bd8f34"/></linearGradient>
+      <linearGradient id="sking" x1="0.2" y1="0" x2="0.8" y2="1">
+        <stop offset="0" stop-color="#fadfbc"/><stop offset="1" stop-color="#dcaa7c"/></linearGradient>
+    </defs>
+    <circle cx="200" cy="228" r="96" fill="url(#sking)"/>
+    <ellipse cx="200" cy="176" rx="164" ry="46" fill="url(#hatg)"/>
+    <path d="M 112 162 q 16 -92 88 -92 q 72 0 88 92 Z" fill="url(#hatg)"/>
+    <path d="M 116 158 q 84 26 168 0 l 0 18 q -84 26 -168 0 Z" fill="#f4b942"/>
+    <g fill="#2a1a05"><circle cx="168" cy="244" r="14"/><circle cx="236" cy="244" r="14"/></g>
+    <path d="M 108 176 q 92 44 184 0 l 0 26 q -92 38 -184 0 Z" fill="#2a1a05" opacity="0.15" filter="url(#soft)"/>
 
-    <path d="M -20 292 q 220 -50 440 0 L 420 420 L -20 420 Z" fill="url(#grass)"/>
-    <path d="M -20 292 q 220 -50 440 0" fill="none" stroke="#8cc86a" stroke-width="6" opacity="0.5"/>
-
-    <g transform="translate(200 208) scale(0.82) translate(-200 -208)">
-      <g stroke="#f7ead2" stroke-width="9" stroke-linejoin="round">
-        <path d="M 97 366 q 0 -92 103 -92 q 103 0 103 92 Z" fill="url(#tunic)"/>
-        <circle cx="200" cy="204" r="72" fill="url(#skin)"/>
-        <ellipse cx="200" cy="164" rx="126" ry="36" fill="url(#hatTop)"/>
-        <path d="M 131 154 q 12 -73 69 -73 q 57 0 69 73 Z" fill="url(#crown)"/>
-      </g>
-      <path d="M 134 151 q 66 19 132 0 l 0 13 q -66 19 -132 0 Z" fill="#f4b942"/>
-      <g fill="#2a1a05">
-        <circle cx="175" cy="217" r="11"/>
-        <circle cx="228" cy="217" r="11"/>
-      </g>
-      <!-- The brim's shadow: what stops a head reading as a disc with dots. -->
-      <path d="M 128 164 q 72 34 144 0 l 0 20 q -72 28 -144 0 Z" fill="#2a1a05" opacity="0.13"
-            filter="url(#soft)"/>
-    </g>
-
+    
     <circle cx="200" cy="200" r="166" fill="url(#recess)"/>
-    <!-- The dome. One soft sweep across the upper left, and nothing else —
-         two highlights would read as two light sources. -->
     <ellipse cx="132" cy="112" rx="150" ry="104" transform="rotate(-24 132 112)"
              fill="#ffffff" opacity="0.085" filter="url(#soft)"/>
     <rect width="400" height="400" filter="url(#grain)" opacity="0.09" style="mix-blend-mode:overlay"/>
+
   </g>
 </svg>

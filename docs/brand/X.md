@@ -39,6 +39,12 @@ with an inner shadow, and one dome highlight across the upper left. That last
 one is what enamel under curved glass actually looks like, and it is worth
 more than any amount of gradient work on the drawing inside.
 
+**And then it was cut down.** The full figure — shoulders, tunic, cream
+outline, a field behind him — was legible at 400px and a smear at 32. What
+survives is the brim and the two dots, filling the frame. Simplifying is what
+finally made it read as a mark rather than as an illustration of one; the six
+directions in `refs/` are what that decision was made against.
+
 **The banner was the wrong composition.** It was a panorama: everything the
 same size, evenly spread, evenly lit, nothing for the eye to land on. It is
 now built around one silhouette against one light — the windmill standing
@@ -50,6 +56,13 @@ happens in this game.
 Depth still comes from the same three cheap tricks, and they still matter:
 haze along each crest, a slight blur on the far layers, and film grain at 8%
 so nothing is a pure fill.
+
+The mark itself is struck into the banner's lockup, above the wordmark. That
+is the unambiguous way to make a banner belong to a logo — the logo is in it.
+A hero-sized farmer silhouette was tried in the field first and abandoned: at
+that scale a solid black figure needs anatomy it kept failing to get, and
+once the medallion was in the lockup the silhouette was saying the same thing
+worse, in the corner the avatar covers.
 
 ## Two things the layout is built around
 
