@@ -17,6 +17,22 @@ export const metadata: Metadata = {
   applicationName: 'AMBERVALE',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'AMBERVALE', statusBarStyle: 'black-translucent' },
+  /**
+   * Both cuts of the mark, on purpose.
+   *
+   * `app/icon.svg` covers browsers that take an SVG, which is most of them and
+   * stays sharp at any size. The .ico is for everything that never asks the
+   * page — search results, link-preview crawlers, a pinned Windows shortcut —
+   * because those fetch /favicon.ico by convention and a 404 is simply no
+   * logo at all.
+   */
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48 64x64' },
+    ],
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     title: 'AMBERVALE',
     description: DESCRIPTION,
