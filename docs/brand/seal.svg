@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 260" width="260" height="260" role="img" aria-label="Ambervale seal">
+  <title>AMBERVALE — the seal</title>
+
+  <defs>
+    <linearGradient id="sealField" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#123f52"/>
+      <stop offset="1" stop-color="#07222e"/>
+    </linearGradient>
+    <linearGradient id="sealSun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd479"/>
+      <stop offset="1" stop-color="#e0a52f"/>
+    </linearGradient>
+
+    <!-- Two baselines, both running left to right. The sweep flag is what
+         decides whether an arc passes over the top or under the bottom, and
+         getting it wrong is what sets the lower line upside down. -->
+    <path id="ringTop" d="M 130 130 m -96 0 a 96 96 0 0 1 192 0" fill="none"/>
+    <path id="ringBottom" d="M 130 130 m -96 0 a 96 96 0 0 0 192 0" fill="none"/>
+
+    <!-- One grain, pointed and slightly swollen, drawn once and placed eight
+         times. Ellipses read as beads; this reads as wheat. -->
+    <path id="grain" d="M 0 0 C -8 -4, -8 -13, 0 -18 C 8 -13, 8 -4, 0 0 Z"/>
+  </defs>
+
+  <circle cx="130" cy="130" r="124" fill="none" stroke="#f4b942" stroke-width="3"/>
+  <circle cx="130" cy="130" r="116" fill="url(#sealField)"/>
+  <circle cx="130" cy="130" r="80" fill="none" stroke="#f4b942" stroke-width="1.5" opacity="0.55"/>
+
+  <g fill="#f5e6c8" font-family="Georgia, 'Iowan Old Style', 'Times New Roman', serif">
+    <text font-size="21" letter-spacing="5.5">
+      <textPath href="#ringTop" startOffset="50%" text-anchor="middle">AMBERVALE</textPath>
+    </text>
+    <text font-size="12" letter-spacing="4.5" opacity="0.72">
+      <textPath href="#ringBottom" startOffset="50%" text-anchor="middle">TEND · HARVEST · ENDURE</textPath>
+    </text>
+  </g>
+
+  <g fill="#f4b942">
+    <circle cx="34" cy="130" r="3"/>
+    <circle cx="226" cy="130" r="3"/>
+  </g>
+
+  <!-- A harvest sun, low behind the crop rather than overhead. -->
+  <circle cx="130" cy="122" r="36" fill="url(#sealSun)"/>
+
+  <g fill="none" stroke="#f5e6c8" stroke-linecap="round">
+    <path d="M 74 162 q 56 -14 112 0" stroke-width="3" opacity="0.85"/>
+    <path d="M 66 177 q 64 -16 128 0" stroke-width="3" opacity="0.58"/>
+    <path d="M 60 192 q 70 -18 140 0" stroke-width="3" opacity="0.33"/>
+  </g>
+
+  <!-- The ear. Grains fan outward in mirrored pairs, so the silhouette stays
+       symmetrical however small it is printed. -->
+  <g fill="#0a2e3d">
+    <path d="M 130 173 L 130 101.1" stroke="#0a2e3d" stroke-width="4.4" stroke-linecap="round" fill="none"/>
+    <g>
+      <use href="#grain" transform="translate(125.8 158.0) rotate(-49) scale(1.00)"/>
+      <use href="#grain" transform="translate(134.2 158.0) rotate(49) scale(1.00)"/>
+      <use href="#grain" transform="translate(125.8 146.5) rotate(-47) scale(1.00)"/>
+      <use href="#grain" transform="translate(134.2 146.5) rotate(47) scale(1.00)"/>
+      <use href="#grain" transform="translate(125.8 135.0) rotate(-45) scale(0.94)"/>
+      <use href="#grain" transform="translate(134.2 135.0) rotate(45) scale(0.94)"/>
+      <use href="#grain" transform="translate(125.8 123.5) rotate(-43) scale(0.86)"/>
+      <use href="#grain" transform="translate(134.2 123.5) rotate(43) scale(0.86)"/>
+      <use href="#grain" transform="translate(125.8 112.0) rotate(-41) scale(0.76)"/>
+      <use href="#grain" transform="translate(134.2 112.0) rotate(41) scale(0.76)"/>
+      <use href="#grain" transform="translate(130 105.1) scale(0.68)"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 268" width="240" height="268" role="img" aria-label="Ambervale amber drop">
+  <title>AMBERVALE — the amber drop</title>
+
+  <defs>
+    <linearGradient id="resin" x1="0.25" y1="0" x2="0.75" y2="1">
+      <stop offset="0" stop-color="#ffdc94"/>
+      <stop offset="0.45" stop-color="#f4b942"/>
+      <stop offset="1" stop-color="#c98a20"/>
+    </linearGradient>
+
+    <!-- The clip carries the geometry literally rather than through <use>.
+         A clipPath that silently resolves to nothing takes the whole interior
+         with it, and there is no error to read when it does. -->
+    <clipPath id="dropClip">
+      <path d="M 120 14 C 150 62, 196 108, 196 156 a 76 76 0 0 1 -152 0 C 44 108, 90 62, 120 14 Z"/>
+    </clipPath>
+  </defs>
+
+  <path id="dropShape"
+        d="M 120 14 C 150 62, 196 108, 196 156 a 76 76 0 0 1 -152 0 C 44 108, 90 62, 120 14 Z"
+        fill="url(#resin)"/>
+
+  <g clip-path="url(#dropClip)">
+    <!-- Two ridges. Both are closed well past the drop's lowest point (y=232)
+         so the ground is solid to the bottom of the silhouette. -->
+    <path d="M 20 178 C 56 158, 96 168, 128 180 C 158 191, 190 182, 220 170 L 220 260 L 20 260 Z"
+          fill="#1d5f79"/>
+    <path d="M 20 206 C 60 188, 104 200, 142 210 C 176 219, 200 214, 220 206 L 220 260 L 20 260 Z"
+          fill="#14485d"/>
+
+    <!-- Furrows across the near ridge. -->
+    <g fill="none" stroke="#f4b942" stroke-width="2.4" stroke-linecap="round" opacity="0.3">
+      <path d="M 48 226 C 78 214, 118 216, 152 224"/>
+      <path d="M 58 240 C 90 228, 132 230, 168 238"/>
+    </g>
+
+    <!-- The windmill on the far ridge. One blade, rotated four times, so they
+         cannot drift out of agreement with each other. -->
+    <g transform="translate(152 136)">
+      <path d="M -10 44 L -5.5 2 L 5.5 2 L 10 44 Z" fill="#0a2e3d"/>
+      <path d="M 0 -4 L -8.5 4 L 8.5 4 Z" fill="#0a2e3d"/>
+      <g fill="#0a2e3d" transform="translate(0 -3) rotate(18)">
+        <path id="blade" d="M 0 0 L 4 -3 L 32 -6.5 L 32 3 L 4 3 Z"/>
+        <use href="#blade" transform="rotate(90)"/>
+        <use href="#blade" transform="rotate(180)"/>
+        <use href="#blade" transform="rotate(270)"/>
+        <circle r="4.2" fill="#f4b942"/>
+      </g>
+    </g>
+
+    <!-- Two stalks on the near ridge, purely for scale. -->
+    <g>
+      <path d="M 74 224 L 74 200" stroke="#0a2e3d" stroke-width="3" stroke-linecap="round" fill="none"/>
+      <g fill="#0a2e3d">
+        <ellipse cx="69.5" cy="203" rx="4" ry="7" transform="rotate(-26 69.5 203)"/>
+        <ellipse cx="78.5" cy="203" rx="4" ry="7" transform="rotate(26 78.5 203)"/>
+        <ellipse cx="74" cy="194" rx="3.6" ry="7"/>
+      </g>
+    </g>
+
+    <!-- Resin sheen down the left shoulder. -->
+    <path d="M 104 40 C 82 78, 62 106, 58 142 C 56 164, 64 180, 76 190
+             C 60 176, 46 158, 48 134 C 51 100, 76 66, 104 40 Z"
+          fill="#ffffff" opacity="0.28"/>
+  </g>
+
+  <path d="M 120 14 C 150 62, 196 108, 196 156 a 76 76 0 0 1 -152 0 C 44 108, 90 62, 120 14 Z"
+        fill="none" stroke="#0a2e3d" stroke-width="7"/>
+</svg>

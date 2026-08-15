@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 232" width="840" height="232" role="img" aria-label="Ambervale">
+  <title>AMBERVALE — monoline wordmark</title>
+
+  <g fill="none" stroke="#0a2e3d" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 66.0 146 L 94.0 62 L 122.0 146"/>
+    <path d="M 156.0 146 L 156.0 62 L 184.0 116 L 212.0 62 L 212.0 146"/>
+    <path d="M 246.0 62 L 246.0 146 M 246.0 62 A 38 21 0 0 1 246.0 104 M 246.0 104 A 40 21 0 0 1 246.0 146"/>
+    <path d="M 320.0 62 L 320.0 146 M 320.0 62 L 362.0 62 M 320.0 104 L 354.0 104 M 320.0 146 L 362.0 146"/>
+    <path d="M 396.0 62 L 396.0 146 M 396.0 62 A 36 21 0 0 1 396.0 104 M 409.0 104 L 442.0 146"/>
+    <path d="M 476.0 62 L 504.0 146 L 532.0 62"/>
+    <path d="M 566.0 146 L 594.0 62 L 622.0 146"/>
+    <path d="M 576.3 115 L 611.7 115"/>
+    <path d="M 656.0 62 L 656.0 146 L 698.0 146"/>
+    <path d="M 732.0 62 L 732.0 146 M 732.0 62 L 774.0 62 M 732.0 104 L 766.0 104 M 732.0 146 L 774.0 146"/>
+  </g>
+  <g fill="none" stroke-width="14" stroke-linecap="round">
+    <path d="M 76.3 115 L 111.7 115" stroke="#c98a20"/>
+  </g>
+
+  <!-- Rule and microtype, held inside the cap width so the mark reads as a
+       block of type rather than a boxed badge. -->
+  <path d="M 100 190 L 754 190" stroke="#c98a20" stroke-width="2" opacity="0.6"/>
+  <text x="420" y="215" text-anchor="middle" fill="#0a2e3d" opacity="0.6"
+        font-family="Georgia, 'Iowan Old Style', 'Times New Roman', serif"
+        font-size="14" letter-spacing="7">A FARM AT THE EDGE OF THE VALE</text>
+</svg>

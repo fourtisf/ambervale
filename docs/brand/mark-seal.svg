@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Ambervale seal mark">
+  <title>AMBERVALE — seal mark</title>
+  <!-- The ring type is dropped on purpose: below about 64px it turns to grey
+       mush, and an illegible mark is worse than a plain one. -->
+  <defs>
+    <linearGradient id="mfield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#123f52"/><stop offset="1" stop-color="#07222e"/>
+    </linearGradient>
+    <linearGradient id="msun" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffd479"/><stop offset="1" stop-color="#e0a52f"/>
+    </linearGradient>
+    <path id="mgrain" d="M 0 0 C -8 -4, -8 -13, 0 -18 C 8 -13, 8 -4, 0 0 Z"/>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#mfield)"/>
+  <circle cx="128" cy="128" r="112" fill="none" stroke="#f4b942" stroke-width="5"/>
+  <circle cx="128" cy="118" r="50" fill="url(#msun)"/>
+  <g fill="none" stroke="#f5e6c8" stroke-linecap="round">
+    <path d="M 56 174 q 72 -18 144 0" stroke-width="7" opacity="0.85"/>
+    <path d="M 48 198 q 80 -20 160 0" stroke-width="7" opacity="0.45"/>
+  </g>
+  <g fill="#0a2e3d">
+    <path d="M 128 185 L 128 99.3" stroke="#0a2e3d" stroke-width="5.6" stroke-linecap="round" fill="none"/>
+      <use href="#mgrain" transform="translate(122.8 170.0) rotate(-49) scale(1.28)"/>
+      <use href="#mgrain" transform="translate(133.2 170.0) rotate(49) scale(1.28)"/>
+      <use href="#mgrain" transform="translate(122.8 155.5) rotate(-47) scale(1.28)"/>
+      <use href="#mgrain" transform="translate(133.2 155.5) rotate(47) scale(1.28)"/>
+      <use href="#mgrain" transform="translate(122.8 141.0) rotate(-45) scale(1.20)"/>
+      <use href="#mgrain" transform="translate(133.2 141.0) rotate(45) scale(1.20)"/>
+      <use href="#mgrain" transform="translate(122.8 126.5) rotate(-43) scale(1.10)"/>
+      <use href="#mgrain" transform="translate(133.2 126.5) rotate(43) scale(1.10)"/>
+      <use href="#mgrain" transform="translate(122.8 112.0) rotate(-41) scale(0.97)"/>
+      <use href="#mgrain" transform="translate(133.2 112.0) rotate(41) scale(0.97)"/>
+      <use href="#mgrain" transform="translate(128 103.3) scale(0.87)"/>
+  </g>
+</svg>

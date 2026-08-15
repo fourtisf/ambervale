@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="Ambervale A monogram">
+  <title>AMBERVALE — A monogram</title>
+  <!-- The wordmark's first letter, alone. Its crossbar is the horizon, which
+       is the one idea the whole identity turns on. -->
+  <rect x="0" y="0" width="256" height="256" rx="58" fill="#0a2e3d"/>
+  <rect x="7" y="7" width="242" height="242" rx="52" fill="none" stroke="#f4b942" stroke-width="3" opacity="0.45"/>
+  <g fill="none" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 66 190 L 128 66 L 190 190" stroke="#f5e6c8"/>
+    <path d="M 95 148 L 161 148" stroke="#f4b942"/>
+  </g>
+</svg>
