@@ -10,19 +10,42 @@
         --amber: #f4b942;
         --paper: #efe6d5;
       }
-      * { box-sizing: border-box; }
+      * {
+        box-sizing: border-box;
+      }
       body {
         margin: 0;
         padding: 56px 40px 80px;
         background: var(--paper);
         color: var(--ink);
-        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          sans-serif;
       }
-      header { max-width: 1180px; margin: 0 auto 40px; }
-      h1 { margin: 0 0 6px; font-size: 1.15rem; letter-spacing: 0.34em; text-transform: uppercase; }
-      header p { margin: 0; opacity: 0.62; font-size: 0.86rem; line-height: 1.6; max-width: 62ch; }
+      header {
+        max-width: 1180px;
+        margin: 0 auto 40px;
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 1.15rem;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+      }
+      header p {
+        margin: 0;
+        opacity: 0.62;
+        font-size: 0.86rem;
+        line-height: 1.6;
+        max-width: 62ch;
+      }
 
-      .sheet { max-width: 1180px; margin: 0 auto; }
+      .sheet {
+        max-width: 1180px;
+        margin: 0 auto;
+      }
       section {
         margin-bottom: 40px;
         background: #fff;
@@ -31,40 +54,87 @@
         overflow: hidden;
       }
       .head {
-        display: flex; align-items: baseline; gap: 14px;
-        padding: 20px 26px; border-bottom: 1px solid rgba(10, 46, 61, 0.1);
+        display: flex;
+        align-items: baseline;
+        gap: 14px;
+        padding: 20px 26px;
+        border-bottom: 1px solid rgba(10, 46, 61, 0.1);
       }
       .num {
-        width: 26px; height: 26px; display: grid; place-items: center;
-        border-radius: 50%; background: var(--ink); color: var(--cream);
-        font-size: 0.74rem; font-weight: 700;
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--cream);
+        font-size: 0.74rem;
+        font-weight: 700;
       }
-      .head h2 { margin: 0; font-size: 1rem; letter-spacing: 0.06em; }
-      .head span { font-size: 0.8rem; opacity: 0.6; }
+      .head h2 {
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.06em;
+      }
+      .head span {
+        font-size: 0.8rem;
+        opacity: 0.6;
+      }
 
       .lockup {
         background: var(--ink);
-        display: flex; align-items: center; justify-content: center;
-        gap: 34px; padding: 40px 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 34px;
+        padding: 40px 26px;
       }
-      .lockup .stack { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-      .lockup img { display: block; }
+      .lockup .stack {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+      }
+      .lockup img {
+        display: block;
+      }
 
       .sizes {
-        display: flex; align-items: flex-end; gap: 26px;
+        display: flex;
+        align-items: flex-end;
+        gap: 26px;
         padding: 20px 26px 24px;
         border-top: 1px solid rgba(10, 46, 61, 0.1);
         background: #fbf8f2;
       }
-      .size { text-align: center; }
-      .size img { display: block; margin: 0 auto 7px; }
-      .size b { font-size: 0.66rem; opacity: 0.5; font-weight: 600; }
-      .sizes .note {
-        margin-left: auto; max-width: 340px;
-        font-size: 0.76rem; line-height: 1.55; opacity: 0.68; text-align: left;
+      .size {
+        text-align: center;
       }
-      .wordmark-only { background: var(--ink); padding: 34px 26px; text-align: center; }
-      .wordmark-only img { max-width: 100%; }
+      .size img {
+        display: block;
+        margin: 0 auto 7px;
+      }
+      .size b {
+        font-size: 0.66rem;
+        opacity: 0.5;
+        font-weight: 600;
+      }
+      .sizes .note {
+        margin-left: auto;
+        max-width: 340px;
+        font-size: 0.76rem;
+        line-height: 1.55;
+        opacity: 0.68;
+        text-align: left;
+      }
+      .wordmark-only {
+        background: var(--ink);
+        padding: 34px 26px;
+        text-align: center;
+      }
+      .wordmark-only img {
+        max-width: 100%;
+      }
     </style>
   </head>
   <body>
@@ -72,8 +142,8 @@
       <h1>Ambervale</h1>
       <p>
         Three marks drawn out of the game's own sprites — the same straw, tunic, soil and grass
-        values the world is painted with — and one shared wordmark. Pick a mark; the wordmark is
-        the constant.
+        values the world is painted with — and one shared wordmark. Pick a mark; the wordmark is the
+        constant.
       </p>
     </header>
 
@@ -147,8 +217,8 @@
           <div class="size"><img src="mark-vale.svg" width="32" alt="" /><b>32</b></div>
           <div class="size"><img src="mark-vale.svg" width="20" alt="" /><b>20</b></div>
           <p class="note">
-            Held to four shapes. An earlier pass carried a plot and a sunflower as well, and at
-            20px the whole thing turned to noise — this is what was left after cutting.
+            Held to four shapes. An earlier pass carried a plot and a sunflower as well, and at 20px
+            the whole thing turned to noise — this is what was left after cutting.
           </p>
         </div>
       </section>

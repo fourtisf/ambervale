@@ -102,12 +102,12 @@ same name. It answers `ERR_PNPM_NOTHING_TO_DEPLOY` and nothing happens.
 separate lines, and a separate line does not care whether the one above it
 failed. Every production incident so far came out of that gap:
 
-| What failed                                | What the operator saw                        |
-| ------------------------------------------ | -------------------------------------------- |
-| build died, `pm2 restart` ran anyway        | unstyled text at full size; every CSS 404     |
-| migration applied, client not regenerated   | `error TS2551: Property 'x' does not exist`   |
-| old process still holding the port          | `curl /health` 200 — from the *old* process   |
-| `NEXT_PUBLIC_*` placeholder baked into HTML | a fake contract address on the landing page   |
+| What failed                                 | What the operator saw                       |
+| ------------------------------------------- | ------------------------------------------- |
+| build died, `pm2 restart` ran anyway        | unstyled text at full size; every CSS 404   |
+| migration applied, client not regenerated   | `error TS2551: Property 'x' does not exist` |
+| old process still holding the port          | `curl /health` 200 — from the _old_ process |
+| `NEXT_PUBLIC_*` placeholder baked into HTML | a fake contract address on the landing page |
 
 The individual steps, if one has to be run alone:
 

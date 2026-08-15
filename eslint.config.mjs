@@ -9,6 +9,9 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/.next/**',
+      // The deploy's scratch build, and the previous one kept for rollback.
+      '**/.next-build/**',
+      '**/.next.old/**',
       '**/*.d.ts',
       'apps/api/prisma/migrations/**',
     ],

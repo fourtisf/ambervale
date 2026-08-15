@@ -2,11 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "preserve",
@@ -21,9 +17,7 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
   "include": [
@@ -33,10 +27,5 @@
     ".next/types/**/*.ts",
     ".next-build/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    ".next-build",
-    ".next.old"
-  ]
+  "exclude": ["node_modules", ".next", ".next-build", ".next.old"]
 }
