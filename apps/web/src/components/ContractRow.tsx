@@ -66,7 +66,7 @@ export default function ContractRow({ compact = false }: { compact?: boolean }) 
 
   return (
     <div className={compact ? 'row compact' : 'row'}>
-      <span className="label">$AMBER CA</span>
+      <span className="label">CA</span>
 
       {address ? (
         <>
@@ -78,18 +78,15 @@ export default function ContractRow({ compact = false }: { compact?: boolean }) 
           </button>
         </>
       ) : (
-        <>
-          <code className="soon">Coming soon</code>
-          <span className="hint">no contract exists yet</span>
-        </>
+        <code className="soon">Coming soon</code>
       )}
 
       <style jsx>{`
         .row {
-          display: flex;
+          display: inline-flex;
           align-items: center;
-          gap: 0.6rem;
-          flex-wrap: wrap;
+          gap: 0.55rem;
+          max-width: 100%;
           padding: 0.6rem 0.75rem;
           border-radius: 12px;
           background: rgba(244, 185, 66, 0.08);
@@ -127,16 +124,8 @@ export default function ContractRow({ compact = false }: { compact?: boolean }) 
           font-size: 0.74rem;
         }
         .soon {
-          opacity: 0.72;
-          font-style: italic;
-        }
-        .hint {
-          font-size: 0.72rem;
-          opacity: 0.45;
-          white-space: nowrap;
-        }
-        .row.compact .hint {
-          display: none;
+          flex: 0 0 auto;
+          opacity: 0.78;
         }
         button {
           padding: 0.34rem 0.7rem;

@@ -266,8 +266,8 @@ export default function Landing() {
           text-shadow: 0 2px 12px rgba(4, 18, 26, 0.75);
         }
         .ca {
-          margin-top: 1.5rem;
-          text-align: left;
+          margin-top: 1.4rem;
+          text-align: center;
         }
 
         /* -- bands ------------------------------------------------------ */
