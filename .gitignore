@@ -1,6 +1,10 @@
 node_modules/
 dist/
 .next/
+# The deploy builds into a scratch directory and keeps the previous build
+# beside it for rollback (ops/deploy.sh).
+.next-build/
+.next.old/
 out/
 build/
 

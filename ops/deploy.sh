@@ -60,24 +60,76 @@ pnpm --filter @ambervale/api db:deploy || die "migration failed — the database
 
 # --- 4. build ----------------------------------------------------------------
 #
+# Into a scratch directory, never over the live one.
+#
+# `next build` empties and rewrites its output directory in place, while the
+# running `next start` keeps reading chunks out of it — so a build that dies
+# halfway takes the live site down with it, serving HTML whose stylesheets no
+# longer exist. That is how ambervale.fun came back as unstyled text, and no
+# amount of `&&` in this file would have prevented it: the damage happens
+# during the build, before anything is restarted.
+#
 # `apps/api build` regenerates the Prisma client first, so a column added in
-# this same release is known to the compiler.
+# this same release is known to the compiler. tsc will not emit on a type
+# error (noEmitOnError), so a failed build cannot leave runnable rubbish in
+# dist/ either.
+
+WEB="$ROOT/apps/web"
+export NEXT_DIST_DIR=.next-build
 
 step "building"
-pnpm build || die "build failed. Nothing was restarted, so the running site is untouched. Fix the error and run again."
+rm -rf "$WEB/.next-build"
+pnpm build || die "build failed. Nothing was swapped or restarted — the running site is untouched. Fix the error and run again."
 
-# --- 5. swap -----------------------------------------------------------------
+[ -d "$WEB/.next-build" ] || die "the build reported success but wrote no $WEB/.next-build"
+
+# --- 5. swap the build in ------------------------------------------------------
+#
+# Two renames on the same filesystem, so the window in which the directory is
+# not there is microseconds rather than the length of a build. The previous
+# build is kept as .next.old, which is the whole of the rollback plan.
+
+step "swapping in the new build"
+rm -rf "$WEB/.next.old"
+[ -d "$WEB/.next" ] && mv "$WEB/.next" "$WEB/.next.old"
+mv "$WEB/.next-build" "$WEB/.next"
+
+# The build records the directory it was written into. `next start` reads the
+# config rather than this file, so it does not currently matter — but leaving
+# a stale path in there is a landmine for whichever future version does.
+node -e '
+  const fs = require("fs");
+  const path = process.argv[1] + "/.next/required-server-files.json";
+  if (!fs.existsSync(path)) process.exit(0);
+  const json = JSON.parse(fs.readFileSync(path, "utf8"));
+  if (json.config) json.config.distDir = ".next";
+  fs.writeFileSync(path, JSON.stringify(json));
+' "$WEB"
+
+# --- 6. restart ----------------------------------------------------------------
 #
 # --update-env because pm2 otherwise keeps the environment it was started
 # with, and a changed .env would silently not take effect.
 
 step "restarting processes"
+command -v pm2 >/dev/null 2>&1 || die "pm2 is not on PATH"
 pm2 startOrReload ecosystem.config.cjs --update-env || die "pm2 refused to reload"
 
 # Give the processes a moment to bind their ports before asking them anything.
 sleep 3
 
-# --- 6. proof ----------------------------------------------------------------
+# --- 7. proof ------------------------------------------------------------------
+#
+# No rollback is attempted here on purpose. The api and the web are versioned
+# together, so restoring one of them alone produces a combination that has
+# never been tested — worse than the state being diagnosed. The previous build
+# is on disk and the command to restore it is printed instead.
 
 step "verifying"
-bash "$ROOT/ops/verify.sh"
+if ! bash "$ROOT/ops/verify.sh"; then
+  printf '\033[31mThe deploy landed but does not verify.\033[0m\n\n'
+  printf 'Logs:      pm2 logs ambervale-api --lines 60\n'
+  printf 'Roll back: cd %s && rm -rf .next && mv .next.old .next && pm2 restart ambervale-web --update-env\n' "$WEB"
+  printf '           (and `git checkout <previous-sha> && pnpm release` for the api)\n\n'
+  exit 1
+fi

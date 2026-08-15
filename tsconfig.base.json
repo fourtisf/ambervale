@@ -16,6 +16,10 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "skipLibCheck": true,
+    // tsc emits JavaScript for a file that failed to typecheck unless told not
+    // to. On a deploy box that means a failed build still leaves runnable
+    // rubbish in dist/, waiting for the next restart to pick it up.
+    "noEmitOnError": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
