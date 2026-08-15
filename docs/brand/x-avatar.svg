@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Ambervale">
+  <title>AMBERVALE — X profile picture</title>
+  <!--
+    The farmer mark, cut for an X profile picture.
+
+    Two things differ from apps/web/public/brand/mark.svg, and both are about
+    where this ends up rather than about the drawing:
+
+    1. The square is filled, not transparent. X crops to a circle, but the
+       file is also shown square in places (some clients, link previews, the
+       upload preview itself), and transparent corners land as white on a
+       light surface and black on a dark one.
+    2. The medallion is inset by 4%. X's crop is the inscribed circle, so a
+       ring drawn hard against the edge is one rounding error away from being
+       shaved on one side and not the other — which is the kind of fault
+       nobody notices until it is everywhere.
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#14495e"/>
+      <stop offset="1" stop-color="#07222e"/>
+    </linearGradient>
+    <clipPath id="clip"><circle cx="200" cy="200" r="188"/></clipPath>
+  </defs>
+
+  <rect width="400" height="400" fill="#0a2e3d"/>
+  <circle cx="200" cy="200" r="188" fill="url(#bg)"/>
+
+  <g clip-path="url(#clip)">
+    <g transform="translate(200 200) scale(1.5625) translate(-128 -128)">
+      <path d="M -10 214 q 138 -30 276 0 L 266 280 L -10 280 Z" fill="#5a9a4a"/>
+      <path d="M -10 214 q 138 -30 276 0" fill="none" stroke="#68a851" stroke-width="6"/>
+
+      <g stroke="#f5e6c8" stroke-width="6" stroke-linejoin="round">
+        <path d="M 62 236 q 0 -58 66 -58 q 66 0 66 58 Z" fill="#4a86b8"/>
+        <circle cx="128" cy="132" r="46" fill="#f0c9a0"/>
+        <ellipse cx="128" cy="106" rx="80" ry="23" fill="#e8c46a"/>
+        <path d="M 84 100 q 8 -46 44 -46 q 36 0 44 46 Z" fill="#d4a94a"/>
+      </g>
+
+      <path d="M 86 98 q 42 12 84 0 l 0 8 q -42 12 -84 0 Z" fill="#f4b942"/>
+      <g fill="#2a1a05">
+        <circle cx="112" cy="140" r="7"/>
+        <circle cx="146" cy="140" r="7"/>
+      </g>
+    </g>
+  </g>
+
+  <circle cx="200" cy="200" r="188" fill="none" stroke="#f4b942" stroke-width="12"/>
+</svg>
