@@ -27,22 +27,29 @@ inkscape docs/brand/x-header.svg -w 1500 -h 500 -o docs/brand/x-header.png
 Check the result at the size it will be seen — the avatar is about 48px in a
 timeline, and the header's bottom-left disappears under the avatar.
 
-## What makes these not look cheap
+## What took three attempts
 
-Flat vector art reads as clipart for three reasons, and all three are fixed
-here rather than decorated over:
+The first two rebuilds added polish — gradients, haze, grain — and still came
+back looking cheap, because polish was never the problem.
 
-- **Every surface was one colour.** Now light lands on things: a warm glow
-  where the low sun is, gradients down each ridge and each garment, a ring
-  with a lit top edge and a dark underside so it reads as metal.
-- **No air between the layers.** Haze along each crest and a slight blur on
-  the far ones is what turns three stacked shapes into distance.
-- **No surface.** A film-grain overlay at 7–10% is the cheapest thing that
-  stops a large flat fill looking like a fill.
+**The avatar was the wrong category.** A flat disc with a drawing on it has no
+reason to feel expensive however well it is shaded. It is now a struck object:
+a bevelled rim lit from ten o'clock and dark at four, a recessed enamel field
+with an inner shadow, and one dome highlight across the upper left. That last
+one is what enamel under curved glass actually looks like, and it is worth
+more than any amount of gradient work on the drawing inside.
 
-The header also has the **farm in it** — the house, barn and windmill from
-`STRUCTURES`, with their windows lit, and fenced plots either side. Earlier
-drafts were hills and conifers, which could have belonged to any game.
+**The banner was the wrong composition.** It was a panorama: everything the
+same size, evenly spread, evenly lit, nothing for the eye to land on. It is
+now built around one silhouette against one light — the windmill standing
+across a large low sun, with everything else receding from it in tone, from
+near-black grass to pale blue-green distance. A farmer stands on the near
+ridge for scale, and crows cross the sky, because crows are a thing that
+happens in this game.
+
+Depth still comes from the same three cheap tricks, and they still matter:
+haze along each crest, a slight blur on the far layers, and film grain at 8%
+so nothing is a pure fill.
 
 ## Two things the layout is built around
 
