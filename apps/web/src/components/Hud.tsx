@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { bridge } from '@/game/bridge';
+import { guidanceForGoal } from '@/game/guidance';
 import type { FarmState } from '@/lib/api';
 
 /** Level ring: an SVG arc showing XP progress into the current level. */
@@ -57,6 +58,7 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
   const xpProgress = user.xpForNext > 0 ? user.xpIntoLevel / user.xpForNext : 0;
   // Unfinished daily goals, badged so there is a visible reason to look.
   const dailyPending = farm.daily.goals.filter((g) => !g.done).length;
+  const questGuide = quest ? guidanceForGoal(quest.id, farm) : null;
 
   return (
     <div className="hud">
@@ -115,8 +117,17 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
               }}
             />
           </div>
-          <div className="quest-count">
-            {Math.min(quest.current, quest.target)}/{quest.target}
+          <div className="quest-foot">
+            <span className="quest-count">
+              {Math.min(quest.current, quest.target)}/{quest.target}
+            </span>
+            {/* The card names a goal and, until now, said nothing about where
+                it happens. This is the same guidance the daily sheet uses. */}
+            {questGuide && (
+              <button type="button" className="quest-go" onClick={questGuide.run}>
+                {questGuide.label}
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -231,10 +242,28 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
           background: #f4b942;
           transition: width 360ms ease;
         }
+        .quest-foot {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.5rem;
+          margin-top: 0.35rem;
+        }
         .quest-count {
-          margin-top: 0.25rem;
           font-size: 0.7rem;
           opacity: 0.7;
+        }
+        .quest-go {
+          padding: 0.28rem 0.6rem;
+          border-radius: 999px;
+          border: 0;
+          background: #f4b942;
+          color: #2a1a05;
+          font-weight: 700;
+          font-size: 0.68rem;
+          cursor: pointer;
+          white-space: nowrap;
+          pointer-events: auto;
         }
       `}</style>
     </div>

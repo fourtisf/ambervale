@@ -12,6 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RECIPES, RECIPE_KEYS, sellPrice, type ItemKey } from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
+import { guidanceForGoal } from '@/game/guidance';
 import { apiPost, type FarmShopEntry, type FarmState, type FarmUpgradeCost } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import Modal from './Modal';
@@ -390,32 +391,44 @@ export function DailyModal({ onClose }: { onClose: () => void }) {
       </div>
 
       <ul className="rows">
-        {daily.goals.map((goal) => (
-          <li key={goal.id} data-done={goal.done}>
-            <div className="name">
-              <b>{goal.text}</b>
-              <small>
-                {goal.reward.amber
-                  ? `${goal.reward.amber} $AMBER`
-                  : `${goal.reward.coins ?? 0} coins`}
-              </small>
-            </div>
-            <div className="progress">
-              <div className="bar">
-                <div
-                  className="fill"
-                  style={{ width: `${Math.min(100, (goal.current / goal.target) * 100)}%` }}
-                />
+        {daily.goals.map((goal) => {
+          // Rewards are paid the moment a goal is met, so there is nothing to
+          // claim — the useful button is the one that answers "where?".
+          const guide = goal.done ? null : guidanceForGoal(goal.id, farm);
+          const reward = goal.reward.amber
+            ? `${goal.reward.amber} $AMBER`
+            : `${goal.reward.coins ?? 0} coins`;
+
+          return (
+            <li key={goal.id} data-done={goal.done}>
+              <div className="name">
+                <b>{goal.text}</b>
+                <small>{goal.done ? `${reward} paid` : reward}</small>
+                {guide?.hint && <em className="hint">{guide.hint}</em>}
               </div>
-              <span>{goal.done ? '✓' : `${goal.current}/${goal.target}`}</span>
-            </div>
-          </li>
-        ))}
+              <div className="progress">
+                <div className="bar">
+                  <div
+                    className="fill"
+                    style={{ width: `${Math.min(100, (goal.current / goal.target) * 100)}%` }}
+                  />
+                </div>
+                <span>{goal.done ? '✓ Done' : `${goal.current}/${goal.target}`}</span>
+              </div>
+              {guide && (
+                <button type="button" className="go" onClick={guide.run}>
+                  {guide.label}
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <p className="note">
-        Clear all three to keep the streak alive. The goals are the same for everyone today, and
-        change at midnight UTC.
+        Rewards are paid as soon as a goal is met — there is nothing to collect. Clear all three to
+        keep the streak alive. The goals are the same for everyone today, and change at midnight
+        UTC.
       </p>
 
       <style jsx>{`
@@ -447,13 +460,17 @@ export function DailyModal({ onClose }: { onClose: () => void }) {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 1rem;
+          gap: 0.75rem;
           padding: 0.65rem 0.75rem;
           border-radius: 12px;
           background: rgba(245, 230, 200, 0.07);
         }
         .rows li[data-done='true'] {
           background: rgba(122, 200, 130, 0.16);
+        }
+        .name {
+          flex: 1;
+          min-width: 0;
         }
         .name b {
           font-size: 0.86rem;
@@ -462,6 +479,30 @@ export function DailyModal({ onClose }: { onClose: () => void }) {
           display: block;
           opacity: 0.65;
           font-size: 0.7rem;
+        }
+        .hint {
+          display: block;
+          margin-top: 0.2rem;
+          font-style: normal;
+          font-size: 0.68rem;
+          color: #f4b942;
+          opacity: 0.85;
+          line-height: 1.35;
+        }
+        .go {
+          flex: 0 0 auto;
+          padding: 0.45rem 0.8rem;
+          border-radius: 999px;
+          border: 0;
+          background: #f4b942;
+          color: #2a1a05;
+          font-weight: 700;
+          font-size: 0.76rem;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .go:active {
+          transform: translateY(1px);
         }
         .progress {
           display: flex;

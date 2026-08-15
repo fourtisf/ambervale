@@ -22,9 +22,11 @@ import { commit, reportError, useFarm, type ActionReply } from './farmState';
 
 // ---------------------------------------------------------------------------
 
-function MarketModal({ onClose }: { onClose: () => void }) {
+type MarketTab = 'buy' | 'sell' | 'upgrades';
+
+function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?: MarketTab }) {
   const farm = useFarm();
-  const [tab, setTab] = useState<'buy' | 'sell' | 'upgrades'>('buy');
+  const [tab, setTab] = useState<MarketTab>(initialTab ?? 'buy');
   const [busy, setBusy] = useState(false);
 
   if (!farm) return null;
@@ -533,9 +535,14 @@ export default function ModalHost() {
 
   const close = useCallback(() => bridge.emit('modal', null), []);
 
-  switch (open) {
+  // A modal may name a tab — `market:upgrades`. The guidance buttons on the
+  // goal cards use it, because "open the market" is not an answer when what
+  // the goal needs is three clicks further in.
+  const [name, tab] = (open ?? '').split(':');
+
+  switch (name) {
     case 'market':
-      return <MarketModal onClose={close} />;
+      return <MarketModal onClose={close} initialTab={tab as MarketTab | undefined} />;
     case 'bag':
       return <BagModal onClose={close} />;
     case 'deliveries':
