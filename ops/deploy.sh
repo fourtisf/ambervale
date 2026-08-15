@@ -113,6 +113,14 @@ node -e '
 
 step "restarting processes"
 command -v pm2 >/dev/null 2>&1 || die "pm2 is not on PATH"
+
+# NEXT_DIST_DIR must not survive into the app. A pm2 daemon being started for
+# the first time inherits the environment of the shell that started it, so the
+# scratch directory name would follow the web process into next.config — and
+# it points at a directory this script has just renamed away. It did not leak
+# in a rehearsal against an already-running daemon, which is exactly the kind
+# of latent difference that only shows up on a rebooted box.
+unset NEXT_DIST_DIR
 pm2 startOrReload ecosystem.config.cjs --update-env || die "pm2 refused to reload"
 
 # Give the processes a moment to bind their ports before asking them anything.
