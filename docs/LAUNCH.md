@@ -91,6 +91,16 @@ pnpm build                               # 2. compile
 pm2 startOrReload ecosystem.config.cjs   # 3. swap processes
 ```
 
+> `migrate deploy` applies migrations to the database; it does **not**
+> regenerate the Prisma client, and `pnpm install` skips its postinstall when
+> no dependency changed. A schema column added in the same release therefore
+> exists in Postgres while `@prisma/client` has never heard of it, and the
+> build fails with `error TS2551: Property '<column>' does not exist`.
+>
+> `pnpm build` now runs `prisma generate` first, so this cannot recur. On a
+> checkout that predates that change, run
+> `pnpm --filter @ambervale/api db:generate` before building.
+
 Infrastructure:
 
 ```bash
