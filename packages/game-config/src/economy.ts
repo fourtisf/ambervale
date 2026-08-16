@@ -270,11 +270,15 @@ export type DailyCounter =
   | 'choppedCount'
   | 'minedCount'
   | 'soldCount'
+  | 'boughtSeeds'
   | 'milkCount'
   | 'eggCount'
   | 'deliveriesDone'
   | 'fishCount'
-  | 'craftCount';
+  | 'craftCount'
+  | 'wateredCount'
+  | 'shooedCount'
+  | 'upgradesBought';
 
 export interface DailyQuestDef {
   id: string;
@@ -282,6 +286,14 @@ export interface DailyQuestDef {
   counter: DailyCounter;
   target: number;
   reward: { coins?: number; amber?: number };
+  /**
+   * Level at which this goal may be handed out.
+   *
+   * A list of ten drawn from everything would hand a level-1 farmer "craft 3
+   * goods" and "land 5 fish" — a mill and a rod they cannot buy yet — and a
+   * goal you are locked out of is worse than no goal at all. Defaults to 1.
+   */
+  minLv?: number;
 }
 
 /**
@@ -292,6 +304,22 @@ export interface DailyQuestDef {
  * No new bookkeeping, and a goal can never be gamed by losing progress.
  */
 export const DAILY_QUESTS: DailyQuestDef[] = [
+  // --- the field ----------------------------------------------------------
+  {
+    id: 'd_plant',
+    text: 'Plant 8 crops',
+    counter: 'plantedCount',
+    target: 8,
+    reward: { coins: 70 },
+  },
+  {
+    id: 'd_plant_big',
+    text: 'Plant 20 crops',
+    counter: 'plantedCount',
+    target: 20,
+    reward: { coins: 160 },
+    minLv: 4,
+  },
   {
     id: 'd_harvest',
     text: 'Harvest 8 crops',
@@ -300,22 +328,74 @@ export const DAILY_QUESTS: DailyQuestDef[] = [
     reward: { coins: 90 },
   },
   {
-    id: 'd_plant',
-    text: 'Plant 8 crops',
-    counter: 'plantedCount',
-    target: 8,
-    reward: { coins: 70 },
+    id: 'd_harvest_big',
+    text: 'Harvest 25 crops',
+    counter: 'harvestedCount',
+    target: 25,
+    reward: { coins: 240 },
+    minLv: 4,
   },
-  { id: 'd_chop', text: 'Fell 4 oaks', counter: 'choppedCount', target: 4, reward: { coins: 110 } },
-  { id: 'd_mine', text: 'Break 4 rocks', counter: 'minedCount', target: 4, reward: { coins: 110 } },
   {
-    id: 'd_sell',
-    text: 'Make 3 sales at the market',
-    counter: 'soldCount',
-    target: 3,
+    id: 'd_water',
+    text: 'Water 6 crops',
+    counter: 'wateredCount',
+    target: 6,
     reward: { coins: 80 },
   },
+  {
+    id: 'd_water_big',
+    text: 'Water 15 crops',
+    counter: 'wateredCount',
+    target: 15,
+    reward: { coins: 180 },
+    minLv: 5,
+  },
+  {
+    id: 'd_shoo',
+    text: 'Chase off 3 crows',
+    counter: 'shooedCount',
+    target: 3,
+    reward: { coins: 95 },
+  },
+  {
+    id: 'd_shoo_big',
+    text: 'Chase off 8 crows',
+    counter: 'shooedCount',
+    target: 8,
+    reward: { coins: 210 },
+    minLv: 6,
+  },
+
+  // --- the woods and the quarry -------------------------------------------
+  { id: 'd_chop', text: 'Fell 4 oaks', counter: 'choppedCount', target: 4, reward: { coins: 110 } },
+  {
+    id: 'd_chop_big',
+    text: 'Fell 10 oaks',
+    counter: 'choppedCount',
+    target: 10,
+    reward: { coins: 240 },
+    minLv: 4,
+  },
+  { id: 'd_mine', text: 'Break 4 rocks', counter: 'minedCount', target: 4, reward: { coins: 110 } },
+  {
+    id: 'd_mine_big',
+    text: 'Break 10 rocks',
+    counter: 'minedCount',
+    target: 10,
+    reward: { coins: 240 },
+    minLv: 4,
+  },
+
+  // --- the animals ---------------------------------------------------------
   { id: 'd_eggs', text: 'Collect 6 eggs', counter: 'eggCount', target: 6, reward: { coins: 100 } },
+  {
+    id: 'd_eggs_big',
+    text: 'Collect 15 eggs',
+    counter: 'eggCount',
+    target: 15,
+    reward: { coins: 220 },
+    minLv: 5,
+  },
   {
     id: 'd_milk',
     text: 'Milk the cow twice',
@@ -324,25 +404,117 @@ export const DAILY_QUESTS: DailyQuestDef[] = [
     reward: { coins: 95 },
   },
   {
-    id: 'd_deliver',
-    text: 'Complete 2 delivery orders',
-    counter: 'deliveriesDone',
-    target: 2,
-    reward: { amber: 2 },
+    id: 'd_milk_big',
+    text: 'Milk the cow 5 times',
+    counter: 'milkCount',
+    target: 5,
+    reward: { coins: 200 },
+    minLv: 5,
   },
-  { id: 'd_fish', text: 'Land 5 fish', counter: 'fishCount', target: 5, reward: { coins: 120 } },
+
+  // --- the market ----------------------------------------------------------
+  {
+    id: 'd_sell',
+    text: 'Make 3 sales at the market',
+    counter: 'soldCount',
+    target: 3,
+    reward: { coins: 80 },
+  },
+  {
+    id: 'd_sell_big',
+    text: 'Make 8 sales at the market',
+    counter: 'soldCount',
+    target: 8,
+    reward: { coins: 190 },
+    minLv: 4,
+  },
+  {
+    id: 'd_seeds',
+    text: 'Buy 10 seeds',
+    counter: 'boughtSeeds',
+    target: 10,
+    reward: { coins: 60 },
+  },
+  {
+    id: 'd_seeds_big',
+    text: 'Buy 25 seeds',
+    counter: 'boughtSeeds',
+    target: 25,
+    reward: { coins: 150 },
+    minLv: 5,
+  },
+  {
+    id: 'd_upgrade',
+    text: 'Buy an upgrade',
+    counter: 'upgradesBought',
+    target: 1,
+    reward: { coins: 120 },
+    minLv: 3,
+  },
+
+  // --- the dock, the mill, the board ---------------------------------------
+  {
+    id: 'd_fish',
+    text: 'Land 5 fish',
+    counter: 'fishCount',
+    target: 5,
+    reward: { coins: 120 },
+    minLv: 3,
+  },
+  {
+    id: 'd_fish_big',
+    text: 'Land 12 fish',
+    counter: 'fishCount',
+    target: 12,
+    reward: { coins: 260 },
+    minLv: 6,
+  },
   {
     id: 'd_craft',
     text: 'Craft 3 goods at the mill',
     counter: 'craftCount',
     target: 3,
     reward: { coins: 140 },
+    minLv: 4,
+  },
+  {
+    id: 'd_craft_big',
+    text: 'Craft 8 goods at the mill',
+    counter: 'craftCount',
+    target: 8,
+    reward: { coins: 300 },
+    minLv: 6,
+  },
+  {
+    id: 'd_deliver',
+    text: 'Complete 2 delivery orders',
+    counter: 'deliveriesDone',
+    target: 2,
+    reward: { amber: 2 },
+    minLv: 3,
+  },
+  {
+    id: 'd_deliver_big',
+    text: 'Complete 5 delivery orders',
+    counter: 'deliveriesDone',
+    target: 5,
+    reward: { amber: 5 },
+    minLv: 6,
   },
 ];
 
 export const DAILY = {
-  /** How many goals are drawn each day. */
-  picks: 3,
+  /**
+   * How many goals are drawn each day.
+   *
+   * Three was a short list drawn from a pool of exactly three-plus-seven, so
+   * most days looked alike and a whole session could pass without the daily
+   * card ever mentioning the thing you were doing. Ten from twenty-seven makes
+   * the list a plan for the evening rather than a formality — and because the
+   * pool is filtered by level first, a new farmer still only sees work they
+   * can actually go and do.
+   */
+  picks: 10,
   /** $AMBER paid the first time all of a day's goals are finished. */
   completionAmber: 2,
   /** Extra coins per consecutive day, capped. */
@@ -354,15 +526,21 @@ export const DAILY = {
 export const dayIndex = (nowMs: number): number => Math.floor(nowMs / 86_400_000);
 
 /**
- * The goals for a given day.
+ * The goals for a given day, for a farmer at this level.
  *
- * Seeded from the day alone, so everybody playing on the same date gets the
- * same three — which is deliberate: shared goals are something players can
- * talk to each other about.
+ * Seeded from the day, so everyone at the same stage gets the same list and
+ * has something to compare. Level enters the seed too: a level-1 farmer and a
+ * level-8 farmer are given different work, because handing the first one
+ * "craft 8 goods at the mill" is not a goal, it is a locked door.
+ *
+ * `level` is banded rather than exact, so a list does not reshuffle the moment
+ * someone levels up mid-evening — it changes when they cross into the next
+ * band, which is also when new goals become available to them.
  */
-export function dailyPicks(day: number): DailyQuestDef[] {
-  const rng = mulberry32(day * 2654435761);
-  const pool = [...DAILY_QUESTS];
+export function dailyPicks(day: number, level = 99): DailyQuestDef[] {
+  const band = levelBand(level);
+  const rng = mulberry32(day * 2654435761 + band * 97);
+  const pool = DAILY_QUESTS.filter((q) => (q.minLv ?? 1) <= level);
 
   // Fisher-Yates, then take the first `picks`. Shuffling rather than sampling
   // guarantees three *distinct* goals.
@@ -370,7 +548,42 @@ export function dailyPicks(day: number): DailyQuestDef[] {
     const j = Math.floor(rng() * (i + 1));
     [pool[i], pool[j]] = [pool[j]!, pool[i]!];
   }
-  return pool.slice(0, DAILY.picks);
+
+  /*
+    One goal per counter.
+    
+    The pool holds a small and a large version of most activities, and a
+    straight take-the-first-ten handed out both: "make 3 sales" beside "make 8
+    sales", where finishing the second finishes the first for free. Two of the
+    ten slots, spent on one errand. Taking at most one goal per counter makes
+    the list ten *different* things to do, which is the only reading of "ten
+    goals" worth having.
+  */
+  const picked: DailyQuestDef[] = [];
+  const used = new Set<DailyCounter>();
+  for (const goal of pool) {
+    if (picked.length >= DAILY.picks) break;
+    if (used.has(goal.counter)) continue;
+    used.add(goal.counter);
+    picked.push(goal);
+  }
+  return picked;
+}
+
+/**
+ * Which slice of the game a level has access to.
+ *
+ * Bands, not exact levels: the daily list is drawn from the band, so it stays
+ * put for a whole evening instead of reshuffling under the player every time
+ * the XP bar fills. The boundaries are the levels where the pool actually
+ * grows — see minLv on the definitions above.
+ */
+export function levelBand(level: number): number {
+  if (level >= 6) return 4;
+  if (level >= 5) return 3;
+  if (level >= 4) return 2;
+  if (level >= 3) return 1;
+  return 0;
 }
 
 // ---------------------------------------------------------------------------

@@ -252,7 +252,7 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         data: { wateredAt: new Date(), waterCutMs: plot.waterCutMs + cut },
       });
 
-      const g = await grant(tx, user.id, { xp: WATERING.xp });
+      const g = await grant(tx, user.id, { xp: WATERING.xp, counters: { wateredCount: 1 } });
       await logEvent(tx, user.id, 'act.water', { plotIndex: body.plotIndex, cutMs: cut });
       const { questCompleted, daily } = await evaluateProgress(tx, user.id);
 
@@ -317,8 +317,10 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
 
       // Paid only for chasing a real crow off. Paying for the gesture itself
       // would make an empty field a free XP button.
+      // The counter follows the payment: chasing a real crow counts, waving at
+      // an empty plot does not, or a daily goal becomes a button to mash.
       const xp = crow.present ? CROWS.shooXp : 0;
-      const g = await grant(tx, user.id, xp > 0 ? { xp } : {});
+      const g = await grant(tx, user.id, crow.present ? { xp, counters: { shooedCount: 1 } } : {});
       await logEvent(tx, user.id, 'act.shoo', {
         plotIndex: body.plotIndex,
         hadCrow: crow.present,

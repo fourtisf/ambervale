@@ -542,6 +542,8 @@ export async function getFarmState(
         fishCount: user.fishCount,
         craftCount: user.craftCount,
         upgradesBought: user.upgradesBought,
+        wateredCount: user.wateredCount,
+        shooedCount: user.shooedCount,
         renown: user.renown,
       },
     },

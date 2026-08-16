@@ -194,7 +194,14 @@ export interface FarmLike {
     resetAt: number;
     streak: number;
     allDone: boolean;
-    goals: { id: string; target: number; current: number; done: boolean }[];
+    goals: {
+      id: string;
+      text: string;
+      target: number;
+      current: number;
+      done: boolean;
+      reward: { coins?: number; amber?: number };
+    }[];
   };
   away: {
     awayMs: number;

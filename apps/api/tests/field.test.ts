@@ -11,6 +11,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   CROPS,
+  dailyPicks,
   CROWS,
   MARKET,
   decaySaturation,
@@ -321,5 +322,53 @@ describe('watering', () => {
     await paced(() => client.call('/act/plant', { plotIndex: 8, cropKey: 'sunflower' }));
     const fresh = (await farmOf(client)).plots.find((p) => p.index === 8)!;
     assert.equal(fresh.watered, false, 'the new crop must be waterable');
+  });
+});
+
+describe('daily goals', () => {
+  it('hands a new farmer ten goals they can all actually do', async () => {
+    const { client } = await newPlayer();
+    const farm = await farmOf(client);
+
+    assert.equal(farm.daily.goals.length, 10, 'a day should be a plan, not a formality');
+
+    // Every goal must be one a level-1 player can attempt today. The pool
+    // gates fishing, crafting and deliveries behind the rod, the mill and
+    // reputation — a goal you are locked out of is worse than no goal.
+    const locked = farm.daily.goals.filter((g) => /fish|mill|delivery|upgrade/i.test(g.text));
+    assert.deepEqual(
+      locked,
+      [],
+      `a level-1 farmer was given locked work: ${JSON.stringify(locked)}`,
+    );
+  });
+
+  it('never asks for the same activity twice in one day', async () => {
+    // The pool holds a small and a large version of most jobs, and handing out
+    // both spends two of the ten slots on one errand — finishing the larger
+    // completes the smaller for free.
+    for (const level of [1, 3, 5, 9]) {
+      const picks = dailyPicks(20400, level);
+      const counters = picks.map((p) => p.counter);
+      assert.equal(
+        new Set(counters).size,
+        counters.length,
+        `level ${level} drew the same counter twice: ${counters.join(', ')}`,
+      );
+      assert.equal(picks.length, 10, `level ${level} drew ${picks.length} goals`);
+    }
+  });
+
+  it('pays a watered crop into its own counter', async () => {
+    const { client, farm } = await newPlayer();
+    await paced(() => client.call('/act/plant', { plotIndex: 2, cropKey: 'sunflower' }));
+    const before = (await farmOf(client)).user.counters['wateredCount'] ?? 0;
+
+    const res = await paced(() => client.call('/act/water', { plotIndex: 2 }));
+    assert.equal(res.status, 200);
+
+    const after = (await farmOf(client)).user.counters['wateredCount'] ?? 0;
+    assert.equal(after, before + 1, 'watering must count, or no goal can ever ask for it');
+    assert.ok(farm.user.id);
   });
 });

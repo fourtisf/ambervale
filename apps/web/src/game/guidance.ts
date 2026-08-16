@@ -253,6 +253,57 @@ export function guidanceFor(counter: GoalCounter, farm: FarmState): Guidance {
       };
     }
 
+    case 'wateredCount': {
+      const growing = farm.plots.filter((p) => p.cropKey && !p.watered);
+      if (growing.length === 0) {
+        return seedCount(farm) === 0
+          ? {
+              label: 'Buy seeds',
+              hint: 'Nothing to water — plant something first.',
+              run: open('market'),
+            }
+          : {
+              label: 'Plant first',
+              hint: 'Nothing is growing that still wants water.',
+              run: walk(
+                barePlot(farm),
+                'Water a crop while it grows to bring the harvest forward.',
+              ),
+            };
+      }
+      const slot = PLOTS.find((s) => s.index === growing[0]!.index);
+      return {
+        label: 'Go and water',
+        run: walk(
+          slot ? px(slot) : barePlot(farm),
+          'Stand on a growing crop and press the action button to water it.',
+        ),
+      };
+    }
+
+    case 'shooedCount': {
+      const withCrow = farm.plots.find((p) => p.crow);
+      if (!withCrow) {
+        return {
+          label: 'Go to the field',
+          hint: 'No crows have landed yet — they come for crops left ready.',
+          run: walk(
+            cropToVisit(farm).at,
+            'Crows land on ready crops. Chase them off before they ruin one.',
+          ),
+        };
+      }
+      const slot = PLOTS.find((s) => s.index === withCrow.index);
+      return {
+        label: 'Chase it off',
+        run: walk(slot ? px(slot) : barePlot(farm), 'Get close and press the action button.'),
+      };
+    }
+
+    case 'boughtSeeds': {
+      return { label: 'Buy seeds', run: open('market') };
+    }
+
     // The quest chain measures four things the daily list never does.
 
     case 'level': {

@@ -19,6 +19,7 @@ import {
   type DailyQuestDef,
 } from '@ambervale/game-config';
 import type { Prisma } from '@prisma/client';
+import { levelFromTotalXp } from './progression';
 
 /** Counters a daily goal may be measured against. */
 const COUNTERS: DailyCounter[] = [
@@ -27,11 +28,15 @@ const COUNTERS: DailyCounter[] = [
   'choppedCount',
   'minedCount',
   'soldCount',
+  'boughtSeeds',
   'milkCount',
   'eggCount',
   'deliveriesDone',
   'fishCount',
   'craftCount',
+  'wateredCount',
+  'shooedCount',
+  'upgradesBought',
 ];
 
 type Snapshot = Record<string, number>;
@@ -143,7 +148,7 @@ export async function dailyState(
   const day = row?.day ?? dayIndex(now);
   const baseline = (row?.baseline as Snapshot | undefined) ?? snapshotOf(user);
   const claimedMask = row?.claimed ?? 0;
-  const picks = dailyPicks(day);
+  const picks = dailyPicks(day, levelFromTotalXp(user['xp'] as number).level);
 
   const goals = picks.map((goal, i) => ({
     id: goal.id,
@@ -197,7 +202,7 @@ export async function evaluateDaily(
     unknown
   >;
   const baseline = row.baseline as Snapshot;
-  const picks = dailyPicks(row.day);
+  const picks = dailyPicks(row.day, levelFromTotalXp(user['xp'] as number).level);
 
   const completed: DailyCompletion[] = [];
   let claimed = row.claimed;

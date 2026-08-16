@@ -59,6 +59,11 @@ model User {
   fishCount      Int @default(0)
   craftCount     Int @default(0)
   upgradesBought Int @default(0)
+  /// The two field verbs added after crows arrived. They had no counters, so
+  /// nothing could ask a player to use them — a daily list that never mentions
+  /// watering is a daily list that teaches watering does not matter.
+  wateredCount   Int @default(0)
+  shooedCount    Int @default(0)
 
   /// Prestige bought from the Vale Fund. Purely a rank — it grants no power,
   /// so an endless coin and $AMBER sink cannot turn into pay-to-win.
