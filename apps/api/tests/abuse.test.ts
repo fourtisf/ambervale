@@ -10,6 +10,7 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { after, describe, it } from 'node:test';
+import { conditionsFor, demandMultiplier, saleQuote, sellPrice } from '@ambervale/game-config';
 import {
   BASE,
   createClient,
@@ -98,9 +99,18 @@ describe('economy: quantities and prices are server-side', () => {
     );
 
     assert.equal(res.status, 200);
-    // One sunflower, sell price 12.
-    assert.equal(res.body.coinsGained, 12);
-    assert.equal(res.body.farm.user.coins, before + 12);
+    // One sunflower. Not the bare list price of 12 any more: the day's sky and
+    // shopping list move it, and a sale is priced at the *average* multiplier
+    // across itself rather than the spot price. Computed from config here
+    // rather than hard-coded, because the point of this test is that the
+    // number comes from the server's own tables and never from the request.
+    const expected = Math.round(
+      sellPrice('sunflower') *
+        saleQuote(0, 1).multiplier *
+        demandMultiplier(conditionsFor(Date.now()), 'sunflower'),
+    );
+    assert.equal(res.body.coinsGained, expected);
+    assert.equal(res.body.farm.user.coins, before + expected);
   });
 
   it('refuses to sell an item the player does not have', async () => {

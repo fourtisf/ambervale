@@ -137,6 +137,9 @@ export interface FarmPrice {
   base: number;
   price: number;
   multiplier: number;
+  /** Today's sky-and-demand multiplier, kept apart from saturation so the
+   *  Market can say *why* a price moved rather than only that it did. */
+  demand: number;
   recoversAt: number | null;
 }
 
@@ -263,6 +266,13 @@ export interface FarmQuest {
   target: number;
 }
 
+/** Today's sky and today's shopping list. See weather.ts in game-config. */
+export interface FarmToday {
+  day: number;
+  sky: 'clear' | 'rain' | 'mist' | 'golden';
+  market: { sought: string; glut: string };
+}
+
 export interface FarmState {
   serverNow: number;
   user: FarmUser;
@@ -281,6 +291,7 @@ export interface FarmState {
   shop: FarmShopEntry[];
   prices: FarmPrice[];
   effects: FarmEffects;
+  today: FarmToday;
   daily: FarmDaily;
   away: FarmAway | null;
   /**

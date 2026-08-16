@@ -21,7 +21,9 @@ import {
   GOODS,
   CROPS,
   MARKET,
+  conditionsFor,
   decaySaturation,
+  demandMultiplier,
   isCropKey,
   priceMultiplier,
   saleQuote,
@@ -56,8 +58,12 @@ export async function quoteSale(
 ): Promise<{ coins: number; multiplier: number; saturationAfter: number }> {
   const saturation = await saturationOf(db, userId, itemKey);
   const { multiplier, saturationAfter } = saleQuote(saturation, qty);
+  // Today's demand rides on top of saturation, not instead of it: the sky and
+  // the shopping list say what a good is worth in principle, saturation says
+  // what happens when you dump forty of it in one go.
+  const demand = demandMultiplier(conditionsFor(Date.now()), itemKey);
   return {
-    coins: Math.round(sellPrice(itemKey) * qty * multiplier),
+    coins: Math.round(sellPrice(itemKey) * qty * multiplier * demand),
     multiplier,
     saturationAfter,
   };
@@ -85,6 +91,8 @@ export interface MarketPriceDto {
   price: number;
   /** Saturation multiplier alone, so the UI can show why a price moved. */
   multiplier: number;
+  /** Today's sky-and-demand multiplier, separately, for the same reason. */
+  demand: number;
   /** When this good is worth selling again, or null if it already is. */
   recoversAt: number | null;
 }
@@ -103,6 +111,7 @@ export async function readPrices(
 ): Promise<MarketPriceDto[]> {
   const rows = await db.marketGood.findMany({ where: { userId } });
   const now = Date.now();
+  const conditions = conditionsFor(now);
   const bySat = new Map(
     rows.map((r) => [r.itemKey, decaySaturation(r.saturation, now - r.updatedAt.getTime())]),
   );
@@ -112,11 +121,13 @@ export async function readPrices(
     const saturation = bySat.get(itemKey) ?? 0;
     const multiplier = priceMultiplier(saturation);
     const base = sellPrice(itemKey as ItemKey);
+    const demand = demandMultiplier(conditions, itemKey as ItemKey);
     return {
       itemKey,
       base,
-      price: Math.round(base * multiplier * sellMul),
+      price: Math.round(base * multiplier * sellMul * demand),
       multiplier,
+      demand,
       recoversAt: recoveryMs(saturation) > 0 ? now + recoveryMs(saturation) : null,
     };
   });

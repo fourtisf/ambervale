@@ -10,7 +10,14 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { RECIPES, RECIPE_KEYS, sellPrice, type ItemKey } from '@ambervale/game-config';
+import {
+  DEMAND,
+  RECIPES,
+  RECIPE_KEYS,
+  SKIES,
+  sellPrice,
+  type ItemKey,
+} from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
 import { guidanceForGoal } from '@/game/guidance';
 import { apiPost, type FarmShopEntry, type FarmState, type FarmUpgradeCost } from '@/lib/api';
@@ -370,6 +377,110 @@ function untilReset(resetAt: number): string {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
 }
 
+/** `starglow` → `Starglow`, `pie` → `Pie`. Item keys are already single words. */
+const itemName = (key: string): string => key.charAt(0).toUpperCase() + key.slice(1);
+
+/**
+ * What today is.
+ *
+ * The first thing on the daily sheet, above the goals, because it is the one
+ * line that changes what a player should actually go and do this evening — and
+ * because the weather outside the window needs a name, or it is just a filter.
+ */
+function TodayCard({ farm }: { farm: FarmState }) {
+  const today = farm.today;
+  if (!today) return null;
+  const sky = SKIES[today.sky];
+  const glyph = { clear: '☀️', rain: '🌧️', mist: '🌫️', golden: '🌤️' }[today.sky] ?? '☀️';
+
+  return (
+    <div className="today" data-sky={today.sky}>
+      <div className="sky">
+        <span className="glyph">{glyph}</span>
+        <div>
+          <b>{sky.name}</b>
+          <small>{sky.blurb}</small>
+        </div>
+      </div>
+
+      {/*
+        The combined figure, sky included — 2.2x on a Golden Day, not a bare
+        2x. The Market's sell rows quote the same number because it is the one
+        the player is actually paid; a card that says 2 and a row that says 2.2
+        just reads as one of them being broken.
+      */}
+      <div className="demand">
+        <span className="up">
+          Buyers want <b>{itemName(today.market.sought)}</b> ·{' '}
+          {(sky.sell * DEMAND.soughtMul).toFixed(1)}×
+        </span>
+        <span className="down">
+          Too much <b>{itemName(today.market.glut)}</b> about ·{' '}
+          {(sky.sell * DEMAND.glutMul).toFixed(1)}×
+        </span>
+      </div>
+
+      <style jsx>{`
+        .today {
+          margin-bottom: 0.9rem;
+          padding: 0.7rem 0.8rem;
+          border-radius: 14px;
+          background: rgba(245, 230, 200, 0.07);
+          border: 1px solid rgba(245, 230, 200, 0.12);
+        }
+        .today[data-sky='rain'] {
+          background: rgba(120, 160, 190, 0.14);
+        }
+        .today[data-sky='golden'] {
+          background: rgba(244, 185, 66, 0.14);
+        }
+        .today[data-sky='mist'] {
+          background: rgba(214, 228, 236, 0.12);
+        }
+        .sky {
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+        }
+        .glyph {
+          font-size: 1.5rem;
+          line-height: 1;
+        }
+        .sky b {
+          font-size: 0.92rem;
+        }
+        .sky small {
+          display: block;
+          margin-top: 0.1rem;
+          font-size: 0.74rem;
+          opacity: 0.75;
+          line-height: 1.4;
+        }
+        .demand {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.4rem;
+          margin-top: 0.6rem;
+        }
+        .demand span {
+          padding: 0.28rem 0.55rem;
+          border-radius: 999px;
+          font-size: 0.72rem;
+          font-variant-numeric: tabular-nums;
+        }
+        .up {
+          background: rgba(122, 200, 130, 0.18);
+          color: #b6e8bc;
+        }
+        .down {
+          background: rgba(242, 160, 154, 0.16);
+          color: #f2c0bc;
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function DailyModal({ onClose }: { onClose: () => void }) {
   const farm = useFarm();
   const [, force] = useState(0);
@@ -389,6 +500,8 @@ export function DailyModal({ onClose }: { onClose: () => void }) {
         <span className="reset">Resets in {untilReset(daily.resetAt)}</span>
         {daily.streak > 0 && <span className="streak">🔥 {daily.streak}-day streak</span>}
       </div>
+
+      <TodayCard farm={farm} />
 
       <ul className="rows">
         {daily.goals.map((goal) => {

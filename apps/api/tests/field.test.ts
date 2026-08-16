@@ -17,6 +17,11 @@ import {
   PLOTS,
   STRUCTURES,
   WATER,
+  DEMAND,
+  SKIES,
+  conditionsFor,
+  sellPrice,
+  type ItemKey,
   dailyPicks,
   CROWS,
   MARKET,
@@ -442,6 +447,79 @@ describe('building the vale', () => {
         const d = Math.hypot(at.x - water.cx, at.y - water.cy);
         assert.ok(d > water.r + water.wobble, `${name} stands in the water`);
       }
+    }
+  });
+});
+
+describe("today's conditions", () => {
+  it('pays the day’s demand, and carries it on the price list', async () => {
+    const { client, farm } = await newPlayer();
+    const today = conditionsFor(Date.now());
+    const sought = today.market.sought;
+    // A good today is indifferent to, as the control. Wood and stone are never
+    // drawn (see TRADED), so one of them is always neutral.
+    const neutral = 'wood';
+
+    // The sought good is drawn from the whole traded list, so this test has to
+    // work for whatever today happens to want — including a crafted good it
+    // would take an hour of play to make. Endowing sidesteps that.
+    // Twenty of each, not one. Wood sells for 5, and Math.round on a 5-coin
+    // sale swallows up to 7% — enough to make the ratio below read 2.16x for a
+    // multiplier that is exactly 2. Twenty units puts rounding under 1%.
+    const QTY = 20;
+    await endow(farm.user.id, { items: { [sought]: QTY, [neutral]: QTY } });
+
+    const before = await farmOf(client);
+    const quoted = before.prices.find((p) => p.itemKey === sought)!;
+    assert.equal(
+      quoted.demand,
+      SKIES[today.sky].sell * DEMAND.soughtMul,
+      'the price list must carry the day’s multiplier',
+    );
+
+    const soughtSale = await paced(() =>
+      client.call<{ coinsGained: number }>('/act/sell', { itemKey: sought, qty: 'all' }),
+    );
+    const neutralSale = await paced(() =>
+      client.call<{ coinsGained: number }>('/act/sell', { itemKey: neutral, qty: 'all' }),
+    );
+
+    // Compared as a ratio against a neutral good rather than against the
+    // quoted price. A sale is charged at the *average* multiplier across
+    // itself, which sits under the spot price the list shows even for a single
+    // unit — so quote and payment are never equal by design. Both
+    // goods start at zero saturation and sell the same quantity, so that
+    // averaging factor is identical on both sides and divides out, leaving
+    // demand alone.
+    const soughtPer = soughtSale.body.coinsGained / sellPrice(sought as ItemKey);
+    const neutralPer = neutralSale.body.coinsGained / sellPrice(neutral);
+    const ratio = soughtPer / neutralPer;
+
+    assert.ok(
+      Math.abs(ratio - DEMAND.soughtMul) < 0.05,
+      `a sought good must pay ${DEMAND.soughtMul}x a neutral one, paid ${ratio.toFixed(3)}x`,
+    );
+  });
+
+  it('marks a glutted good down, and never marks the same good both ways', async () => {
+    const { client } = await newPlayer();
+    const today = conditionsFor(Date.now());
+    assert.notEqual(today.market.sought, today.market.glut);
+
+    const farm = await farmOf(client);
+    const glut = farm.prices.find((p) => p.itemKey === today.market.glut)!;
+    assert.equal(glut.demand, SKIES[today.sky].sell * DEMAND.glutMul);
+    assert.ok(glut.price < glut.base, 'a glutted good must visibly pay less than list');
+  });
+
+  it('never lets the sky drag a finished crop back to unfinished', () => {
+    // Growth is recomputed from plantedAt on every read, so a sky multiplier
+    // above 1 would un-ready a harvest at midnight. This is the guard.
+    for (const key of Object.keys(SKIES) as (keyof typeof SKIES)[]) {
+      assert.ok(
+        SKIES[key].growth <= 1,
+        `sky "${key}" slows growth (${SKIES[key].growth}), which reaches backwards`,
+      );
     }
   });
 });

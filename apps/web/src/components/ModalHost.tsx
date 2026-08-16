@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   CROPS,
   CROP_KEYS,
+  SKIES,
   saleQuote,
   sellPrice,
   type CropKey,
@@ -88,6 +89,17 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
   const priceOf = (key: ItemKey): number =>
     marketOf(key)?.price ?? Math.round(sellPrice(key) * farm.effects.sell);
   const glut = (key: ItemKey): boolean => (marketOf(key)?.multiplier ?? 1) < 0.97;
+  /**
+   * Today's multiplier for this good: sky and shopping list, not saturation.
+   *
+   * `relative` divides the sky back out. A Golden Day pays 1.1x on everything,
+   * and labelling all nine goods "buyers want these today" is worse than
+   * saying nothing — the badge has to mean *this* good, not the weather. The
+   * number shown is still the combined one, because that is what will be paid.
+   */
+  const skyMul = SKIES[farm.today?.sky ?? 'clear']?.sell ?? 1;
+  const demandOf = (key: ItemKey): number => marketOf(key)?.demand ?? 1;
+  const relativeDemand = (key: ItemKey): number => demandOf(key) / (skyMul || 1);
 
   /**
    * What "sell all" will actually pay.
@@ -100,7 +112,12 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
     const m = marketOf(key);
     if (!m) return Math.round(sellPrice(key) * qty * farm.effects.sell);
     const start = Math.max(0, 1 / Math.max(m.multiplier, 1e-6) - 1);
-    return Math.round(m.base * qty * saleQuote(start, qty).multiplier * farm.effects.sell);
+    // `m.demand` is today's sky and shopping list. The server multiplies by it
+    // and this quote must too, or the button promises one number on a Golden
+    // Day and the coins arrive as another.
+    return Math.round(
+      m.base * qty * saleQuote(start, qty).multiplier * farm.effects.sell * (m.demand ?? 1),
+    );
   };
 
   /**
@@ -223,6 +240,19 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
                   A sagging price has to say so here, or the mechanic is only
                   ever met as coins that came out lower than expected.
                 */}
+                {/*
+                  Today's demand, said on the row it applies to. The Today
+                  sheet names the good; this is where the player is holding it
+                  and deciding whether to sell now or keep it until tomorrow.
+                */}
+                {relativeDemand(key) > 1.02 && (
+                  <small className="sought">
+                    ▲ buyers want these today — pays {demandOf(key).toFixed(1)}×
+                  </small>
+                )}
+                {relativeDemand(key) < 0.98 && (
+                  <small className="glut">▼ too many of these about today — worth holding</small>
+                )}
                 {glut(key) && (
                   <small className="glut">
                     ▼ {Math.round((1 - (marketOf(key)?.multiplier ?? 1)) * 100)}% — you have sold a
@@ -257,6 +287,13 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
           margin-top: 0.15rem;
           color: #f2a09a;
           font-size: 0.72rem;
+        }
+        .sought {
+          display: block;
+          margin-top: 0.15rem;
+          color: #9fe0a6;
+          font-size: 0.72rem;
+          font-weight: 600;
         }
         .tabs {
           display: flex;

@@ -179,6 +179,7 @@ export interface FarmLike {
     base: number;
     price: number;
     multiplier: number;
+    demand: number;
     recoversAt: number | null;
   }[];
   effects: {

@@ -16,10 +16,12 @@ import {
   PADDOCKS,
   PLOTS,
   TILE,
+  conditionsFor,
   crowState,
   npcLine,
   titleFor,
   type CropKey,
+  type DayConditions,
 } from '@ambervale/game-config';
 import type { Prisma, PrismaClient, User } from '@prisma/client';
 import { prisma } from '../lib/prisma';
@@ -29,7 +31,7 @@ import { repRequiredFor, slotUnlocked } from './deliveries';
 import { amberBalance, levelFromTotalXp } from './progression';
 import { questProgress } from './quests';
 import { readPrices, type MarketPriceDto } from './market';
-import { effectsOf, readUpgrades, upgradesToDto, type UpgradeDto } from './upgrades';
+import { effectsWithSky, readUpgrades, upgradesToDto, type UpgradeDto } from './upgrades';
 
 const ms = (sec: number) => sec * 1000;
 
@@ -357,6 +359,15 @@ export interface FarmState {
    * as a number that went wrong.
    */
   prices: MarketPriceDto[];
+  /**
+   * Today's sky and today's shopping list.
+   *
+   * Sent whole rather than as a pair of multipliers, because the client draws
+   * the weather from it as well as naming it — and because a player who is
+   * told "pumpkin pays 1.6x today" without being told it is raining has been
+   * given a spreadsheet, not a day.
+   */
+  today: DayConditions;
   daily: DailyDto;
   /** What happened while the player was away, or null if they were not. */
   away: AwayReport | null;
@@ -513,7 +524,7 @@ export async function getFarmState(
     select: { key: true, builtAt: true },
   });
 
-  const effects = effectsOf(tiers);
+  const effects = effectsWithSky(tiers);
   const lv = levelFromTotalXp(user.xp);
   // After `effects`, because the shown price includes the cellar multiplier —
   // a player should read the number they will actually be paid.
@@ -603,6 +614,7 @@ export async function getFarmState(
     upgrades: { ...tiers },
     shop: upgradesToDto(tiers),
     effects,
+    today: conditionsFor(Date.now()),
     daily,
     away,
   };

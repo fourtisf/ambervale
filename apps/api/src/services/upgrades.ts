@@ -9,8 +9,10 @@
 
 import {
   ANIMALS,
+  SKIES,
   UPGRADES,
   bonusNodeYield,
+  conditionsFor,
   growthMultiplier,
   henCount,
   maxTier,
@@ -60,6 +62,12 @@ export interface UpgradeEffects {
   scarecrowMs: number;
 }
 
+/**
+ * Upgrade effects alone, with no weather in them.
+ *
+ * Kept separate because the shop needs to describe what a tier buys without
+ * today's sky flattering or dulling the number.
+ */
 export function effectsOf(tiers: UpgradeTiers): UpgradeEffects {
   return {
     axeBonus: bonusNodeYield(tierOf(tiers, 'axe')),
@@ -73,11 +81,32 @@ export function effectsOf(tiers: UpgradeTiers): UpgradeEffects {
   };
 }
 
+/**
+ * What the farm actually runs on right now: the player's upgrades, with the
+ * day's sky folded in.
+ *
+ * Growth and crow grace are recomputed from `plantedAt` on every read rather
+ * than stored, so folding the sky in here reaches backwards over crops that
+ * are already in the ground. That is only safe because every sky multiplier is
+ * in the helpful direction — see the note on SkyDef.growth. A sky that slowed
+ * growth would drag a finished harvest back to unfinished at midnight.
+ */
+export function effectsWithSky(tiers: UpgradeTiers, nowMs = Date.now()): UpgradeEffects {
+  const base = effectsOf(tiers);
+  const sky = SKIES[conditionsFor(nowMs).sky];
+  return {
+    ...base,
+    growth: base.growth * sky.growth,
+    scarecrowMs: base.scarecrowMs + sky.crowGraceMs,
+  };
+}
+
 export async function effectsFor(
   tx: Prisma.TransactionClient,
   userId: string,
+  nowMs = Date.now(),
 ): Promise<UpgradeEffects> {
-  return effectsOf(await readUpgrades(tx, userId));
+  return effectsWithSky(await readUpgrades(tx, userId), nowMs);
 }
 
 // ---------------------------------------------------------------------------

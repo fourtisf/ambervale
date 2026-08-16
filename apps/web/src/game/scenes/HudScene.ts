@@ -12,7 +12,9 @@
 import * as Phaser from 'phaser';
 import { bridge } from '../bridge';
 import { Minimap } from '../systems/Minimap';
+import { Weather } from '../systems/Weather';
 import { SkyOverlays } from '../systems/SkyOverlays';
+import type { FarmState } from '@/lib/api';
 import type { WorldMap } from '../world/tilemap';
 import type { WorldScene } from './WorldScene';
 
@@ -22,6 +24,7 @@ export interface HudSceneData {
 
 export class HudScene extends Phaser.Scene {
   private sky!: SkyOverlays;
+  private weather!: Weather;
   private minimap!: Minimap;
   private debugText?: Phaser.GameObjects.Text;
   private world!: WorldScene;
@@ -37,6 +40,7 @@ export class HudScene extends Phaser.Scene {
     this.world = this.scene.get('WorldScene') as WorldScene;
 
     this.sky = new SkyOverlays(this);
+    this.weather = new Weather(this);
     this.minimap = new Minimap(this, data.map);
 
     this.arrow = this.add
@@ -80,15 +84,14 @@ export class HudScene extends Phaser.Scene {
     // Landmarks the player has built get a dot of their own. Read the mirrored
     // state as well as subscribing: this scene is created after the first farm
     // snapshot has usually already landed.
-    if (bridge.farm) this.minimap.setBuilds(bridge.farm.builds?.map((b) => b.key) ?? []);
-    const offFarm = bridge.on('farm', (farm) =>
-      this.minimap.setBuilds(farm.builds?.map((b) => b.key) ?? []),
-    );
+    if (bridge.farm) this.applyFarm(bridge.farm);
+    const offFarm = bridge.on('farm', (farm) => this.applyFarm(farm));
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       offGated();
       offFarm();
       this.sky.destroy();
+      this.weather.destroy();
       this.minimap.destroy();
     });
   }
@@ -135,11 +138,18 @@ export class HudScene extends Phaser.Scene {
     this.arrowLabel.setPosition(x, y + 24).setVisible(true);
   }
 
-  override update(): void {
+  /** Landmark dots and today's sky, both read straight off a farm snapshot. */
+  private applyFarm(farm: FarmState): void {
+    this.minimap.setBuilds(farm.builds?.map((b) => b.key) ?? []);
+    if (farm.today?.sky) this.weather.setSky(farm.today.sky);
+  }
+
+  override update(_time: number, delta: number): void {
     const dayNight = this.world.getDayNight();
     if (!dayNight) return;
 
     this.sky.update(dayNight.u, dayNight.nightAmount);
+    this.weather.update(delta, dayNight.nightAmount);
 
     const cam = this.world.cameras.main;
     const focus = this.world.getFocusPoint();
