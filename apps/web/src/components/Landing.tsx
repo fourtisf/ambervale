@@ -91,7 +91,7 @@ export default function Landing() {
         <WorldBackdrop fallback="/brand/vale.svg" />
         <div className="veil" aria-hidden />
 
-        <div className="lockup">
+        <div className="lockup" data-locked={locked}>
           <span className="eyebrow">Closed beta · runs in your browser</span>
           <img className="mark" src="/brand/mark.svg" alt="" width={132} height={132} />
           <img className="word" src="/brand/wordmark.svg" alt="AMBERVALE" />
@@ -216,6 +216,34 @@ export default function Landing() {
           display: block;
           margin: 0 auto;
         }
+        /*
+          The locked state has a whole card in it, and the hero is exactly one
+          screen with overflow hidden — so anything that does not fit is not
+          merely below the fold, it is gone. The contract row was being clipped
+          off the bottom entirely. Everything above the code box gives up a
+          little room when the gate is up.
+        */
+        .lockup[data-locked='true'] :global(.mark) {
+          width: clamp(3.25rem, 8vw, 4.5rem);
+        }
+        .lockup[data-locked='true'] :global(.word) {
+          width: min(15rem, 70%);
+          margin-top: 0.5rem;
+        }
+        .lockup[data-locked='true'] .eyebrow {
+          margin-bottom: 0.75rem;
+        }
+        .lockup[data-locked='true'] .tag {
+          margin: 0.5rem 0 0;
+          font-size: 0.95rem;
+        }
+        .lockup[data-locked='true'] .gatebox {
+          margin-top: 1rem;
+        }
+        .lockup[data-locked='true'] .ca {
+          margin-top: 1rem;
+        }
+
         .lockup :global(.mark) {
           width: clamp(4.5rem, 12vw, 7rem);
           height: auto;

@@ -145,6 +145,10 @@ export default function InviteGate({
         }
         .gate.inline .card {
           width: 100%;
+          /* Tighter than the overlay's: inside the hero this card shares one
+             screen with the lockup above it and the contract row below, and
+             the hero clips whatever does not fit. */
+          padding: 1.25rem 1.25rem 1.1rem;
         }
         .card {
           width: min(22rem, 100%);
