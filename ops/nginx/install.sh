@@ -74,6 +74,12 @@ for link in /etc/nginx/sites-enabled/ambervale*; do
   rm -f "$link"
 done
 
+echo "▸ checking the config against this nginx, before touching anything"
+if ! bash "$HERE/test.sh"; then
+  echo "  Refusing to install a config that does not pass nginx -t." >&2
+  exit 1
+fi
+
 echo "▸ installing"
 # Keep a copy of whatever is there, because that file may carry the real
 # server_name and certificate paths for this box.
@@ -90,7 +96,22 @@ if [ -f "$DEST_HTTP" ] && ! cmp -s "$SRC_HTTP" "$DEST_HTTP"; then
 fi
 cp "$SRC_HTTP" "$DEST_HTTP"
 
-cp "$SRC" "$DEST_AVAILABLE"
+# HTTP/2, in whichever spelling this nginx understands.
+#
+# The file ships `listen 443 ssl http2;`, which every version since 1.9.5
+# accepts. From 1.25.1 that form is deprecated in favour of a standalone
+# `http2 on;` — still working, but it logs a warning on every reload, and a
+# warning nobody can act on is a warning everybody learns to ignore.
+version="$(nginx -v 2>&1 | sed -n 's#.*nginx/\([0-9.]*\).*#\1#p')"
+newest="$(printf '%s\n1.25.1\n' "$version" | sort -V | tail -1)"
+if [ -n "$version" ] && [ "$newest" = "$version" ] && [ "$version" != "1.25.1" ]; then
+  echo "  nginx $version prefers the modern http2 directive — rewriting"
+  sed -e 's/^\( *\)listen 443 ssl http2;/\1listen 443 ssl;\n\1http2 on;/' "$SRC" > "$DEST_AVAILABLE"
+elif [ "$version" = "1.25.1" ]; then
+  sed -e 's/^\( *\)listen 443 ssl http2;/\1listen 443 ssl;\n\1http2 on;/' "$SRC" > "$DEST_AVAILABLE"
+else
+  cp "$SRC" "$DEST_AVAILABLE"
+fi
 ln -sf "$DEST_AVAILABLE" "$DEST_ENABLED"
 
 echo "▸ testing"

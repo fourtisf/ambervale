@@ -12,6 +12,7 @@
     "build": "pnpm -r build",
     "release": "bash ops/deploy.sh",
     "verify": "bash ops/verify.sh",
+    "nginx:test": "bash ops/nginx/test.sh",
     "start": "pm2 start ecosystem.config.cjs",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
