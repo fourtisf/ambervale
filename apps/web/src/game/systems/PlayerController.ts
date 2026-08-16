@@ -61,6 +61,15 @@ export class PlayerController {
   private bobPhase = 0;
   /** Vertical offset owned by action animations (the planting crouch). */
   private actionOffsetY = 0;
+  /**
+   * The sprite's true scale, captured once at construction.
+   *
+   * Every action animation squashes *relative* to this. Written as absolute
+   * numbers instead, a crouch grows the farmer — the texture is baked at
+   * double size and drawn at half, so "scale 1" is twice as big as normal.
+   */
+  private readonly restScaleX: number;
+  private readonly restScaleY: number;
   private baseY = 0;
   /** Light that follows the player so they stay readable at night. */
   private light?: Phaser.GameObjects.Light;
@@ -76,6 +85,8 @@ export class PlayerController {
     this.collision = collision;
     this.light = light;
     this.baseY = sprite.y;
+    this.restScaleX = sprite.scaleX;
+    this.restScaleY = sprite.scaleY;
 
     if (scene.input.keyboard) {
       this.keys = scene.input.keyboard.addKeys('W,A,S,D,UP,LEFT,DOWN,RIGHT') as typeof this.keys;
@@ -325,17 +336,28 @@ export class PlayerController {
       ],
     });
 
-    // Squash and lean belong to the sprite, which update() leaves alone.
+    /*
+      Squash and lean belong to the sprite, which update() leaves alone.
+
+      Relative to the sprite's own scale, never absolute. The player is drawn
+      at SPRITE_SCALE (0.5) because its texture is baked at double size, so
+      tweening to a bare 0.86/1.06 grew it by three quarters mid-crouch — and
+      finishing with setScale(1) left it at twice its proper size for the rest
+      of the session.
+    */
+    const restX = this.restScaleX;
+    const restY = this.restScaleY;
+
     this.scene.tweens.add({
       targets: this.sprite,
-      scaleY: 0.86,
-      scaleX: 1.06,
+      scaleY: restY * 0.94,
+      scaleX: restX * 1.05,
       angle: this.sprite.flipX ? 8 : -8,
       duration: 150,
       hold: holdMs,
       yoyo: true,
       ease: 'Quad.easeOut',
-      onComplete: () => this.sprite.setAngle(0).setScale(1),
+      onComplete: () => this.sprite.setAngle(0).setScale(restX, restY),
     });
   }
 
