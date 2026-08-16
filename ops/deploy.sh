@@ -107,6 +107,17 @@ rm -rf "$WEB/.next.old"
 [ -d "$WEB/.next" ] && mv "$WEB/.next" "$WEB/.next.old"
 mv "$WEB/.next-build" "$WEB/.next"
 
+# Keep the previous build's assets reachable.
+#
+# Chunk filenames carry a content hash, so every deploy renames them. Anyone
+# holding the old HTML — a tab left open, a page the edge is still serving —
+# asks for the old names, gets a 404, and watches the site turn into unstyled
+# text. Copying the old static/ alongside the new one costs a few megabytes and
+# makes that impossible. `-n` never overwrites, so the new build always wins.
+if [ -d "$WEB/.next.old/static" ]; then
+  cp -rn "$WEB/.next.old/static/." "$WEB/.next/static/" 2>/dev/null || true
+fi
+
 # The build records the directory it was written into. `next start` reads the
 # config rather than this file, so it does not currently matter — but leaving
 # a stale path in there is a landmine for whichever future version does.
