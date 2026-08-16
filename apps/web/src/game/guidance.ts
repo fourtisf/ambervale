@@ -259,7 +259,10 @@ export function guidanceFor(counter: GoalCounter, farm: FarmState): Guidance {
         return seedCount(farm) === 0
           ? {
               label: 'Buy seeds',
-              hint: 'Nothing to water — plant something first.',
+              // The button goes to the market, so the reason has to be the
+              // one the market solves. "Plant something first" beside a
+              // "Buy seeds" button reads as two different instructions.
+              hint: 'Nothing to water, and your seed bag is empty.',
               run: open('market'),
             }
           : {
