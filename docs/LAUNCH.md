@@ -185,22 +185,28 @@ It exits non-zero if anything fails, so it can be chained.
 Infrastructure:
 
 ```bash
-# Remove any earlier copy FIRST. Installing under a second filename leaves both
-# enabled, nginx includes both, and the second definition of `upstream
-# ambervale_api` fails the config test with:
-#     [emerg] duplicate upstream "ambervale_api" ... nginx: test failed
-ls -l /etc/nginx/sites-enabled/            # expect exactly one ambervale entry
-sudo rm -f /etc/nginx/sites-enabled/ambervale /etc/nginx/sites-enabled/ambervale.conf
-
-sudo cp ops/nginx/ambervale.conf /etc/nginx/sites-available/ambervale
-sudo ln -sf /etc/nginx/sites-available/ambervale /etc/nginx/sites-enabled/ambervale
-sudo nginx -t && sudo systemctl reload nginx
+sudo bash ops/nginx/install.sh
 
 sudo cp ops/redis.conf /etc/redis/redis.conf
 sudo systemctl restart redis-server
 
 sudo crontab -e   # 15 3 * * * /opt/ambervale/ops/cron/backup.sh >> /var/log/ambervale-backup.log 2>&1
 ```
+
+`install.sh` refuses to install while another file already defines
+`upstream ambervale_api` or `ambervale_web`, because nginx includes every file
+under `/etc/nginx/` and rejects the second definition:
+
+```
+[emerg] duplicate upstream "ambervale_api" in /etc/nginx/sites-enabled/ambervale:9
+```
+
+That message names the file nginx read _second_. The first one is elsewhere —
+an older copy under `conf.d/`, a second symlink, or another site started by
+copying this one. `grep -rn 'upstream ambervale_' /etc/nginx/` finds both; the
+installer does it for you and stops before touching anything. It also backs up
+an existing config, since the copy on the box carries the real `server_name`
+and certificate paths while the one in the repo carries examples.
 
 Cloudflare: orange-cloud both hostnames, Full (strict) TLS, cache rule for
 `/_next/static/*` (cache everything, edge TTL a year), WAF on with the managed
