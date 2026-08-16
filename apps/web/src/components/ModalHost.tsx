@@ -49,7 +49,25 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
       const r = await apiPost<ActionReply>('/act/sell', { itemKey, qty: 'all' });
       commit(r);
       audio.coin();
-      if (r.coinsGained) bridge.toast('good', `Sold for ${r.coinsGained} coins`);
+      if (r.coinsGained) {
+        /*
+          The multiplier is said out loud at the moment it costs money.
+          Saturation is the one mechanic in the game with a real decision in
+          it, and it was only ever met as coins that came out lower than
+          expected — which teaches nothing except that the numbers are vague.
+        */
+        const mul = r.marketMultiplier ?? 1;
+        const qty = r.qtySold ?? 0;
+        const sold = qty > 0 ? `Sold ${qty} ${itemKey} for` : 'Sold for';
+        if (mul < 0.95) {
+          bridge.toast(
+            mul < 0.6 ? 'bad' : 'info',
+            `${sold} ${r.coinsGained} coins — ×${mul.toFixed(2)}, the market is full of ${itemKey}`,
+          );
+        } else {
+          bridge.toast('good', `${sold} ${r.coinsGained} coins`);
+        }
+      }
     } catch (err) {
       reportError(err);
     } finally {
@@ -84,6 +102,22 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
     return Math.round(m.base * qty * saleQuote(start, qty).multiplier * farm.effects.sell);
   };
 
+  /**
+   * What this batch will fetch, relative to face value.
+   *
+   * The estimate on the button is already honest, but a player reading "12
+   * coins each · 200 in bag · Sell all (840)" has to notice that 200 × 12 is
+   * not 840 and then guess why. This is the difference between a number that
+   * is merely correct and a mechanic that can be played: sell fewer, get more
+   * each.
+   */
+  const batchMultiplier = (key: ItemKey, qty: number): number => {
+    const m = marketOf(key);
+    if (!m || qty <= 0) return 1;
+    const start = Math.max(0, 1 / Math.max(m.multiplier, 1e-6) - 1);
+    return saleQuote(start, qty).multiplier;
+  };
+
   const recovers = (key: ItemKey): string | null => {
     const at = marketOf(key)?.recoversAt;
     if (!at) return null;
@@ -103,6 +137,15 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
         <button type="button" data-on={tab === 'upgrades'} onClick={() => setTab('upgrades')}>
           Upgrades
         </button>
+      </div>
+
+      {/*
+        The purse, because the modal covers the HUD that carries it. Every
+        number on this sheet is a question about this one.
+      */}
+      <div className="purse">
+        <span className="coins">{farm.user.coins} coins</span>
+        <span className="amber">{farm.user.amberBalance} $AMBER</span>
       </div>
 
       {tab === 'upgrades' ? (
@@ -127,22 +170,32 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
                         )}s · sells ${priceOf(key)}`}
                   </small>
                 </div>
+                {/*
+                  The price is on the button, not only in the blurb above it.
+                  "×5" alone asks the player to multiply in their head and then
+                  compare against a purse that the modal is covering up — and
+                  the only feedback for getting it wrong was a button that
+                  would not press, with no reason given.
+                */}
                 <div className="actions">
                   <span className="have">×{farm.seeds[key] ?? 0}</span>
-                  <button
-                    type="button"
-                    disabled={locked || busy || farm.user.coins < crop.seedCost}
-                    onClick={() => void buy(key, 1)}
-                  >
-                    ×1
-                  </button>
-                  <button
-                    type="button"
-                    disabled={locked || busy || farm.user.coins < crop.seedCost * 5}
-                    onClick={() => void buy(key, 5)}
-                  >
-                    ×5
-                  </button>
+                  {([1, 5] as const).map((qty) => {
+                    const cost = crop.seedCost * qty;
+                    const tooPoor = farm.user.coins < cost;
+                    return (
+                      <button
+                        key={qty}
+                        type="button"
+                        className="buy"
+                        disabled={locked || busy || tooPoor}
+                        title={tooPoor ? `You have ${farm.user.coins} coins` : undefined}
+                        onClick={() => void buy(key, qty)}
+                      >
+                        <span className="qty">×{qty}</span>
+                        {!locked && <span className="cost">{cost}</span>}
+                      </button>
+                    );
+                  })}
                 </div>
               </li>
             );
@@ -173,8 +226,18 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
                 )}
               </div>
               <div className="actions">
-                <button type="button" disabled={busy} onClick={() => void sell(key)}>
-                  Sell all ({estimate(key, qty)})
+                <button
+                  type="button"
+                  className="buy"
+                  disabled={busy}
+                  onClick={() => void sell(key)}
+                >
+                  <span className="qty">Sell all ({estimate(key, qty)})</span>
+                  {batchMultiplier(key, qty) < 0.95 && (
+                    <span className="batch">
+                      ×{batchMultiplier(key, qty).toFixed(2)} this batch
+                    </span>
+                  )}
                 </button>
               </div>
             </li>
@@ -259,6 +322,51 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
         .actions button:disabled {
           opacity: 0.4;
           cursor: default;
+        }
+        .buy {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          line-height: 1.1;
+          min-width: 3rem;
+        }
+        .buy .qty {
+          font-size: 0.8rem;
+        }
+        /* The price sits under the quantity in the same colour at lower weight:
+           present enough to read before pressing, quiet enough not to compete
+           with the button's own label. */
+        .buy .cost {
+          font-size: 0.66rem;
+          font-weight: 600;
+          opacity: 0.75;
+        }
+        .buy .cost::after {
+          content: ' c';
+          opacity: 0.7;
+        }
+        .buy .batch {
+          font-size: 0.64rem;
+          font-weight: 700;
+          opacity: 0.8;
+        }
+        .purse {
+          display: flex;
+          justify-content: space-between;
+          margin: 0 0 0.7rem;
+          padding: 0.45rem 0.7rem;
+          border-radius: 10px;
+          background: rgba(245, 230, 200, 0.07);
+          font-size: 0.76rem;
+          font-variant-numeric: tabular-nums;
+        }
+        .purse .coins {
+          color: #f4d35e;
+          font-weight: 700;
+        }
+        .purse .amber {
+          color: #f4b942;
+          font-weight: 700;
         }
         .empty {
           opacity: 0.7;

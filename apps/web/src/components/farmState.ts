@@ -18,6 +18,13 @@ export interface ActionReply {
   levelUps?: number[];
   levelRewards?: { level: number; reward: { note?: string; coins?: number; amber?: number } }[];
   coinsGained?: number;
+  /** How many units the server actually sold, which is always "all of them". */
+  qtySold?: number;
+  /**
+   * What the market paid relative to face value, after this player's own
+   * saturation. Below 1 means they have been flooding it.
+   */
+  marketMultiplier?: number;
   daily?: {
     completed: { id: string; text: string; reward: { coins?: number; amber?: number } }[];
     dayComplete: { streak: number; amber: number; coins: number } | null;
