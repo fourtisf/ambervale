@@ -185,8 +185,15 @@ It exits non-zero if anything fails, so it can be chained.
 Infrastructure:
 
 ```bash
+# Remove any earlier copy FIRST. Installing under a second filename leaves both
+# enabled, nginx includes both, and the second definition of `upstream
+# ambervale_api` fails the config test with:
+#     [emerg] duplicate upstream "ambervale_api" ... nginx: test failed
+ls -l /etc/nginx/sites-enabled/            # expect exactly one ambervale entry
+sudo rm -f /etc/nginx/sites-enabled/ambervale /etc/nginx/sites-enabled/ambervale.conf
+
 sudo cp ops/nginx/ambervale.conf /etc/nginx/sites-available/ambervale
-sudo ln -sf /etc/nginx/sites-available/ambervale /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/ambervale /etc/nginx/sites-enabled/ambervale
 sudo nginx -t && sudo systemctl reload nginx
 
 sudo cp ops/redis.conf /etc/redis/redis.conf
