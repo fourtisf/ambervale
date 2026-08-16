@@ -8,6 +8,8 @@
  */
 
 import {
+  BUILDS,
+  BUILD_KEYS,
   DOCK_PLANKS,
   FENCES,
   LAMPS,
@@ -166,12 +168,24 @@ export function buildScenery(
 ): Phaser.GameObjects.Image[] {
   const placed: Phaser.GameObjects.Image[] = [];
 
+  /**
+   * A clearing around every landmark site, kept whether or not it has been
+   * built yet. Half of these stand out in the scatter, and a sundial that cost
+   * 12,000 coins with three pines growing through it reads as scenery rather
+   * than as something someone paid for.
+   */
+  const clearing = (tx: number, ty: number): boolean =>
+    BUILD_KEYS.some(
+      (key) => Math.abs(tx - BUILDS[key].at.x) <= 2 && Math.abs(ty - BUILDS[key].at.y) <= 2,
+    );
+
   for (let ty = 1; ty < WORLD.h - 1; ty++) {
     for (let tx = 1; tx < WORLD.w - 1; tx++) {
       if (isBlocked(tx, ty)) continue;
 
       // Keep the farm hub clear so the playable area stays readable.
       if (tx > 9 && tx < 30 && ty > 10 && ty < 30) continue;
+      if (clearing(tx, ty)) continue;
 
       const roll = h01(tx, ty, 101);
       if (roll < 0.035) placed.push(place(scene, 'pine', tx, ty));

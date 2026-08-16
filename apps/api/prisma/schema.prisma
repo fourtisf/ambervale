@@ -90,6 +90,7 @@ model User {
   upgrades      Upgrade[]
   daily         DailyState?
   market        MarketGood[]
+  builds        Build[]
 
   @@index([createdAt])
   @@index([renown])
@@ -128,6 +129,25 @@ model Plot {
   guardedUntil DateTime?
 
   @@unique([userId, index])
+  @@index([userId])
+}
+
+/// Something the player has built, that stays built.
+///
+/// Position is not stored: the key maps to a fixed tile in game-config's
+/// BUILDS, exactly as plots and nodes do. One row per landmark per player,
+/// and the unique index is what makes "build it twice" impossible under any
+/// amount of double-clicking.
+model Build {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// BuildKey from game-config.
+  key     String
+  builtAt DateTime @default(now())
+
+  @@unique([userId, key])
   @@index([userId])
 }
 

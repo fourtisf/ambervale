@@ -28,6 +28,8 @@ export type ApiErrorCode =
   | 'SLOT_LOCKED'
   | 'SLOT_NOT_OPEN'
   | 'ALREADY_EXPANDED'
+  | 'ALREADY_BUILT'
+  | 'INSUFFICIENT_AMBER'
   | 'MAX_TIER'
   | 'NEEDS_UPGRADE'
   | 'CLAIMS_DISABLED'

@@ -54,6 +54,16 @@ interface SpriteDef {
   w: number;
   h: number;
   paint: Painter;
+  /**
+   * Enlarges a painter without rewriting it.
+   *
+   * Every landmark below is drawn inside the same 64-wide box, because that is
+   * the comfortable size to reason about coordinates in. Drawn at 1× they came
+   * out shorter than the ambient pines — a 7,000-coin watchtower that a
+   * background tree looked down on. This multiplies both the canvas and the
+   * coordinate scale, so the art is untouched and the object is simply bigger.
+   */
+  zoom?: number;
 }
 
 /** Soft contact shadow under a standing object. */
@@ -857,6 +867,208 @@ const wateringCan: Painter = (g, s) => {
   g.strokePath();
 };
 
+// ---------------------------------------------------------------------------
+// Landmarks — the things a player builds
+//
+// Each one has to read at a glance from a distance, and read as *different*
+// from every other silhouette already in the vale. That is the whole job: a
+// farm that has been played for twenty hours must look unlike one played for
+// two, from the minimap, in a screenshot, at a thumbnail size.
+// ---------------------------------------------------------------------------
+
+/** Flower beds: three rows of colour in a low border. */
+const buildGarden: Painter = (g, s) => {
+  g.fillStyle(0x6f5231, 1);
+  g.fillRoundedRect(3 * s, 12 * s, 58 * s, 34 * s, 5 * s);
+  g.fillStyle(0x7f6a44, 1);
+  g.fillRoundedRect(5 * s, 14 * s, 54 * s, 30 * s, 4 * s);
+
+  const colours = [0xe4574f, 0xf4b942, 0xd98cc8, 0x9fe8ff];
+  for (let row = 0; row < 3; row++) {
+    for (let i = 0; i < 6; i++) {
+      const x = 10 + i * 9;
+      const y = 20 + row * 9;
+      g.fillStyle(0x3f7a3a, 1);
+      g.fillRect((x - 0.6) * s, y * s, 1.4 * s, 6 * s);
+      g.fillStyle(colours[(row + i) % colours.length]!, 1);
+      g.fillCircle(x * s, y * s, 3 * s);
+      g.fillStyle(0xfff3d0, 0.85);
+      g.fillCircle(x * s, y * s, 1.1 * s);
+    }
+  }
+};
+
+/** A round stone well with a shingled roof on two posts. */
+const buildWell: Painter = (g, s) => {
+  g.fillStyle(0x5b4227, 0.35);
+  g.fillEllipse(32 * s, 52 * s, 40 * s, 10 * s);
+  // drum
+  g.fillStyle(0x6b7079, 1);
+  g.fillRoundedRect(16 * s, 30 * s, 32 * s, 20 * s, 4 * s);
+  g.fillStyle(0x8a8f98, 1);
+  g.fillRoundedRect(16 * s, 28 * s, 32 * s, 8 * s, 4 * s);
+  g.fillStyle(0x14232b, 1);
+  g.fillEllipse(32 * s, 32 * s, 24 * s, 7 * s);
+  // posts and roof
+  g.fillStyle(0x6b4a2f, 1);
+  g.fillRect(19 * s, 12 * s, 3 * s, 20 * s);
+  g.fillRect(42 * s, 12 * s, 3 * s, 20 * s);
+  g.fillStyle(0x8f3529, 1);
+  g.fillTriangle(32 * s, 2 * s, 10 * s, 16 * s, 54 * s, 16 * s);
+  g.fillStyle(0xb5473a, 1);
+  g.fillTriangle(32 * s, 4 * s, 13 * s, 16 * s, 51 * s, 16 * s);
+};
+
+/** Three hives, stacked boxes with a landing board. */
+const buildBeehives: Painter = (g, s) => {
+  // Boxes 14 wide at 13/32/51, not 18 wide at 14/32/50: at the old spacing the
+  // three hives touched edge to edge and the whole thing read as one pale slab.
+  const hive = (x: number, h: number) => {
+    g.fillStyle(0x5b4227, 0.3);
+    g.fillEllipse(x * s, 50 * s, 17 * s, 5 * s);
+    for (let i = 0; i < h; i++) {
+      const y = 46 - i * 9;
+      g.fillStyle(i % 2 === 0 ? 0xf0e2c0 : 0xdccaa2, 1);
+      g.fillRoundedRect((x - 7) * s, (y - 8) * s, 14 * s, 9 * s, 1.5 * s);
+      g.fillStyle(0x8a663e, 0.55);
+      g.fillRect((x - 7) * s, (y - 1) * s, 14 * s, 1.4 * s);
+      // The entrance slot, so a box reads as a box and not as a block.
+      g.fillStyle(0x3b2c18, 0.7);
+      g.fillRect((x - 4) * s, (y - 3.4) * s, 8 * s, 1.6 * s);
+    }
+    g.fillStyle(0x6b4420, 1);
+    g.fillTriangle(
+      x * s,
+      (46 - h * 9 - 4) * s,
+      (x - 9) * s,
+      (46 - h * 9 + 1) * s,
+      (x + 9) * s,
+      (46 - h * 9 + 1) * s,
+    );
+  };
+  hive(13, 3);
+  hive(32, 4);
+  hive(51, 3);
+  // a few bees
+  g.fillStyle(0xf4b942, 0.9);
+  for (const [bx, by] of [
+    [22, 14],
+    [40, 10],
+    [46, 20],
+  ] as [number, number][]) {
+    g.fillCircle(bx * s, by * s, 1.6 * s);
+  }
+};
+
+/** Five upright stones in a ring, older than the farm. */
+const buildStones: Painter = (g, s) => {
+  const stones: [number, number, number, number][] = [
+    [10, 40, 9, 22],
+    [24, 34, 8, 28],
+    [39, 32, 9, 30],
+    [52, 38, 8, 24],
+    [31, 46, 7, 16],
+  ];
+  for (const [x, y, w, h] of stones) {
+    g.fillStyle(0x4a4f57, 0.4);
+    g.fillEllipse((x + w / 2) * s, (y + 3) * s, (w + 8) * s, 6 * s);
+    g.fillStyle(0x6b7079, 1);
+    g.fillRoundedRect(x * s, (y - h) * s, w * s, h * s, 2.5 * s);
+    g.fillStyle(0xa8adb6, 1);
+    g.fillRoundedRect(x * s, (y - h) * s, w * 0.45 * s, h * s, 2.5 * s);
+  }
+};
+
+/** A tall grain silo with a domed cap. */
+const buildSilo: Painter = (g, s) => {
+  g.fillStyle(0x4a4f57, 0.35);
+  g.fillEllipse(32 * s, 56 * s, 40 * s, 8 * s);
+  g.fillStyle(0x8a8f98, 1);
+  g.fillRoundedRect(18 * s, 14 * s, 28 * s, 42 * s, 4 * s);
+  g.fillStyle(0xa8adb6, 1);
+  g.fillRoundedRect(18 * s, 14 * s, 11 * s, 42 * s, 4 * s);
+  // banding
+  g.fillStyle(0x6b7079, 0.8);
+  for (let i = 0; i < 4; i++) g.fillRect(18 * s, (22 + i * 9) * s, 28 * s, 1.6 * s);
+  // cap
+  g.fillStyle(0x8f3529, 1);
+  g.fillEllipse(32 * s, 14 * s, 32 * s, 18 * s);
+  g.fillStyle(0xb5473a, 1);
+  g.fillEllipse(30 * s, 12 * s, 24 * s, 12 * s);
+};
+
+/** Timber tower with a stone base and a lit lantern at the top. */
+const buildWatchtower: Painter = (g, s) => {
+  g.fillStyle(0x4a4f57, 0.35);
+  g.fillEllipse(32 * s, 58 * s, 38 * s, 8 * s);
+  // stone base
+  g.fillStyle(0x6b7079, 1);
+  g.fillRoundedRect(20 * s, 42 * s, 24 * s, 16 * s, 3 * s);
+  // timber legs, narrowing
+  g.fillStyle(0x6b4a2f, 1);
+  g.fillTriangle(22 * s, 42 * s, 27 * s, 42 * s, 29 * s, 18 * s);
+  g.fillTriangle(42 * s, 42 * s, 37 * s, 42 * s, 35 * s, 18 * s);
+  g.fillStyle(0x8b5a2b, 1);
+  g.fillRect(24 * s, 32 * s, 16 * s, 2.5 * s);
+  // platform and rail
+  g.fillStyle(0x8b5a2b, 1);
+  g.fillRoundedRect(20 * s, 14 * s, 24 * s, 5 * s, 1.5 * s);
+  g.fillStyle(0x6b4a2f, 1);
+  g.fillRect(21 * s, 9 * s, 2 * s, 6 * s);
+  g.fillRect(41 * s, 9 * s, 2 * s, 6 * s);
+  // roof and lantern
+  g.fillStyle(0x8f3529, 1);
+  g.fillTriangle(32 * s, 0 * s, 16 * s, 10 * s, 48 * s, 10 * s);
+  g.fillStyle(0xf4d35e, 1);
+  g.fillCircle(32 * s, 13 * s, 3 * s);
+  g.fillStyle(0xfff3d0, 0.55);
+  g.fillCircle(32 * s, 13 * s, 5.5 * s);
+};
+
+/** One enormous oak, wider and taller than any in the woods. */
+const buildGreatOak: Painter = (g, s) => {
+  g.fillStyle(0x224936, 0.35);
+  g.fillEllipse(32 * s, 58 * s, 46 * s, 9 * s);
+  g.fillStyle(0x4d3521, 1);
+  g.fillRoundedRect(27 * s, 32 * s, 10 * s, 26 * s, 3 * s);
+  g.fillStyle(0x6b4a2f, 1);
+  g.fillRoundedRect(27 * s, 32 * s, 4 * s, 26 * s, 3 * s);
+  // canopy: three overlapping masses, darkest at the back
+  g.fillStyle(0x2f5e2c, 1);
+  g.fillCircle(20 * s, 26 * s, 15 * s);
+  g.fillCircle(45 * s, 25 * s, 14 * s);
+  g.fillStyle(0x3f7a3a, 1);
+  g.fillCircle(32 * s, 20 * s, 18 * s);
+  g.fillStyle(0x57a44c, 1);
+  g.fillCircle(26 * s, 15 * s, 9 * s);
+  g.fillCircle(40 * s, 17 * s, 7 * s);
+};
+
+/** A pale stone dial on a plinth, with a gnomon that casts its own shadow. */
+const buildSundial: Painter = (g, s) => {
+  g.fillStyle(0x4a4f57, 0.35);
+  g.fillEllipse(32 * s, 54 * s, 40 * s, 9 * s);
+  // plinth
+  g.fillStyle(0x8a8f98, 1);
+  g.fillRoundedRect(24 * s, 30 * s, 16 * s, 22 * s, 3 * s);
+  g.fillStyle(0xa8adb6, 1);
+  g.fillRoundedRect(24 * s, 30 * s, 6 * s, 22 * s, 3 * s);
+  // dial face
+  g.fillStyle(0xdccaa2, 1);
+  g.fillEllipse(32 * s, 28 * s, 40 * s, 14 * s);
+  g.fillStyle(0xf0e2c0, 1);
+  g.fillEllipse(32 * s, 27 * s, 34 * s, 11 * s);
+  // hour marks
+  g.fillStyle(0x6b7079, 0.9);
+  for (let i = 0; i < 8; i++) {
+    const a = Math.PI + (i / 7) * Math.PI;
+    g.fillCircle((32 + Math.cos(a) * 14) * s, (27 + Math.sin(a) * 4.5) * s, 0.9 * s);
+  }
+  // gnomon
+  g.fillStyle(0x5f6b74, 1);
+  g.fillTriangle(32 * s, 10 * s, 32 * s, 27 * s, 44 * s, 27 * s);
+};
+
 export const SPRITES: readonly SpriteDef[] = [
   { key: 'house', w: 136, h: 124, paint: house },
   { key: 'barn', w: 148, h: 132, paint: barn },
@@ -882,6 +1094,18 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'bush', w: 52, h: 42, paint: bush },
   { key: 'soil', w: 64, h: 64, paint: soil },
   { key: 'soilWet', w: 64, h: 64, paint: soilWet },
+  // Landmarks. The zooms are not decoration: a pine is 88×120 and an oak
+  // 110×120, so anything left at 1× is out-ranked by scenery the player did
+  // not pay for. These are graded by price — the garden sits low in the grass,
+  // the watchtower is the tallest thing anyone owns.
+  { key: 'build_garden', w: 64, h: 52, paint: buildGarden, zoom: 1.5 },
+  { key: 'build_well', w: 64, h: 58, paint: buildWell, zoom: 1.7 },
+  { key: 'build_beehives', w: 64, h: 56, paint: buildBeehives, zoom: 1.6 },
+  { key: 'build_stones', w: 64, h: 52, paint: buildStones, zoom: 2.1 },
+  { key: 'build_silo', w: 64, h: 62, paint: buildSilo, zoom: 2.3 },
+  { key: 'build_watchtower', w: 64, h: 62, paint: buildWatchtower, zoom: 2.6 },
+  { key: 'build_greatoak', w: 64, h: 62, paint: buildGreatOak, zoom: 2.4 },
+  { key: 'build_sundial', w: 64, h: 58, paint: buildSundial, zoom: 2.2 },
   { key: 'wateringCan', w: 34, h: 24, paint: wateringCan },
   { key: 'readyRing', w: 68, h: 68, paint: readyRing },
   { key: 'crow', w: 28, h: 24, paint: crow },
@@ -911,9 +1135,14 @@ export const rockTextureKey = (hp: number): string =>
 export function bakeSprites(scene: Phaser.Scene): void {
   for (const def of SPRITES) {
     if (scene.textures.exists(def.key)) continue;
+    const zoom = def.zoom ?? 1;
     const g = scene.make.graphics({ x: 0, y: 0 }, false);
-    def.paint(g, TEX_SCALE);
-    g.generateTexture(def.key, Math.ceil(def.w * TEX_SCALE), Math.ceil(def.h * TEX_SCALE));
+    def.paint(g, TEX_SCALE * zoom);
+    g.generateTexture(
+      def.key,
+      Math.ceil(def.w * zoom * TEX_SCALE),
+      Math.ceil(def.h * zoom * TEX_SCALE),
+    );
     g.destroy();
   }
 }

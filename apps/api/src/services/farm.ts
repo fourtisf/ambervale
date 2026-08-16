@@ -300,6 +300,8 @@ export interface FarmState {
     counters: Record<string, number>;
   };
   expansion: { north: boolean; east: boolean };
+  /** Landmarks this player has built. Position comes from BUILDS by key. */
+  builds: { key: string; builtAt: number }[];
   plots: FarmPlotDto[];
   nodes: { index: number; kind: string; hp: number; respawnAt: number | null }[];
   animals: { index: number; kind: string; nextYieldAt: number; ready: boolean }[];
@@ -505,6 +507,12 @@ export async function getFarmState(
     dailyState(db as Prisma.TransactionClient, userId),
   ]);
 
+  const builds = await db.build.findMany({
+    where: { userId },
+    orderBy: { builtAt: 'asc' },
+    select: { key: true, builtAt: true },
+  });
+
   const effects = effectsOf(tiers);
   const lv = levelFromTotalXp(user.xp);
   // After `effects`, because the shown price includes the cellar multiplier —
@@ -550,6 +558,10 @@ export async function getFarmState(
     expansion: { north: expansion?.north ?? false, east: expansion?.east ?? false },
     plots: plots.map((p) => plotToDto(p, effects.growth, effects.scarecrowMs)),
     prices,
+    builds: builds.map((b: { key: string; builtAt: Date }) => ({
+      key: b.key,
+      builtAt: b.builtAt.getTime(),
+    })),
     nodes: nodes.map((n) => ({
       index: n.index,
       kind: n.kind,

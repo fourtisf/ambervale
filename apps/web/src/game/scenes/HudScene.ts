@@ -77,8 +77,17 @@ export class HudScene extends Phaser.Scene {
     this.minimap.setVisible(!bridge.gated);
     const offGated = bridge.on('gated', (gated) => this.minimap.setVisible(!gated));
 
+    // Landmarks the player has built get a dot of their own. Read the mirrored
+    // state as well as subscribing: this scene is created after the first farm
+    // snapshot has usually already landed.
+    if (bridge.farm) this.minimap.setBuilds(bridge.farm.builds?.map((b) => b.key) ?? []);
+    const offFarm = bridge.on('farm', (farm) =>
+      this.minimap.setBuilds(farm.builds?.map((b) => b.key) ?? []),
+    );
+
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       offGated();
+      offFarm();
       this.sky.destroy();
       this.minimap.destroy();
     });

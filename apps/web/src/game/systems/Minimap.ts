@@ -6,7 +6,15 @@
  * transform updates rather than a second render pass over the world.
  */
 
-import { LANDMARKS, MINIMAP_WIDTH, TILE, WORLD, structureAt } from '@ambervale/game-config';
+import {
+  BUILDS,
+  LANDMARKS,
+  MINIMAP_WIDTH,
+  TILE,
+  WORLD,
+  isBuildKey,
+  structureAt,
+} from '@ambervale/game-config';
 import type Phaser from 'phaser';
 import { Tile, type WorldMap } from '../world/tilemap';
 
@@ -28,6 +36,8 @@ export class Minimap {
   private readonly playerDot: Phaser.GameObjects.Arc;
   private readonly scale: number;
   private readonly height: number;
+  /** Build keys already marked, so repeated farm snapshots do not stack dots. */
+  private readonly buildDots = new Set<string>();
 
   constructor(scene: Phaser.Scene, map: WorldMap) {
     this.scene = scene;
@@ -79,6 +89,29 @@ export class Minimap {
 
     this.reposition();
     scene.scale.on('resize', this.reposition, this);
+  }
+
+  /**
+   * Marks landmarks the player has built.
+   *
+   * The fixed dots above are the same on every farm; these are not, which is
+   * the point of them. Only builds carrying a `landmark` label are marked —
+   * the flower garden sits inside the hub, where it would be one more dot in a
+   * cluster of them, while a tower on the east ridge is genuinely how you find
+   * your way about.
+   */
+  setBuilds(keys: readonly string[]): void {
+    for (const key of keys) {
+      if (this.buildDots.has(key) || !isBuildKey(key)) continue;
+      const def = BUILDS[key];
+      if (!def.landmark) continue;
+      this.buildDots.add(key);
+      const dot = this.scene.add
+        .circle(def.at.x * this.scale, def.at.y * this.scale, 2.4, 0xf4d35e, 1)
+        .setStrokeStyle(1, 0x0a2e3d, 0.7);
+      // Below the viewport rectangle and the player dot, which were added last.
+      this.container.addAt(dot, this.container.length - 2);
+    }
   }
 
   /**

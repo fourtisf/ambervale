@@ -267,6 +267,8 @@ export interface FarmState {
   serverNow: number;
   user: FarmUser;
   expansion: Record<string, boolean>;
+  /** Landmarks built. Position comes from BUILDS in game-config, by key. */
+  builds: { key: string; builtAt: number }[];
   plots: FarmPlot[];
   nodes: FarmNode[];
   animals: FarmAnimal[];

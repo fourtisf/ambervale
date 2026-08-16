@@ -10,7 +10,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  BUILDS,
+  BUILD_KEYS,
   CROPS,
+  NODE_SLOTS,
+  PLOTS,
+  STRUCTURES,
+  WATER,
   dailyPicks,
   CROWS,
   MARKET,
@@ -370,5 +376,72 @@ describe('daily goals', () => {
     const after = (await farmOf(client)).user.counters['wateredCount'] ?? 0;
     assert.equal(after, before + 1, 'watering must count, or no goal can ever ask for it');
     assert.ok(farm.user.id);
+  });
+});
+
+describe('building the vale', () => {
+  it('refuses a landmark the player cannot afford, and charges exactly once', async () => {
+    const { client, farm } = await newPlayer();
+
+    // Level gate first: a fresh farmer is nowhere near.
+    const early = await paced(() =>
+      client.call<{ error: string }>('/act/build', { key: 'garden' }),
+    );
+    assert.equal(early.status, 409);
+    assert.equal(early.body.error, 'LEVEL_TOO_LOW');
+
+    // Level, but no materials.
+    await endow(farm.user.id, { xp: 99999, coins: 10 });
+    const poor = await paced(() => client.call<{ error: string }>('/act/build', { key: 'garden' }));
+    assert.equal(poor.status, 409);
+    assert.equal(poor.body.error, 'INSUFFICIENT_COINS');
+
+    // Now afford it exactly.
+    await endow(farm.user.id, { coins: 600, items: { wood: 8 } });
+    const built = await paced(() =>
+      client.call<{ built: string; farm: FarmLike }>('/act/build', { key: 'garden' }),
+    );
+    assert.equal(built.status, 200, JSON.stringify(built.body));
+    assert.equal(built.body.built, 'garden');
+
+    const after = await farmOf(client);
+    assert.equal(after.user.coins, 0, 'the coins must actually be spent');
+    assert.equal(after.inventory['wood'] ?? 0, 0, 'and the wood with them');
+    assert.equal(after.user.renown, BUILDS.garden.renown, 'building it is what earns the rank');
+    assert.ok(
+      after.builds.some((b) => b.key === 'garden'),
+      'the farm state must carry it, or the world cannot draw it',
+    );
+
+    // And it cannot be built twice, however hard someone tries.
+    await endow(farm.user.id, { coins: 600, items: { wood: 8 } });
+    const again = await paced(() =>
+      client.call<{ error: string }>('/act/build', { key: 'garden' }),
+    );
+    assert.equal(again.status, 409);
+    assert.equal(again.body.error, 'ALREADY_BUILT');
+    assert.equal((await farmOf(client)).user.coins, 600, 'a refused build must charge nothing');
+  });
+
+  it('stands somewhere that is not already occupied', () => {
+    // A landmark dropped on a plot, a tree or the lake would be a bug nobody
+    // sees until they walk into it, so the positions are checked here instead.
+    const taken = new Set<string>();
+    for (const p of PLOTS) taken.add(`${p.x},${p.y}`);
+    for (const n of NODE_SLOTS) taken.add(`${n.x},${n.y}`);
+    for (const s of STRUCTURES) {
+      for (let i = -2; i <= 2; i++) {
+        for (let j = -2; j <= 2; j++) taken.add(`${s.x + i},${s.y + j}`);
+      }
+    }
+
+    for (const key of BUILD_KEYS) {
+      const { at, name } = BUILDS[key];
+      assert.ok(!taken.has(`${at.x},${at.y}`), `${name} stands on something at ${at.x},${at.y}`);
+      for (const water of Object.values(WATER)) {
+        const d = Math.hypot(at.x - water.cx, at.y - water.cy);
+        assert.ok(d > water.r + water.wobble, `${name} stands in the water`);
+      }
+    }
   });
 });

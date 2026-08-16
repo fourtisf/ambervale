@@ -164,6 +164,7 @@ export interface FarmLike {
     unlocked: boolean;
   }[];
   expansion: Record<string, boolean>;
+  builds: { key: string; builtAt: number }[];
   quest: { id: string; current: number; target: number } | null;
   upgrades: Record<string, number>;
   shop: {

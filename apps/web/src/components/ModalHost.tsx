@@ -13,6 +13,7 @@ import { bridge } from '@/game/bridge';
 import { TUTORIAL, TUTORIAL_DONE } from '@/game/tutorial';
 import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
+import BuildPanel from './BuildPanel';
 import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
 import { AwayModal, DailyModal, MillModal, UpgradesPanel } from './EconomyModals';
 import { LeaderboardModal, ValeFundPanel } from './SocialModals';
@@ -22,7 +23,7 @@ import { commit, reportError, useFarm, type ActionReply } from './farmState';
 
 // ---------------------------------------------------------------------------
 
-type MarketTab = 'buy' | 'sell' | 'upgrades';
+type MarketTab = 'buy' | 'sell' | 'upgrades' | 'build';
 
 function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?: MarketTab }) {
   const farm = useFarm();
@@ -137,6 +138,9 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
         <button type="button" data-on={tab === 'upgrades'} onClick={() => setTab('upgrades')}>
           Upgrades
         </button>
+        <button type="button" data-on={tab === 'build'} onClick={() => setTab('build')}>
+          Build
+        </button>
       </div>
 
       {/*
@@ -148,7 +152,9 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
         <span className="amber">{farm.user.amberBalance} $AMBER</span>
       </div>
 
-      {tab === 'upgrades' ? (
+      {tab === 'build' ? (
+        <BuildPanel />
+      ) : tab === 'upgrades' ? (
         <>
           <ValeFundPanel />
           <UpgradesPanel />

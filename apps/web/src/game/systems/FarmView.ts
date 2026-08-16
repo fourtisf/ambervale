@@ -8,10 +8,12 @@
  */
 
 import {
+  BUILDS,
   CROPS,
   NODES,
   PLOTS,
   TILE,
+  isBuildKey,
   plotAt,
   nodeSlotAt,
   type CropKey,
@@ -47,6 +49,8 @@ export class FarmView {
 
   private readonly plots = new Map<number, PlotView>();
   private readonly nodes = new Map<number, Phaser.GameObjects.Image>();
+  /** Landmarks the player has built, keyed by BuildKey. */
+  private readonly builds = new Map<string, Phaser.GameObjects.Image>();
   /** Cosmetic animal behaviour; the server owns whether a yield exists. */
   private animalLife?: AnimalLife;
   private occlusion?: Occlusion;
@@ -112,6 +116,7 @@ export class FarmView {
     this.state = state;
 
     this.syncPlots(state);
+    this.syncBuilds(state);
     this.syncNodes(state);
     this.syncAnimals(state);
     this.syncGround(state);
@@ -144,6 +149,39 @@ export class FarmView {
       }
 
       view.crop.setVisible(true);
+    }
+  }
+
+  /**
+   * Draws whatever has been built, once each.
+   *
+   * Nothing is ever removed: a landmark cannot be unbuilt, so an image that
+   * exists is correct forever and this only has to notice the new ones. Depth
+   * comes from the tile row like everything else, so the player walks in front
+   * of a tower below them and behind one above.
+   */
+  private syncBuilds(state: FarmState): void {
+    for (const built of state.builds ?? []) {
+      const key = built.key;
+      if (this.builds.has(key)) continue;
+      if (!isBuildKey(key)) continue;
+
+      const def = BUILDS[key];
+      const x = def.at.x * TILE + TILE / 2;
+      const y = def.at.y * TILE + TILE / 2;
+
+      const image = this.scene.add
+        .image(x, y + TILE / 2, `build_${key}`)
+        // Anchored at the foot, so tall things stand on the ground rather than
+        // hovering over their own tile.
+        .setOrigin(0.5, 1)
+        .setScale(SPRITE_SCALE)
+        .setDepth(def.at.y * TILE)
+        .setPipeline('Light2D');
+
+      this.builds.set(key, image);
+      // Tall landmarks can hide the player; let Occlusion fade them like oaks.
+      this.occlusion?.register(image, () => 1);
     }
   }
 
