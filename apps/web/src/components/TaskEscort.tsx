@@ -21,6 +21,15 @@ import type { FarmState } from '@/lib/api';
  * two-of-three is visible without opening anything; and it closes itself when
  * the goal completes, which is the only moment a player is actually finished.
  */
+/**
+ * How close counts as "standing there".
+ *
+ * Wider than the 74px interaction reach on purpose: this only decides whether
+ * to offer a walk button, and offering one to somebody who is plainly already
+ * at the cow is worse than omitting it from somebody a step too far.
+ */
+const ARRIVED_PX = 120;
+
 export default function TaskEscort() {
   const [farm, setFarm] = useState<FarmState | null>(bridge.farm);
   const [goalId, setGoalId] = useState<string | null>(null);
@@ -87,10 +96,25 @@ export default function TaskEscort() {
     actually in reach and say so.
   */
   const wants = EXPECTED_KIND[counter as keyof typeof EXPECTED_KIND];
-  const inPlace = !wants || reach?.kind === wants;
+  /*
+    Two different questions, and both are needed.
+
+    `canAct` is the game's own answer about what is in reach, and it is the
+    only truthful test of "can you press it now". But it is silent while the
+    thing is not yet actionable — a cow with no milk offers no interaction at
+    all — so it cannot tell someone waiting in the right place from someone
+    who wandered off. `nearby` covers that gap by measuring against the spot
+    the escort is sending them to, using the same `baseY` the reach check uses.
+  */
+  const canAct = !wants || reach?.kind === wants;
+  const at = escort.at;
+  const here = bridge.playerAt;
+  const nearby = !at || (here !== null && Math.hypot(here.x - at.x, here.y - at.y) <= ARRIVED_PX);
+  const inPlace = canAct || nearby;
+
   const step = done
     ? 'Done.'
-    : escort.ready && !inPlace
+    : escort.ready && !canAct
       ? 'Almost — you are not close enough yet. Take me there.'
       : escort.text;
 
@@ -116,7 +140,10 @@ export default function TaskEscort() {
         </span>
       </p>
 
-      {!done && escort.at && (
+      {/* Only when you are not already standing there. A full-width button
+          telling you to walk to the cow, while you are beside the cow waiting
+          for her, is the panel talking over the thing it is meant to explain. */}
+      {!done && escort.at && !inPlace && (
         <button type="button" className="go" onClick={walk}>
           Take me there
         </button>

@@ -126,6 +126,15 @@ class GameBridge {
    */
   lastFrameAt = 0;
 
+  /**
+   * Where the player is standing, mirrored each frame.
+   *
+   * A plain field rather than an event: it changes sixty times a second and
+   * nothing wants to re-render at that rate. The one reader polls it once a
+   * second, which is the right granularity for "are you there yet".
+   */
+  playerAt: { x: number; y: number } | null = null;
+
   on<K extends keyof BridgeEvents>(event: K, handler: Handler<K>): () => void {
     let set = this.handlers.get(event);
     if (!set) {
@@ -167,6 +176,7 @@ class GameBridge {
     this.input.moveX = 0;
     this.input.moveY = 0;
     this.lastFrameAt = 0;
+    this.playerAt = null;
   }
 }
 

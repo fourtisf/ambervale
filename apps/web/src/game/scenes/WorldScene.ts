@@ -310,6 +310,10 @@ export class WorldScene extends Phaser.Scene {
     // Heartbeat for the controls' freeze watchdog. First line of update(), so
     // it is stamped even if something below throws.
     bridge.lastFrameAt = Date.now();
+    // Mirrored for the task escort, which needs to know whether the player is
+    // actually standing where it sent them — a question no interaction can
+    // answer while the thing being waited for is not yet actionable.
+    if (this.player) bridge.playerAt = { x: this.player.x, y: this.player.y };
     this.elapsed += delta;
 
     this.dayNight?.update(delta);
