@@ -49,19 +49,43 @@ fi
 # when the api is up but cannot reach anything — which is a dead site with a
 # green process, and the whole reason this file exists.
 
-health="$(curl -fsS -m 8 "$API/health/deep" 2>/dev/null)"
-if [ -n "$health" ] && printf '%s' "$health" | grep -q '"ok":true'; then
+# -sS without -f: a 503 from the probe carries which service is down, and -f
+# would throw that body away and report only a failure.
+health="$(curl -sS -m 8 "$API/health/deep" 2>/dev/null)"
+curl_exit=$?
+
+if printf '%s' "$health" | grep -q '"ok":true'; then
   ok "api answers, with Postgres and Redis behind it"
+  api_up=1
 else
-  bad "api is unhealthy on $API/health/deep"
-  note "response: ${health:-（none）}"
-  note "pm2 logs ambervale-api --lines 40"
+  api_up=0
+  case "$curl_exit" in
+    7) bad "nothing is listening on $API — the api is not running"
+       note "pm2 list; pm2 logs ambervale-api --lines 40" ;;
+    28) bad "the api did not answer $API/health/deep within 8s"
+        note "it is running but wedged — usually a dependency that never times out"
+        note "pm2 logs ambervale-api --lines 40" ;;
+    *) bad "api is unhealthy on $API/health/deep" ;;
+  esac
+
+  # The probe names the service when it can answer at all.
+  if printf '%s' "$health" | grep -q '"postgres":false'; then
+    note "Postgres is unreachable — systemctl status postgresql"
+  fi
+  if printf '%s' "$health" | grep -q '"redis":false'; then
+    note "Redis is unreachable — systemctl status redis-server, then: systemctl start redis-server"
+  fi
+  [ -n "$health" ] && note "response: $health"
 fi
 
 # Which build is answering. An old process holding the port answers /health
-# perfectly well; this is the check that tells the two apart.
+# perfectly well; this is the check that tells the two apart. Skipped entirely
+# when the api did not answer — "no build id" would read as a dev server when
+# the truth is that nothing replied.
 api_rev="$(printf '%s' "$health" | grep -o '"rev":"[^"]*"' | cut -d'"' -f4)"
-if [ -z "$api_rev" ] || [ "$api_rev" = "null" ]; then
+if [ "$api_up" = "0" ]; then
+  : # already reported above
+elif [ -z "$api_rev" ] || [ "$api_rev" = "null" ]; then
   note "api reports no build id — running from source (dev) rather than a deploy"
 elif [ "$api_rev" = "$head_sha" ]; then
   ok "api is serving this commit ($api_rev)"
@@ -75,7 +99,13 @@ fi
 # not enough — it answers identically whether the beta is shut or wide open,
 # and an accidentally empty INVITE_CODE opens the game to everyone silently.
 gate="$(curl -fsS -m 5 "$API/auth/invite" 2>/dev/null)"
-if printf '%s' "$gate" | grep -q '"required":true'; then
+gate_exit=$?
+if [ "$api_up" = "0" ]; then
+  note "invite gate not checked — the api is down"
+elif [ "$gate_exit" = "28" ]; then
+  bad "the invite gate did not answer within 5s — players see a spinner"
+  note "pm2 logs ambervale-api --lines 40"
+elif printf '%s' "$gate" | grep -q '"required":true'; then
   ok "invite gate is locked"
 elif printf '%s' "$gate" | grep -q '"required":false'; then
   bad "the invite gate is OPEN — anyone can play"
@@ -250,6 +280,14 @@ if command -v pm2 >/dev/null 2>&1; then
 
     set -- $before_line
     was_restarts="${2:-0}"
+
+    # A baseline handed over by the deploy beats sampling: a boot that dies on
+    # an unreachable Redis takes about ten seconds to fail, so the counter does
+    # not move inside a three-second window and the loop looks like health.
+    # One restart is the reload itself; more than that is crashing.
+    if [ "$app" = "ambervale-api" ] && [ -n "${VERIFY_BASELINE_API:-}" ]; then
+      was_restarts=$((VERIFY_BASELINE_API + 1))
+    fi
 
     set -- $(pm2_stat "$app")
     status="${1:-unreadable}"

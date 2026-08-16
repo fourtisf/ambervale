@@ -87,6 +87,25 @@ export async function buildServer(): Promise<FastifyInstance> {
       });
     }
 
+    /**
+     * A dependency being gone is not a bug in the request.
+     *
+     * Redis holds sessions, rate limits and locks, so when it stops, most
+     * routes fail. Reported as INTERNAL_ERROR that reads as "the game is
+     * broken"; as 503 it reads as "the vale is briefly unavailable", which is
+     * both true and the difference between a player retrying and a player
+     * leaving. The client shows the message, so it has to be worth reading.
+     */
+    if (/Stream isn't writeable|ECONNREFUSED|Connection is closed/i.test(error.message)) {
+      req.log.error({ err: error }, 'dependency unavailable');
+      captureError(error, { url: req.url, method: req.method, requestId: req.id });
+      return reply.status(503).send({
+        error: 'SERVICE_UNAVAILABLE',
+        message: 'The vale is catching its breath. Try again in a moment.',
+        requestId: req.id,
+      });
+    }
+
     const status = error.statusCode ?? 500;
     if (status >= 500) {
       req.log.error({ err: error }, 'unhandled error');

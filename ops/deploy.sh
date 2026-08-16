@@ -127,6 +127,19 @@ node -e '
 step "restarting processes"
 command -v pm2 >/dev/null 2>&1 || die "pm2 is not on PATH"
 
+# What the restart counters read *before* this deploy touches them. A healthy
+# reload adds exactly one to each; anything more is a process that crashed and
+# came back while we were watching. Sampling deltas after the fact cannot see a
+# loop slower than the sample window — and a boot that dies on an unreachable
+# Redis takes about ten seconds to fail, which is far slower than any sane one.
+VERIFY_BASELINE_API="$(pm2 jlist 2>/dev/null | node -e '
+  let r=""; process.stdin.on("data",d=>r+=d); process.stdin.on("end",()=>{
+    try { const m=r.match(/\[\s*\{[\s\S]*\}\s*\]/); const l=JSON.parse(m?m[0]:r);
+      const p=l.find(x=>x.name==="ambervale-api"); console.log(p?p.pm2_env.restart_time??0:"");
+    } catch { console.log(""); }
+  });')"
+export VERIFY_BASELINE_API
+
 # NEXT_DIST_DIR must not survive into the app. A pm2 daemon being started for
 # the first time inherits the environment of the shell that started it, so the
 # scratch directory name would follow the web process into next.config — and

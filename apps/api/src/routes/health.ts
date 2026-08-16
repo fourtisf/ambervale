@@ -35,7 +35,22 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
    * Redis instead of just proving the event loop is alive.
    */
   app.get('/health/deep', async (_req, reply) => {
-    const [db, cache] = await Promise.allSettled([prisma.$queryRaw`SELECT 1`, redis.ping()]);
+    // Each probe is time-boxed. A client that cannot connect does not answer
+    // quickly — ioredis took ten seconds to give up — so without this the
+    // probe outlives the timeout of whatever asked, and the one endpoint that
+    // knows which service is down is the one that cannot say so.
+    const within = <T>(work: Promise<T>, ms: number): Promise<T> =>
+      Promise.race([
+        work,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`probe timed out after ${ms}ms`)), ms).unref(),
+        ),
+      ]);
+
+    const [db, cache] = await Promise.allSettled([
+      within(prisma.$queryRaw`SELECT 1`, 2000),
+      within(redis.ping(), 2000),
+    ]);
 
     const postgres = db.status === 'fulfilled';
     const redisOk = cache.status === 'fulfilled';

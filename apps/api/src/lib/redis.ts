@@ -11,6 +11,24 @@ export const redis: Redis =
     lazyConnect: true,
     maxRetriesPerRequest: 2,
     enableAutoPipelining: true,
+    /**
+     * Fail fast when Redis is gone, rather than queueing.
+     *
+     * The default is to hold commands in an offline queue until the connection
+     * comes back, and `maxRetriesPerRequest` does not bound that wait — it
+     * counts retries of a command already sent. So a stopped redis-server did
+     * not produce errors, it produced *silence*: /auth/invite simply never
+     * answered, and the site showed a spinner for as long as anyone was
+     * willing to look at it. Measured at more than 12 seconds with no reply.
+     *
+     * Failing immediately turns that into an error the client can show and the
+     * deploy checker can name.
+     */
+    enableOfflineQueue: false,
+    connectTimeout: 3000,
+    // Keep trying to reconnect, but on a bounded schedule, so a redis that
+    // comes back is picked up without a restart.
+    retryStrategy: (times) => Math.min(times * 200, 3000),
   });
 
 if (env.NODE_ENV !== 'production') globalThis.__ambervaleRedis = redis;
