@@ -15,6 +15,7 @@ import {
   RECIPES,
   RECIPE_KEYS,
   SKIES,
+  isCropKey,
   sellPrice,
   type ItemKey,
 } from '@ambervale/game-config';
@@ -391,7 +392,14 @@ function TodayCard({ farm }: { farm: FarmState }) {
   const today = farm.today;
   if (!today) return null;
   const sky = SKIES[today.sky];
-  const glyph = { clear: '☀️', rain: '🌧️', mist: '🌫️', golden: '🌤️' }[today.sky] ?? '☀️';
+  const glyphs: Record<string, string> = {
+    clear: '☀️',
+    rain: '🌧️',
+    mist: '🌫️',
+    golden: '🌤️',
+  };
+  const glyph = glyphs[today.sky] ?? '☀️';
+  const soon = farm.tomorrow;
 
   return (
     <div className="today" data-sky={today.sky}>
@@ -419,6 +427,38 @@ function TodayCard({ farm }: { farm: FarmState }) {
           {(sky.sell * DEMAND.glutMul).toFixed(1)}×
         </span>
       </div>
+
+      {/*
+        Tomorrow, a day early and on purpose.
+
+        Hidden, holding stock is a gamble; shown, it is a plan — and starglow
+        takes six minutes to grow, so this is an instruction a player can act
+        on tonight. Exactly one day: two would let someone schedule the week in
+        one sitting and turn the vale into a spreadsheet.
+      */}
+      {soon && (
+        <p className="soon">
+          <span className="glyph">{glyphs[soon.sky] ?? '☀️'}</span>
+          {/* One span, not loose text nodes: .soon is a flex row, and a bare
+              <b> between two strings becomes its own flex item — which put
+              "Milk" in a column of its own with a gap before the full stop. */}
+          <span>
+            Tomorrow — {SKIES[soon.sky].name}, buyers will want{' '}
+            <b>{itemName(soon.market.sought)}</b>.{' '}
+            {isCropKey(soon.market.sought)
+              ? 'Worth putting some in the ground.'
+              : 'Worth setting some aside.'}
+          </span>
+        </p>
+      )}
+
+      {/*
+        The same weather and the same shopping list for every farm in the vale.
+        Worth saying out loud: it is the one thing in this game that is not
+        yours alone, and a day everyone is chasing the same crop is a different
+        feeling from a dice roll that happened to you.
+      */}
+      <p className="shared">Every farm in the vale sees the same day.</p>
 
       <style jsx>{`
         .today {
@@ -475,6 +515,28 @@ function TodayCard({ farm }: { farm: FarmState }) {
         .down {
           background: rgba(242, 160, 154, 0.16);
           color: #f2c0bc;
+        }
+        .soon {
+          display: flex;
+          align-items: baseline;
+          gap: 0.35rem;
+          margin: 0.6rem 0 0;
+          padding-top: 0.55rem;
+          border-top: 1px solid rgba(245, 230, 200, 0.1);
+          font-size: 0.75rem;
+          line-height: 1.45;
+          opacity: 0.85;
+        }
+        .soon .glyph {
+          font-size: 0.95rem;
+        }
+        .soon b {
+          color: #f4d35e;
+        }
+        .shared {
+          margin: 0.4rem 0 0;
+          font-size: 0.68rem;
+          opacity: 0.5;
         }
       `}</style>
     </div>

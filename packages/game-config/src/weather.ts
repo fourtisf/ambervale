@@ -190,6 +190,22 @@ export function conditionsFor(nowMs: number): DayConditions {
   return { day, sky: skyFor(day), market: marketFor(day) };
 }
 
+/**
+ * Tomorrow, shown a day early on purpose.
+ *
+ * Hiding it would make holding stock a gamble; showing it makes holding stock
+ * a plan, and a plan is the better game. Starglow takes six minutes to grow,
+ * so "buyers want starglow tomorrow" is an instruction a player can act on
+ * tonight — which is the difference between a rotating headline you react to
+ * and an economy you can actually work.
+ *
+ * Only one day ahead. Two would let a player schedule the whole week in one
+ * sitting and turn the vale into a spreadsheet.
+ */
+export function forecastFor(nowMs: number): DayConditions {
+  return conditionsFor(nowMs + 86_400_000);
+}
+
 /** The sale multiplier today puts on one good, sky and demand together. */
 export function demandMultiplier(conditions: DayConditions, itemKey: ItemKey): number {
   const sky = SKIES[conditions.sky].sell;

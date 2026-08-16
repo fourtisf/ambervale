@@ -292,6 +292,9 @@ export interface FarmState {
   prices: FarmPrice[];
   effects: FarmEffects;
   today: FarmToday;
+  /** Tomorrow's sky and shopping list, shown a day early so stock can be held
+   *  on purpose rather than on a hunch. */
+  tomorrow: FarmToday;
   daily: FarmDaily;
   away: FarmAway | null;
   /**

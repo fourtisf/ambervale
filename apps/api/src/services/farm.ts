@@ -18,6 +18,7 @@ import {
   TILE,
   conditionsFor,
   crowState,
+  forecastFor,
   npcLine,
   titleFor,
   type CropKey,
@@ -368,6 +369,8 @@ export interface FarmState {
    * given a spreadsheet, not a day.
    */
   today: DayConditions;
+  /** Tomorrow, so holding stock is a plan rather than a gamble. */
+  tomorrow: DayConditions;
   daily: DailyDto;
   /** What happened while the player was away, or null if they were not. */
   away: AwayReport | null;
@@ -615,6 +618,7 @@ export async function getFarmState(
     shop: upgradesToDto(tiers),
     effects,
     today: conditionsFor(Date.now()),
+    tomorrow: forecastFor(Date.now()),
     daily,
     away,
   };

@@ -512,6 +512,23 @@ describe("today's conditions", () => {
     assert.ok(glut.price < glut.base, 'a glutted good must visibly pay less than list');
   });
 
+  it('forecasts exactly one day ahead, and it is a real day', async () => {
+    const { client } = await newPlayer();
+    const farm = await farmOf(client);
+
+    assert.equal(
+      farm.tomorrow.day,
+      farm.today.day + 1,
+      'the forecast must be tomorrow, not today and not next week',
+    );
+    // Computed independently of the server's copy: a forecast the client is
+    // simply handed back from `today` would pass a shallower check.
+    const expected = conditionsFor(Date.now() + 86_400_000);
+    assert.equal(farm.tomorrow.sky, expected.sky);
+    assert.equal(farm.tomorrow.market.sought, expected.market.sought);
+    assert.notEqual(farm.tomorrow.market.sought, farm.tomorrow.market.glut);
+  });
+
   it('never lets the sky drag a finished crop back to unfinished', () => {
     // Growth is recomputed from plantedAt on every read, so a sky multiplier
     // above 1 would un-ready a harvest at midnight. This is the guard.
