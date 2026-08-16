@@ -47,6 +47,16 @@ export interface SkyDef {
    * The scarecrow's effect is itself a bonus on top of CROWS.graceMs, so
    * scaling it would hand a player with no scarecrow two times nothing. Base
    * grace is 90s; 90s here doubles the peace for everybody.
+   *
+   * This reaches backwards the same way `growth` would, and unlike `growth` it
+   * is allowed to — because the harm is bounded to something that does not
+   * matter. A crop is ruined at grace + 10 minutes: 780s after ripening under
+   * mist, 690s under a clear sky. So a mist-to-clear midnight can kill a crop
+   * 90 seconds sooner than mist implied — but only one that has already been
+   * sitting ripe for eleven and a half minutes and was going to die 90 seconds
+   * later regardless. Nothing finished is taken back, which is the line
+   * `growth` must not cross. Keep this small against CROWS.ruinMs; the test
+   * below holds that.
    */
   crowGraceMs: number;
   /** Multiplier on every sale today, before saturation and the cellar. */

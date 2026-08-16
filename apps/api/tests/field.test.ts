@@ -539,4 +539,18 @@ describe("today's conditions", () => {
       );
     }
   });
+
+  it('keeps the sky’s crow grace small enough that a midnight cannot matter', () => {
+    // Crow grace reaches backwards too, and is allowed to: losing it at a
+    // midnight only kills a crop that has already been ripe for grace + ruin
+    // and was doomed 90 seconds later anyway. That stays true only while the
+    // bonus is small next to CROWS.ruinMs — a sky worth an hour of grace would
+    // turn the same midnight into a field of destroyed, harvestable crops.
+    for (const key of Object.keys(SKIES) as (keyof typeof SKIES)[]) {
+      assert.ok(
+        SKIES[key].crowGraceMs <= CROWS.ruinMs / 4,
+        `sky "${key}" grants ${SKIES[key].crowGraceMs}ms of grace, too much to lose at once`,
+      );
+    }
+  });
 });
