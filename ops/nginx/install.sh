@@ -17,11 +17,15 @@
 
 set -euo pipefail
 
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ambervale.conf"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SRC="$HERE/ambervale.conf"
+SRC_HTTP="$HERE/ambervale-http.conf"
 DEST_AVAILABLE=/etc/nginx/sites-available/ambervale
 DEST_ENABLED=/etc/nginx/sites-enabled/ambervale
+DEST_HTTP=/etc/nginx/conf.d/ambervale-http.conf
 
 [ -r "$SRC" ] || { echo "cannot read $SRC" >&2; exit 1; }
+[ -r "$SRC_HTTP" ] || { echo "cannot read $SRC_HTTP" >&2; exit 1; }
 [ "$(id -u)" = "0" ] || { echo "run this with sudo" >&2; exit 1; }
 
 echo "▸ looking for existing definitions"
@@ -29,7 +33,9 @@ echo "▸ looking for existing definitions"
 # Every file nginx will read, minus the one we are about to write.
 mapfile -t clashes < <(
   grep -rl --include='*' -e 'upstream[[:space:]]\+ambervale_\(api\|web\)' \
-    /etc/nginx/ 2>/dev/null | grep -v "^${DEST_AVAILABLE}$" | grep -v "^${DEST_ENABLED}$" || true
+       -e 'map[[:space:]]\+\$http_upgrade[[:space:]]\+\$connection_upgrade' \
+    /etc/nginx/ 2>/dev/null \
+    | grep -v "^${DEST_AVAILABLE}$" | grep -v "^${DEST_ENABLED}$" | grep -v "^${DEST_HTTP}$" || true
 )
 
 if [ "${#clashes[@]}" -gt 0 ]; then
@@ -44,6 +50,20 @@ if [ "${#clashes[@]}" -gt 0 ]; then
   echo "  different site that was copied from this one, rename its upstream"
   echo "  blocks instead — the names are what collide, not the ports."
   exit 1
+fi
+
+# gzip is the other one that bites: Debian and Ubuntu enable it in nginx.conf,
+# and a second `gzip on` anywhere fails the test. The shipped http file leaves
+# it out, so this only warns about a config already on the box.
+if grep -rq --include='*' -e '^[[:space:]]*gzip[[:space:]]\+on;' /etc/nginx/nginx.conf 2>/dev/null; then
+  if grep -rl --include='*' -e '^[[:space:]]*gzip[[:space:]]\+on;' /etc/nginx/conf.d /etc/nginx/sites-enabled 2>/dev/null \
+     | grep -qv "^${DEST_HTTP}$"; then
+    echo
+    echo '  Note: nginx.conf already sets "gzip on", and so does a file under'
+    echo '  conf.d or sites-enabled. That is the "gzip directive is duplicate"'
+    echo '  error. Remove the one that is not in nginx.conf.'
+    echo
+  fi
 fi
 
 # A second symlink under a different name is the same collision wearing a hat.
@@ -63,6 +83,13 @@ if [ -f "$DEST_AVAILABLE" ] && ! cmp -s "$SRC" "$DEST_AVAILABLE"; then
   echo "  previous config saved as $backup"
 fi
 
+# The http-context half first: the site file references its upstreams, so
+# installing the site alone would fail with "unknown upstream".
+if [ -f "$DEST_HTTP" ] && ! cmp -s "$SRC_HTTP" "$DEST_HTTP"; then
+  cp "$DEST_HTTP" "${DEST_HTTP}.$(date -u +%Y%m%d%H%M%S).bak"
+fi
+cp "$SRC_HTTP" "$DEST_HTTP"
+
 cp "$SRC" "$DEST_AVAILABLE"
 ln -sf "$DEST_AVAILABLE" "$DEST_ENABLED"
 
@@ -77,5 +104,7 @@ fi
 echo "▸ reloading"
 systemctl reload nginx
 echo
-echo "nginx reloaded. The site config is $DEST_AVAILABLE."
+echo "nginx reloaded."
+echo "  shared directives : $DEST_HTTP"
+echo "  site              : $DEST_AVAILABLE"
 echo "Remember: server_name and ssl_certificate in the repo copy are examples."

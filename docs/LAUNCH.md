@@ -193,9 +193,29 @@ sudo systemctl restart redis-server
 sudo crontab -e   # 15 3 * * * /opt/ambervale/ops/cron/backup.sh >> /var/log/ambervale-backup.log 2>&1
 ```
 
+The nginx config is **two files**, on purpose:
+
+| File                            | Goes to                      | Holds                                                                     |
+| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------- |
+| `ops/nginx/ambervale-http.conf` | `/etc/nginx/conf.d/`         | upstreams, Cloudflare real-IP, the `$connection_upgrade` map, gzip tuning |
+| `ops/nginx/ambervale.conf`      | `sites-available/` + symlink | the two `server` blocks, nothing else                                     |
+
+They are a pair — the site file references upstreams the other one defines.
+The split exists because http-context directives inside a site file still
+apply to _every_ vhost on the box, and collide with the distribution's own
+`nginx.conf`. Both collisions have happened here:
+
+```
+[emerg] duplicate upstream "ambervale_api" in sites-enabled/ambervale:9
+[emerg] "gzip" directive is duplicate in sites-enabled/ambervale:45
+```
+
+The shipped http file therefore leaves out `gzip on` and `gzip_vary`, which
+Debian and Ubuntu already set in `nginx.conf`, and only tunes what is there.
+
 `install.sh` refuses to install while another file already defines
-`upstream ambervale_api` or `ambervale_web`, because nginx includes every file
-under `/etc/nginx/` and rejects the second definition:
+`upstream ambervale_api`, `ambervale_web`, or the same map, because nginx
+includes every file under `/etc/nginx/` and rejects the second definition:
 
 ```
 [emerg] duplicate upstream "ambervale_api" in /etc/nginx/sites-enabled/ambervale:9
