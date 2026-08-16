@@ -149,8 +149,22 @@ export VERIFY_BASELINE_API
 unset NEXT_DIST_DIR
 pm2 startOrReload ecosystem.config.cjs --update-env || die "pm2 refused to reload"
 
-# Give the processes a moment to bind their ports before asking them anything.
-sleep 3
+# Wait for the processes to actually answer, rather than guessing at three
+# seconds. Two reasons this matters: a cold `next start` can take longer than
+# that, and a process that was already crash-looping is in exponential backoff
+# — pm2 will not retry it for up to fifteen seconds, so a fixed sleep reports a
+# healthy deploy as a failure and sends the operator to read logs for nothing.
+printf '  waiting for both to answer'
+for _ in $(seq 1 30); do
+  api_ok=$(curl -s -o /dev/null -m 2 -w '%{http_code}' http://localhost:4021/health || true)
+  web_ok=$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://localhost:4022/ || true)
+  if [ "$api_ok" = "200" ] && [ "$web_ok" = "200" ]; then
+    printf ' up\n'
+    break
+  fi
+  printf '.'
+  sleep 1
+done
 
 # --- 7. proof ------------------------------------------------------------------
 #
