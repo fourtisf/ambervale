@@ -191,6 +191,37 @@ export async function repairNodes(
  * gone and the plot is empty — the seed was spent when it was planted, and
  * refunding it would make neglect free.
  */
+/**
+ * What a plot looks like with nothing in it.
+ *
+ * Shared by every path that clears one, because a path that forgot a field —
+ * a stale `wateredAt`, a `guardedUntil` from a scarecrow long gone — would
+ * leave the next crop planted there behaving strangely for reasons invisible
+ * in the data.
+ */
+export const CLEARED_PLOT = {
+  cropKey: null,
+  plantedAt: null,
+  fast: false,
+  wateredAt: null,
+  waterCutMs: 0,
+  guardedUntil: null,
+} as const;
+
+/**
+ * Whether the crows have already taken this one.
+ *
+ * The rules must ask this rather than reading `plot.cropKey`, because a ruined
+ * crop is hidden from the client the moment it is ruined while the row itself
+ * survives until something clears it. A rule that trusts the row disagrees
+ * with the screen the player is looking at.
+ */
+export function plotRuined(plot: PlotTiming, growthMul = 1, scarecrowMs = 0): boolean {
+  if (!plot.cropKey) return false;
+  const readyAt = readyAtFor(plot, growthMul);
+  return crowState(Date.now(), readyAt, plot.guardedUntil?.getTime() ?? null, scarecrowMs).ruined;
+}
+
 export async function repairPlots(
   tx: Prisma.TransactionClient,
   userId: string,
@@ -206,17 +237,7 @@ export async function repairPlots(
     const crow = crowState(now, readyAt, plot.guardedUntil?.getTime() ?? null, scarecrowMs);
     if (!crow.ruined) continue;
 
-    await tx.plot.update({
-      where: { id: plot.id },
-      data: {
-        cropKey: null,
-        plantedAt: null,
-        fast: false,
-        wateredAt: null,
-        waterCutMs: 0,
-        guardedUntil: null,
-      },
-    });
+    await tx.plot.update({ where: { id: plot.id }, data: { ...CLEARED_PLOT } });
     await tx.eventLog.create({
       data: {
         userId,

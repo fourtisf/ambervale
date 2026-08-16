@@ -36,7 +36,14 @@ import {
   seedQty,
 } from '../services/actions';
 import type { DailyOutcome } from '../services/daily';
-import { getFarmState, plotToDto, readyAtFor, repairNodes } from '../services/farm';
+import {
+  CLEARED_PLOT,
+  getFarmState,
+  plotRuined,
+  plotToDto,
+  readyAtFor,
+  repairNodes,
+} from '../services/farm';
 import type { QuestCompletion } from '../services/quests';
 import { quoteSale, recordSale } from '../services/market';
 import { effectsFor } from '../services/upgrades';
@@ -109,7 +116,32 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         where: { userId_index: { userId: user.id, index: body.plotIndex } },
       });
       if (!plot) throw notFound(`No plot ${body.plotIndex}.`);
-      if (plot.cropKey) throw conflict('PLOT_OCCUPIED', 'Something is already growing here.');
+
+      /**
+       * A plot the crows finished with is empty, whatever the row says.
+       *
+       * The read model hides a ruined crop the moment it is ruined, but the
+       * row survives until something clears it — and only `GET /farm` ever
+       * did. So between one farm read and the next, a ruined plot showed as
+       * bare earth, offered "Plant sunflower", and answered "Something is
+       * already growing here" — with no way for the player to see, harvest or
+       * clear whatever was supposedly there. The plot was simply lost.
+       *
+       * Clearing it here rather than refusing is what the player already
+       * believes has happened: they are looking at empty ground.
+       */
+      const effects = await effectsFor(tx, user.id);
+      if (plot.cropKey) {
+        if (!plotRuined(plot, effects.growth, effects.scarecrowMs)) {
+          throw conflict('PLOT_OCCUPIED', 'Something is already growing here.');
+        }
+        await tx.plot.update({ where: { id: plot.id }, data: { ...CLEARED_PLOT } });
+        await logEvent(tx, user.id, 'plot.ruined', {
+          plotIndex: plot.index,
+          cropKey: plot.cropKey,
+          clearedBy: 'plant',
+        });
+      }
 
       if (plot.zone === 'north') {
         const expansion = await tx.expansion.findUnique({ where: { userId: user.id } });
@@ -128,10 +160,8 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       const have = await seedQty(tx, user.id, cropKey);
       if (have < 1) throw conflict('NO_SEEDS', `No ${cropKey} seeds left.`);
 
-      // The well shortens every grow time, so the plot we hand back has to be
-      // dated with the player's own multiplier — not the base one.
-      const effects = await effectsFor(tx, user.id);
-
+      // `effects` was read above; the well shortens every grow time, so the
+      // plot handed back is dated with the player's own multiplier.
       await addSeed(tx, user.id, cropKey, -1);
 
       // The very first crop a player ever plants grows in seconds, so the
@@ -355,17 +385,7 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         effects.scarecrowMs,
       );
       if (crow.ruined) {
-        await tx.plot.update({
-          where: { id: plot.id },
-          data: {
-            cropKey: null,
-            plantedAt: null,
-            fast: false,
-            wateredAt: null,
-            waterCutMs: 0,
-            guardedUntil: null,
-          },
-        });
+        await tx.plot.update({ where: { id: plot.id }, data: { ...CLEARED_PLOT } });
         throw conflict('CROP_RUINED', 'The crows got to this one. Nothing left to harvest.');
       }
 

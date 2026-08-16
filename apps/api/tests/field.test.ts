@@ -202,6 +202,47 @@ describe('crows', () => {
     assert.equal(plot.crow, false);
   });
 
+  it('leaves a ruined plot plantable again, without a farm read first', async () => {
+    // The bug this pins down cost a plot permanently. A ruined crop is hidden
+    // from the client the moment it is ruined, but the row survived until
+    // `GET /farm` cleared it — and every action reply carries its own farm, so
+    // a player could go a long time without one. In between, the plot showed
+    // as bare earth, offered to be planted, and answered PLOT_OCCUPIED.
+    const { client, farm } = await newPlayer();
+    await paced(() => client.call('/act/plant', { plotIndex: 7, cropKey: 'sunflower' }));
+
+    await withDb(async (db) => {
+      const long = new Date(Date.now() - CROWS.ruinMs - CROWS.graceMs - 60_000);
+      await db.plot.updateMany({
+        where: { userId: farm.user.id, index: 7 },
+        data: { plantedAt: long, fast: false },
+      });
+    });
+
+    // Deliberately no /farm call here: that is what used to do the clearing,
+    // and going through it would test the workaround instead of the rule.
+    const res = await paced(() =>
+      client.call<{ error?: string }>('/act/plant', { plotIndex: 7, cropKey: 'sunflower' }),
+    );
+    assert.equal(res.status, 200, `planting on ruined ground failed: ${res.body.error}`);
+
+    const after = await farmOf(client);
+    const plot = after.plots.find((p) => p.index === 7)!;
+    assert.equal(plot.cropKey, 'sunflower', 'the new crop should be in the ground');
+    assert.ok(plot.readyAt !== null && plot.readyAt > Date.now(), 'and it should be growing');
+  });
+
+  it('still refuses to plant on a crop that is merely growing', async () => {
+    // The other half of the rule above: "occupied" must keep meaning occupied.
+    const { client } = await newPlayer();
+    await paced(() => client.call('/act/plant', { plotIndex: 8, cropKey: 'sunflower' }));
+    const res = await paced(() =>
+      client.call<{ error: string }>('/act/plant', { plotIndex: 8, cropKey: 'sunflower' }),
+    );
+    assert.equal(res.status, 409);
+    assert.equal(res.body.error, 'PLOT_OCCUPIED');
+  });
+
   it('halves the XP of a crop harvested from under a crow', async () => {
     const { client, farm } = await newPlayer();
     await paced(() => client.call('/act/plant', { plotIndex: 5, cropKey: 'sunflower' }));
