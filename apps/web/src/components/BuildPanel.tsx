@@ -71,7 +71,10 @@ export default function BuildPanel() {
               <div className="name">
                 <b>{def.name}</b>
                 <small>{done ? 'Standing' : def.blurb}</small>
-                {!done && !locked && (
+                {/* Price shows on locked rows too. The point of this sheet is
+                    to give coins somewhere to go, and a row that says only
+                    "Level 7" gives a level-2 player nothing to save toward. */}
+                {!done && (
                   <em className="cost">
                     {def.cost.coins} coins
                     {def.cost.amber ? ` · ${def.cost.amber} $AMBER` : ''}
