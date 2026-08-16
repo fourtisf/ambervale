@@ -28,14 +28,53 @@ DEST_HTTP=/etc/nginx/conf.d/ambervale-http.conf
 [ -r "$SRC_HTTP" ] || { echo "cannot read $SRC_HTTP" >&2; exit 1; }
 [ "$(id -u)" = "0" ] || { echo "run this with sudo" >&2; exit 1; }
 
+# Backups live outside /etc/nginx entirely.
+#
+# An earlier version of this script wrote them next to the config, and then
+# refused to run because it had found its own backup and reported it as a
+# clashing definition. nginx never reads those files — conf.d matches *.conf
+# and sites-enabled holds symlinks — but a scan that greps the whole tree does.
+BACKUPS=/var/backups/ambervale-nginx
+mkdir -p "$BACKUPS"
+
+for stray in /etc/nginx/sites-available/ambervale.*.bak /etc/nginx/conf.d/ambervale-http.conf.*.bak; do
+  [ -e "$stray" ] || continue
+  mv "$stray" "$BACKUPS/"
+  echo "  moved an old backup out of /etc/nginx: $(basename "$stray")"
+done
+
 echo "▸ looking for existing definitions"
 
-# Every file nginx will read, minus the one we are about to write.
+# Ask nginx which files it actually reads, rather than grepping the directory.
+#
+# `nginx -T` dumps the merged config prefixed with "# configuration file <p>:"
+# for every file it included. That is the only list that matters: everything
+# else under /etc/nginx — backups, disabled sites, notes — is invisible to it.
+mapfile -t included < <(nginx -T 2>/dev/null | sed -n 's/^# configuration file \(.*\):$/\1/p')
+
+if [ "${#included[@]}" -eq 0 ]; then
+  # The running config is currently broken, so nginx cannot tell us. Fall back
+  # to what a stock Debian layout includes, resolving symlinks.
+  echo "  (nginx -T failed — the config on this box is already broken; using the standard include paths)"
+  mapfile -t included < <(
+    { echo /etc/nginx/nginx.conf
+      ls -1 /etc/nginx/conf.d/*.conf 2>/dev/null
+      find /etc/nginx/sites-enabled/ -follow -type f 2>/dev/null
+    } | sort -u
+  )
+fi
+
 mapfile -t clashes < <(
-  grep -rl --include='*' -e 'upstream[[:space:]]\+ambervale_\(api\|web\)' \
-       -e 'map[[:space:]]\+\$http_upgrade[[:space:]]\+\$connection_upgrade' \
-    /etc/nginx/ 2>/dev/null \
-    | grep -v "^${DEST_AVAILABLE}$" | grep -v "^${DEST_ENABLED}$" | grep -v "^${DEST_HTTP}$" || true
+  for f in "${included[@]}"; do
+    [ -r "$f" ] || continue
+    case "$(readlink -f "$f")" in
+      "$(readlink -f "$DEST_AVAILABLE" 2>/dev/null)"|"$(readlink -f "$DEST_HTTP" 2>/dev/null)") continue ;;
+    esac
+    if grep -q -e 'upstream[[:space:]]\+ambervale_\(api\|web\)' \
+              -e 'map[[:space:]]\+\$http_upgrade[[:space:]]\+\$connection_upgrade' "$f" 2>/dev/null; then
+      echo "$f"
+    fi
+  done | sort -u
 )
 
 if [ "${#clashes[@]}" -gt 0 ]; then
@@ -84,7 +123,7 @@ echo "▸ installing"
 # Keep a copy of whatever is there, because that file may carry the real
 # server_name and certificate paths for this box.
 if [ -f "$DEST_AVAILABLE" ] && ! cmp -s "$SRC" "$DEST_AVAILABLE"; then
-  backup="${DEST_AVAILABLE}.$(date -u +%Y%m%d%H%M%S).bak"
+  backup="$BACKUPS/ambervale.$(date -u +%Y%m%d%H%M%S).conf"
   cp "$DEST_AVAILABLE" "$backup"
   echo "  previous config saved as $backup"
 fi
@@ -92,7 +131,7 @@ fi
 # The http-context half first: the site file references its upstreams, so
 # installing the site alone would fail with "unknown upstream".
 if [ -f "$DEST_HTTP" ] && ! cmp -s "$SRC_HTTP" "$DEST_HTTP"; then
-  cp "$DEST_HTTP" "${DEST_HTTP}.$(date -u +%Y%m%d%H%M%S).bak"
+  cp "$DEST_HTTP" "$BACKUPS/ambervale-http.$(date -u +%Y%m%d%H%M%S).conf"
 fi
 cp "$SRC_HTTP" "$DEST_HTTP"
 
@@ -118,7 +157,7 @@ echo "▸ testing"
 if ! nginx -t; then
   echo
   echo "  The test failed. If a backup was written above, restore it with:"
-  echo "    cp <the .bak file> $DEST_AVAILABLE && nginx -t && systemctl reload nginx"
+  echo "    cp $BACKUPS/<newest> $DEST_AVAILABLE && nginx -t && systemctl reload nginx"
   exit 1
 fi
 
