@@ -71,6 +71,14 @@ export interface BridgeEvents {
   sleep: void;
   /** The invite gate is up; canvas-drawn HUD hides behind it. */
   gated: boolean;
+  /**
+   * The goal the player is being walked through, or null to stop.
+   *
+   * Held here rather than in a component so any sheet can hand a goal over and
+   * then close itself — the escort outlives the panel it was started from,
+   * which is the entire point of it.
+   */
+  escort: string | null;
 }
 
 type Handler<K extends keyof BridgeEvents> = (payload: BridgeEvents[K]) => void;

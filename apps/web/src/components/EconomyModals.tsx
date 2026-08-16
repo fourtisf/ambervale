@@ -591,7 +591,18 @@ export function DailyModal({ onClose }: { onClose: () => void }) {
                 <span>{goal.done ? '✓ Done' : `${goal.current}/${goal.target}`}</span>
               </div>
               {guide && (
-                <button type="button" className="go" onClick={guide.run}>
+                <button
+                  type="button"
+                  className="go"
+                  onClick={() => {
+                    // Start the escort *as well as* running the guidance. The
+                    // guidance closes this sheet and walks; the escort is what
+                    // stays behind and sees the goal through, so the player is
+                    // never left standing somewhere with a faded toast.
+                    bridge.emit('escort', goal.id);
+                    guide.run();
+                  }}
+                >
                   {guide.label}
                 </button>
               )}

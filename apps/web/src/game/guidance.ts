@@ -24,6 +24,7 @@ import {
   type QuestCounter,
 } from '@ambervale/game-config';
 import { bridge } from './bridge';
+import { cowSpot } from './escort';
 import type { FarmState } from '@/lib/api';
 
 /** Every counter a goal can be measured by, from either list. */
@@ -195,6 +196,9 @@ export function guidanceFor(counter: GoalCounter, farm: FarmState): Guidance {
 
     case 'eggCount': {
       const ready = farm.animals.some((a) => a.kind === 'chicken' && a.ready);
+      // An egg on the ground is the thing you actually pick up, so walk to one
+      // if there is one; the coop's middle is only a guess at where to stand.
+      const egg = farm.groundItems.find((i) => i.itemKey === 'egg');
       const next = farm.animals
         .filter((a) => a.kind === 'chicken')
         .sort((a, b) => a.nextYieldAt - b.nextYieldAt)[0];
@@ -204,7 +208,10 @@ export function guidanceFor(counter: GoalCounter, farm: FarmState): Guidance {
           ready || !next
             ? undefined
             : `Next egg in ${secs(Math.max(0, next.nextYieldAt - now(farm)))}.`,
-        run: walk(centre(PADDOCKS.coop), 'Stand by a hen and press the action button.'),
+        run: walk(
+          egg ? { x: egg.x, y: egg.y } : centre(PADDOCKS.coop),
+          'Stand by a hen and press the action button.',
+        ),
       };
     }
 
@@ -216,7 +223,11 @@ export function guidanceFor(counter: GoalCounter, farm: FarmState): Guidance {
           !cow || cow.ready
             ? undefined
             : `Ready in ${secs(Math.max(0, cow.nextYieldAt - now(farm)))}.`,
-        run: walk(centre(PADDOCKS.cow), 'Stand by the cow and press the action button.'),
+        // The cow's interaction point, not the paddock's middle. The middle is
+        // 64px from it against a reach of 74, so whether the button appeared
+        // came down to a few pixels of pathing jitter — measured at 60 on one
+        // run and 71 on the next, and beyond 74 the game simply does nothing.
+        run: walk(cowSpot(), 'Stand by the cow and press the action button.'),
       };
     }
 

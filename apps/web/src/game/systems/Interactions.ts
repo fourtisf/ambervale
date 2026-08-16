@@ -167,9 +167,16 @@ export class Interactions {
       );
     }
 
-    // The cow, when it has milk waiting
+    // The cow, when it has milk waiting.
+    //
+    // Derived from the timestamp, not from the server's `ready` flag. Nothing
+    // polls /farm, so that flag is only ever as fresh as the last action —
+    // which meant a player who walked to the cow and waited watched the
+    // countdown reach zero with the action button still blank, forever, until
+    // they happened to do something else somewhere else. Crops and nodes
+    // already read their own clocks; animals were the one thing that did not.
     const cow = farm.animals.find((a) => a.kind === 'cow');
-    if (cow?.ready) {
+    if (cow && (cow.ready || cow.nextYieldAt <= this.serverNow(farm))) {
       const p = PADDOCKS.cow;
       const t = (ANIMALS.chicken.count + 1) / 5;
       consider(

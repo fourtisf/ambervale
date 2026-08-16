@@ -11,6 +11,8 @@ import Hud from './Hud';
 import { AwayWatcher } from './EconomyModals';
 import ModalHost from './ModalHost';
 import TitleScreen from './TitleScreen';
+import FarmRefresher from './FarmRefresher';
+import TaskEscort from './TaskEscort';
 import TutorialBanner from './TutorialBanner';
 import Toasts from './Toasts';
 
@@ -180,9 +182,11 @@ export default function GameCanvas() {
         <>
           <Hud onOpen={(modal) => bridge.emit('modal', modal)} />
           <TutorialBanner />
+          <TaskEscort />
           <Controls />
           <ModalHost />
           <AwayWatcher />
+          <FarmRefresher />
         </>
       )}
       <Toasts />
