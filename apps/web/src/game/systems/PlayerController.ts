@@ -13,6 +13,7 @@
 import { JOYSTICK, PLAYER, TILE } from '@ambervale/game-config';
 import type Phaser from 'phaser';
 import { bridge } from '../bridge';
+import { SPRITE_SCALE } from '../world/textures';
 import type { Collision } from '../world/tilemap';
 
 /** How close to a tap target counts as arrived. */
@@ -58,6 +59,8 @@ export class PlayerController {
   private walkStallMs = 0;
   private ripple?: Phaser.GameObjects.Arc;
   private bobPhase = 0;
+  /** Vertical offset owned by action animations (the planting crouch). */
+  private actionOffsetY = 0;
   private baseY = 0;
   /** Light that follows the player so they stay readable at night. */
   private light?: Phaser.GameObjects.Light;
@@ -210,7 +213,7 @@ export class PlayerController {
 
     // Walk bob: a small vertical hop, applied on top of the true position.
     const bob = this.bobPhase > 0 ? Math.abs(Math.sin(this.bobPhase)) * 3 : 0;
-    this.sprite.y = this.baseY - bob;
+    this.sprite.y = this.baseY - bob + this.actionOffsetY;
     this.sprite.setDepth(this.baseY);
 
     this.light?.setPosition(this.sprite.x, this.baseY - 16);
@@ -288,6 +291,100 @@ export class PlayerController {
   /** Distance from the player's feet to a world point. */
   distanceTo(x: number, y: number): number {
     return Math.hypot(this.sprite.x - x, this.baseY - y);
+  }
+
+  /** Turns to face a world point, so an action is done *at* something. */
+  faceTowards(x: number): void {
+    if (Math.abs(x - this.sprite.x) < 2) return;
+    this.sprite.setFlipX(x < this.sprite.x);
+  }
+
+  /**
+   * Kneels to work the ground: down, hold, back up.
+   *
+   * Planting used to be the same 110ms lean as swinging an axe, which is why
+   * it read as pressing a button rather than putting something in the earth.
+   * The hold is the part that sells it — a crouch that snaps straight back is
+   * a flinch.
+   */
+  kneel(towardX?: number, holdMs = 220): void {
+    if (towardX !== undefined) this.faceTowards(towardX);
+
+    this.scene.tweens.killTweensOf(this.sprite);
+    this.sprite.setAngle(0);
+
+    // The crouch is a tweened *offset*, not a position: update() rewrites
+    // sprite.y from baseY every frame for the walk bob, and would erase a
+    // tween that touched y directly.
+    this.scene.tweens.chain({
+      targets: this,
+      tweens: [
+        { actionOffsetY: 7, duration: 150, ease: 'Quad.easeOut' },
+        { actionOffsetY: 7, duration: holdMs },
+        { actionOffsetY: 0, duration: 190, ease: 'Back.easeOut' },
+      ],
+    });
+
+    // Squash and lean belong to the sprite, which update() leaves alone.
+    this.scene.tweens.add({
+      targets: this.sprite,
+      scaleY: 0.86,
+      scaleX: 1.06,
+      angle: this.sprite.flipX ? 8 : -8,
+      duration: 150,
+      hold: holdMs,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.sprite.setAngle(0).setScale(1),
+    });
+  }
+
+  /**
+   * Holds a watering can out toward a point and tips it.
+   *
+   * Returns the can's spout in world coordinates so the caller can start the
+   * water there rather than at the player's feet, and destroys the can when
+   * the pour is over.
+   */
+  pour(towardX: number, ms = 620): { x: number; y: number } {
+    this.faceTowards(towardX);
+
+    // The sprite's origin is at the feet, so the can has to be lifted to hand
+    // height — left at y it sits in the soil, hidden behind the crop.
+    const facing = this.sprite.flipX ? -1 : 1;
+    const canX = this.sprite.x + facing * 15;
+    const canY = this.sprite.y - 24;
+
+    const can = this.scene.add
+      .image(canX, canY, 'wateringCan')
+      .setScale(SPRITE_SCALE)
+      .setFlipX(this.sprite.flipX)
+      .setDepth(this.sprite.depth + 1);
+
+    this.scene.tweens.killTweensOf(this.sprite);
+    this.scene.tweens.add({
+      targets: this.sprite,
+      angle: facing * 10,
+      duration: 180,
+      yoyo: true,
+      hold: ms,
+      ease: 'Quad.easeOut',
+      onComplete: () => this.sprite.setAngle(0),
+    });
+
+    // The can tips over as it pours, then rights itself.
+    this.scene.tweens.add({
+      targets: can,
+      angle: facing * 38,
+      x: canX + facing * 6,
+      duration: 180,
+      yoyo: true,
+      hold: ms,
+      ease: 'Quad.easeOut',
+      onComplete: () => can.destroy(),
+    });
+
+    return { x: canX + facing * 22, y: canY + 2 };
   }
 
   /** Plays a tool swing: a quick lean and snap back. */

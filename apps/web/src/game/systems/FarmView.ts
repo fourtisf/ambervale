@@ -129,6 +129,13 @@ export class FarmView {
       const usable = slot.zone === 'base' || state.expansion[slot.zone] === true;
       view.soil.setVisible(usable);
 
+      // Watered ground stays visibly damp until the crop is lifted. Watering
+      // costs a press and brings the harvest forward, and until now the field
+      // looked exactly the same afterwards — so the only evidence it had
+      // worked was a number in a toast that had already faded.
+      const wetKey = plot.watered ? 'soilWet' : 'soil';
+      if (view.soil.texture.key !== wetKey) view.soil.setTexture(wetKey);
+
       if (!usable || !plot.cropKey) {
         view.crop.setVisible(false);
         view.ring.setVisible(false);

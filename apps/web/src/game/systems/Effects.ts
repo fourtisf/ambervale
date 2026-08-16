@@ -103,6 +103,109 @@ export class Effects {
     });
   }
 
+  /**
+   * Seeds thrown from the hand into the ground.
+   *
+   * They arc rather than travel straight, land at slightly different times,
+   * and kick a little earth where they hit — sown, not spawned.
+   */
+  sow(fromX: number, fromY: number, toX: number, toY: number): void {
+    for (let i = 0; i < 7; i++) {
+      const spread = (Math.random() - 0.5) * 34;
+      const landX = toX + spread;
+      const landY = toY + (Math.random() - 0.5) * 14;
+
+      const seed = this.scene.add
+        .ellipse(fromX, fromY, 4, 3, 0xd9b779)
+        .setDepth(9000)
+        .setAngle(Math.random() * 180);
+
+      // Two hops: up and over, then down onto the soil. A straight tween reads
+      // as a laser; the apex is what makes it a throw.
+      this.scene.tweens.chain({
+        targets: seed,
+        delay: i * 26,
+        tweens: [
+          {
+            x: (fromX + landX) / 2,
+            y: Math.min(fromY, landY) - 22,
+            duration: 170,
+            ease: 'Quad.easeOut',
+          },
+          { x: landX, y: landY, duration: 150, ease: 'Quad.easeIn' },
+        ],
+        onComplete: () => {
+          this.dust(landX, landY, 0x8a663e);
+          this.scene.tweens.add({
+            targets: seed,
+            alpha: 0,
+            duration: 220,
+            onComplete: () => seed.destroy(),
+          });
+        },
+      });
+    }
+  }
+
+  /**
+   * Water poured from a spout onto a point, for as long as the pour lasts.
+   *
+   * Droplets are emitted over time rather than all at once, so it reads as a
+   * stream being held over the ground rather than a splash that already
+   * happened. The dark patch left behind is what makes the verb feel like it
+   * did something to the world.
+   */
+  water(fromX: number, fromY: number, toX: number, toY: number, ms = 620): void {
+    const drops = Math.round(ms / 32);
+
+    for (let i = 0; i < drops; i++) {
+      const jitterX = (Math.random() - 0.5) * 22;
+      const landX = toX + jitterX;
+      const landY = toY + (Math.random() - 0.5) * 12;
+
+      const drop = this.scene.add
+        .ellipse(fromX + (Math.random() - 0.5) * 4, fromY, 3, 7, 0x6fc3e8, 0.95)
+        .setDepth(9000);
+
+      this.scene.tweens.add({
+        targets: drop,
+        delay: i * 30,
+        x: landX,
+        y: landY,
+        duration: 210,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          drop.destroy();
+          // A splash: two small chips flicking sideways off the soil.
+          for (let k = 0; k < 2; k++) {
+            const chip = this.scene.add.circle(landX, landY, 1.8, 0x9fe8ff, 0.9).setDepth(8950);
+            this.scene.tweens.add({
+              targets: chip,
+              x: landX + (k === 0 ? -1 : 1) * (6 + Math.random() * 8),
+              y: landY - 5 - Math.random() * 5,
+              alpha: 0,
+              duration: 260,
+              ease: 'Quad.easeOut',
+              onComplete: () => chip.destroy(),
+            });
+          }
+        },
+      });
+    }
+
+    // The ground darkens under the pour and stays dark for a moment after it,
+    // handing over to the wet soil texture the farm view swaps in.
+    const patch = this.scene.add.ellipse(toX, toY, 44, 30, 0x1f2c1a, 0).setDepth(8700);
+    this.scene.tweens.add({
+      targets: patch,
+      fillAlpha: 0.32,
+      duration: ms * 0.6,
+      yoyo: true,
+      hold: 260,
+      onComplete: () => patch.destroy(),
+    });
+  }
+
   /** A ring that expands and fades — used for level-ups and completions. */
   pulse(x: number, y: number, color = 0xf4b942): void {
     const ring = this.scene.add.circle(x, y, 10).setDepth(9050);

@@ -798,6 +798,65 @@ const egg: Painter = (g, s) => {
 // Registry
 // ---------------------------------------------------------------------------
 
+/**
+ * The same earth, watered.
+ *
+ * A darker, cooler wash with sheen caught in the troughs. It matters that this
+ * is a distinct texture rather than a tint: watering is a verb the player
+ * spends a press on, and if the ground looks identical afterwards they have no
+ * reason to believe anything happened.
+ */
+const soilWet: Painter = (g, s) => {
+  soil(g, s);
+
+  // Damp wash. Cool rather than merely dark — wet earth shifts toward green.
+  g.fillStyle(0x2f3b28, 0.4);
+  g.fillRoundedRect(3 * s, 2 * s, 58 * s, 57 * s, 8 * s);
+
+  // Water sits in the troughs between ridges, so the sheen goes there.
+  for (let i = 0; i < 4; i++) {
+    const y = 17 + i * 11;
+    g.fillStyle(0x9fe8ff, 0.14);
+    g.fillRoundedRect(9 * s, y * s, 46 * s, 3 * s, 1.5 * s);
+  }
+
+  // A few darker soaked patches, so it is not a uniform filter.
+  const patches: [number, number, number][] = [
+    [20, 24, 7],
+    [42, 36, 6],
+    [28, 47, 5],
+  ];
+  for (const [cx, cy, r] of patches) {
+    g.fillStyle(0x23301f, 0.28);
+    g.fillCircle(cx * s, cy * s, r * s);
+  }
+};
+
+/**
+ * A watering can, held while pouring.
+ *
+ * Small and read from the side: body, spout angled down, handle over the top.
+ * It exists so the pour has an object behind it — an arc of droplets with
+ * nothing at its source reads as weather, not as work.
+ */
+const wateringCan: Painter = (g, s) => {
+  // body
+  g.fillStyle(0x5f6b74, 1);
+  g.fillRoundedRect(2 * s, 8 * s, 18 * s, 14 * s, 3 * s);
+  g.fillStyle(0x79868f, 1);
+  g.fillRoundedRect(3 * s, 9 * s, 16 * s, 6 * s, 3 * s);
+  // spout
+  g.fillStyle(0x5f6b74, 1);
+  g.fillTriangle(19 * s, 11 * s, 30 * s, 17 * s, 19 * s, 18 * s);
+  g.fillStyle(0x8f9ba4, 1);
+  g.fillRoundedRect(27 * s, 15 * s, 5 * s, 4 * s, 1.5 * s);
+  // handle
+  g.lineStyle(2.5 * s, 0x4a545c, 1);
+  g.beginPath();
+  g.arc(10 * s, 8 * s, 6 * s, Math.PI, 0);
+  g.strokePath();
+};
+
 export const SPRITES: readonly SpriteDef[] = [
   { key: 'house', w: 136, h: 124, paint: house },
   { key: 'barn', w: 148, h: 132, paint: barn },
@@ -822,6 +881,8 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'rock3', w: 64, h: 48, paint: rockAt(3) },
   { key: 'bush', w: 52, h: 42, paint: bush },
   { key: 'soil', w: 64, h: 64, paint: soil },
+  { key: 'soilWet', w: 64, h: 64, paint: soilWet },
+  { key: 'wateringCan', w: 34, h: 24, paint: wateringCan },
   { key: 'readyRing', w: 68, h: 68, paint: readyRing },
   { key: 'crow', w: 28, h: 24, paint: crow },
   { key: 'player', w: 40, h: 56, paint: player },

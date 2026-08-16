@@ -277,6 +277,15 @@ export class Interactions {
     }
   }
 
+  /** World centre of a plot, so an action can be aimed at the ground. */
+  private plotPoint(target: string | number): { x: number; y: number } {
+    const slot = plotAt(Number(target));
+    return {
+      x: (slot?.x ?? 0) * TILE + TILE / 2,
+      y: (slot?.y ?? 0) * TILE + TILE / 2,
+    };
+  }
+
   private async dispatch(interaction: Interaction, farm: FarmState): Promise<void> {
     const px = this.player.x;
     const py = this.player.y;
@@ -285,24 +294,34 @@ export class Interactions {
       case 'plant': {
         const cropKey = this.forcedSeed ?? preferredSeed(farm);
         if (!cropKey) return;
+
+        // Aimed at the plot, not at the player. Sowing seeds that land under
+        // your own feet is the reason this read as pressing a button.
+        const at = this.plotPoint(interaction.target);
         audio.plant();
-        this.player.swing();
+        this.player.kneel(at.x);
+        this.effects.sow(px, py - 14, at.x, at.y);
+
         const r = await apiPost<ActionReply>('/act/plant', {
           plotIndex: interaction.target,
           cropKey,
         });
-        this.effects.dust(px, py);
+        this.effects.dust(at.x, at.y);
         this.commit(r, px, py);
         break;
       }
 
       case 'water': {
-        this.player.swing();
-        const r = await apiPost<ActionReply>('/act/water', { plotIndex: interaction.target });
+        // The can comes out first and the water starts falling immediately —
+        // waiting for the server would put the pour after the puddle.
+        const at = this.plotPoint(interaction.target);
+        const spout = this.player.pour(at.x);
         audio.water();
-        this.effects.burst(px, py - 14, COLORS.water, 10);
+        this.effects.water(spout.x, spout.y, at.x, at.y);
+
+        const r = await apiPost<ActionReply>('/act/water', { plotIndex: interaction.target });
         if (r.cutMs) {
-          this.effects.float(px, py - 30, `-${Math.round(r.cutMs / 1000)}s`, '#9fe8ff');
+          this.effects.float(at.x, at.y - 30, `-${Math.round(r.cutMs / 1000)}s`, '#9fe8ff');
         }
         this.commit(r, px, py);
         break;
@@ -318,10 +337,13 @@ export class Interactions {
       }
 
       case 'harvest': {
-        this.player.swing();
+        // Pulling something out of the ground is a crouch too, and the leaves
+        // fly from the plot rather than from the player's chest.
+        const at = this.plotPoint(interaction.target);
+        this.player.kneel(at.x, 140);
         const r = await apiPost<ActionReply>('/act/harvest', { plotIndex: interaction.target });
         audio.harvest();
-        this.effects.burst(px, py - 20, COLORS.leaf, 12);
+        this.effects.burst(at.x, at.y - 10, COLORS.leaf, 12);
         if (r.xp) this.effects.float(px, py - 30, `+${r.xp} XP`, '#9fe8ff');
         this.commit(r, px, py);
         break;
