@@ -83,6 +83,9 @@ export default function VisitCanvas({ slug }: { slug: string }) {
       bridge.spectator = true;
       bridge.emit('farm', visit);
       gameRef.current = createGame(parent);
+      if (process.env.NODE_ENV !== 'production') {
+        (window as Window & { __ambervaleGame?: Phaser.Game }).__ambervaleGame = gameRef.current;
+      }
       const off = bridge.on('worldReady', () => {
         bridge.emit('start', undefined);
         off();

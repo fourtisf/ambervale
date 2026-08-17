@@ -168,6 +168,16 @@ export async function bootstrapFarm(userId: string): Promise<void> {
  * skipDuplicates makes this an idempotent no-op on farms that are current.
  */
 export async function ensureWorldRows(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+  // Two index-only counts guard the inserts: /farm is the hottest read in the
+  // game, and paying two multi-row INSERT..ON CONFLICT statements on every
+  // poll forever, for a backfill that is needed once per config change, is
+  // the wrong trade. Counts match → nothing to do.
+  const [plotCount, nodeCount] = await Promise.all([
+    tx.plot.count({ where: { userId } }),
+    tx.resourceNode.count({ where: { userId } }),
+  ]);
+  if (plotCount >= PLOTS.length && nodeCount >= NODE_SLOTS.length) return;
+
   await tx.plot.createMany({
     data: PLOTS.map((p) => ({ userId, index: p.index, zone: p.zone })),
     skipDuplicates: true,

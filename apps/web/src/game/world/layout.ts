@@ -16,6 +16,7 @@ import {
   FAR_PLANKS,
   FENCES,
   LAMPS,
+  NODE_SLOTS,
   PLOTS,
   STRUCTURES,
   TILE,
@@ -213,6 +214,11 @@ export function buildScenery(
       (key) => Math.abs(tx - BUILDS[key].at.x) <= 2 && Math.abs(ty - BUILDS[key].at.y) <= 2,
     );
 
+  // Server-owned nodes each own their tile: a deterministic bush under an
+  // oak or rock sprite reads as a render bug, and the hash will happily put
+  // one there.
+  const nodeTiles = new Set(NODE_SLOTS.map((n) => `${n.x},${n.y}`));
+
   for (let ty = 1; ty < WORLD.h - 1; ty++) {
     for (let tx = 1; tx < WORLD.w - 1; tx++) {
       if (isBlocked(tx, ty)) continue;
@@ -222,7 +228,10 @@ export function buildScenery(
       // And the island field with its landing lane — the Far Shore is wilder
       // everywhere except the pocket a farm goes.
       if (tx > 63 && tx < 73 && ty > 13 && ty < 25) continue;
+      // The east landing itself, where the boat sets people down.
+      if (tx >= 60 && tx <= 66 && ty >= 14 && ty <= 16) continue;
       if (clearing(tx, ty)) continue;
+      if (nodeTiles.has(`${tx},${ty}`)) continue;
 
       // Denser stands past the channel: nobody mows the Far Shore.
       const isle = tx > 60;

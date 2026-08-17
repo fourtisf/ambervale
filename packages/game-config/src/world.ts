@@ -62,8 +62,10 @@ export const WATER: { lake: WaterBody; pond: WaterBody } = {
  * The channel: a north–south band of water separating the home vale from the
  * Far Shore. It merges with the lake (the lake's east rim reaches past x=52),
  * so from the dock the whole thing reads as one body of water with land on
- * the other side. Every tile in the band is water for the full height of the
- * map — the island must not be reachable on foot, or the boat is scenery.
+ * the other side. The banks wander with noise, so individual band columns
+ * are sometimes land — the invariant that matters is that SOME unbroken
+ * water spans every row, and the world-generation test walks a flood fill
+ * from spawn to prove the island stays unreachable on foot.
  */
 export const CHANNEL = { x0: 52, x1: 60, wobble: 1.6 } as const;
 
@@ -175,7 +177,11 @@ export const STRUCTURES: readonly Structure[] = [
   { key: 'sign', x: 19, y: 14 },
   // The Far Shore. The cave mouth is the island's landmark, dark against the
   // hillside; the sign names the island field the way the north sign does.
-  { key: 'cave', x: 75, y: 10, solid: { w: 4.2, h: 2.4 } },
+  // Its solid box is deliberately shallow (h:1) — anything taller reaches
+  // over the chamber's wall ring into the floor and traps a player standing
+  // at CAVE_ENTRY inside collision they cannot walk out of. The ring itself
+  // already blocks the approach from behind.
+  { key: 'cave', x: 75, y: 10, solid: { w: 4.2, h: 1.0 } },
   { key: 'isleSign', x: 68, y: 18 },
 ];
 

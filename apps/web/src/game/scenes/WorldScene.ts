@@ -341,7 +341,9 @@ export class WorldScene extends Phaser.Scene {
    * the action button, the dog — simply keeps working inside.
    */
   private delve(dir: 'in' | 'out'): void {
-    if (!this.controller || this.crossing) return;
+    // `frozen` doubles as the in-progress latch: a second press during the
+    // fade would queue a duplicate teleport onto the same completion event.
+    if (!this.controller || this.crossing || this.controller.frozen) return;
 
     const to = dir === 'in' ? CAVE_ENTRY : CAVE_EXIT;
     const cam = this.cameras.main;

@@ -92,10 +92,6 @@ export class Interactions {
   currentInteraction(): Interaction | null {
     const farm = bridge.farm;
     if (!farm || !bridge.started) return null;
-    // A visitor has no verbs. Not one disabled button per thing — nothing:
-    // an "act" that fired here would act on the visitor's own farm while
-    // they are looking at somebody else's.
-    if (bridge.spectator) return null;
 
     const reach = PLAYER.reach;
     const candidates: { interaction: Interaction; distance: number }[] = [];
@@ -104,6 +100,18 @@ export class Interactions {
       const distance = this.player.distanceTo(x, y);
       if (distance <= reach) candidates.push({ interaction, distance });
     };
+
+    // A visitor keeps only the doors. Every farming verb would act on the
+    // visitor's own farm while they look at somebody else's, so none are
+    // offered — but the boat and the cave mouth are pure client traversal,
+    // and a visit that cannot see the island or the Amber Deep is a tour of
+    // half the property.
+    if (bridge.spectator) {
+      this.considerTraversal(consider, candidates);
+      if (candidates.length === 0) return null;
+      candidates.sort((a, b) => a.distance - b.distance);
+      return candidates[0]!.interaction;
+    }
 
     // Ground eggs first — they are small and easy to miss otherwise.
     for (const item of farm.groundItems) {
@@ -262,8 +270,24 @@ export class Interactions {
       house.y * TILE,
     );
 
-    // The Amber Deep: in at the mouth, out at the ladder. Like the boat these
-    // send no request — the mouth and the ladder are doors, not verbs.
+    this.considerTraversal(consider, candidates);
+
+    if (candidates.length === 0) return null;
+    // Nearest wins, so standing between a plot and a tree does the obvious thing.
+    candidates.sort((a, b) => a.distance - b.distance);
+    return candidates[0]!.interaction;
+  }
+
+  /**
+   * The doors: the rowboat and the Amber Deep's mouth and ladder. Pure
+   * client traversal — no request is ever sent — which is why these are the
+   * one set of verbs a spectator keeps.
+   */
+  private considerTraversal(
+    consider: (interaction: Interaction, x: number, y: number) => void,
+    candidates: { interaction: Interaction; distance: number }[],
+  ): void {
+    // The Amber Deep: in at the mouth, out at the ladder.
     const cave = structureAt('cave');
     consider(
       { kind: 'delve', label: 'Enter the Amber Deep', target: 'in', enabled: true },
@@ -276,10 +300,9 @@ export class Interactions {
       CAVE_LADDER.y * TILE + TILE,
     );
 
-    // The rowboat, wherever it is moored. Crossing is traversal, not economy —
-    // no request is sent; the world scene plays the trip and owns the boat.
-    // Its own reach, wider than an arm's length: the boat is moored a stride
-    // off the shore, and a boat you can see but not board reads as broken.
+    // The rowboat, wherever it is moored. Its own reach, wider than an arm's
+    // length: the boat is moored a stride off the shore, and a boat you can
+    // see but not board reads as broken.
     const boat = bridge.boatAt ?? {
       x: BOAT_MOORINGS.west.x * TILE + TILE / 2,
       y: BOAT_MOORINGS.west.y * TILE + TILE / 2,
@@ -297,11 +320,6 @@ export class Interactions {
         distance: boatDistance,
       });
     }
-
-    if (candidates.length === 0) return null;
-    // Nearest wins, so standing between a plot and a tree does the obvious thing.
-    candidates.sort((a, b) => a.distance - b.distance);
-    return candidates[0]!.interaction;
   }
 
   private serverNow(farm: FarmState): number {

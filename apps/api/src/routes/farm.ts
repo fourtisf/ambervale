@@ -48,12 +48,16 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
 
     // Lazy repair: node respawns and delivery refills are materialised when
     // someone looks, so no scheduler is needed for a farm left alone for days.
+    // The public address of this farm, minted on first read. Outside the
+    // transaction below on purpose: claiming a slug retries through unique
+    // violations, and a P2002 inside an open Postgres transaction poisons
+    // every statement after it. Each attempt here is its own tiny write.
+    await ensureVisitSlug(prisma, user);
+
     const away = await prisma.$transaction(async (tx) => {
       // World rows the config has grown since this account was seeded — the
       // Far Shore's plots and stands appear here for pre-island farms.
       await ensureWorldRows(tx, user.id);
-      // And the public address of this farm, minted on first read.
-      await ensureVisitSlug(tx, user);
 
       // Crops are counted before the repairs, but from timestamps, so ordering
       // does not matter — what matters is that a crop which came ready during

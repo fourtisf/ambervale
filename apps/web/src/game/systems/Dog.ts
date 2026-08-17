@@ -63,6 +63,9 @@ export class Dog {
   private crowTarget(px: number, py: number): { x: number; y: number } | null {
     const farm = bridge.farm;
     if (!farm) return null;
+    // Not on a visit: the crows are the owner's problem, nobody here can
+    // shoo them, and a dog barking at a fixed point forever is a broken toy.
+    if (bridge.spectator) return null;
 
     let best: { x: number; y: number } | null = null;
     let bestDist = ALERT_PX;
@@ -101,8 +104,12 @@ export class Dog {
     const dist = Math.hypot(dx, dy);
 
     if (!crow && dist > LOST_PX) {
-      // Reappear at heel rather than pathfind — see LOST_PX.
-      this.place(px + 30, py + 20);
+      // Reappear at heel rather than pathfind — see LOST_PX. Unless heel is
+      // water: while the farmer is mid-crossing she waits on the shore, and
+      // the landing places her properly when the boat arrives.
+      if (!this.collision.blocked(px + 30, py + 20)) {
+        this.place(px + 30, py + 20);
+      }
       return;
     }
 

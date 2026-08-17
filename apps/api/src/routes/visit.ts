@@ -46,22 +46,28 @@ export async function visitRoutes(app: FastifyInstance): Promise<void> {
     if (text.length > 140) throw badRequest('Keep it under 140 characters.');
 
     if (!(await allowMutation(user.id))) throw rateLimited();
-    // A slow verb by design: one note a minute is plenty of neighbourliness.
-    if (!(await allowEvery(user.id, 'guestbook', 60_000))) {
-      throw conflict('TOO_FAST', 'Give the ink a minute to dry.');
-    }
 
+    // Target checks before the cooldown is consumed: allowEvery is a one-way
+    // token take with no refund, and a mistyped slug or an own-book slip
+    // should not also burn the writer's minute.
     const owner = await prisma.user.findUnique({ where: { visitSlug: req.params.slug } });
     if (!owner || !owner.bootstrapped) throw notFound('No farm at this address.');
     if (owner.id === user.id) {
       throw conflict('OWN_BOOK', 'It is your book. They write in it, you read it.');
     }
 
+    // A slow verb by design: one note a minute is plenty of neighbourliness.
+    if (!(await allowEvery(user.id, 'guestbook', 60_000))) {
+      throw conflict('TOO_FAST', 'Give the ink a minute to dry.');
+    }
+
     await prisma.$transaction(async (tx) => {
       await tx.guestbookEntry.create({
         data: { ownerId: owner.id, authorId: user.id, text },
       });
-      // Trim the tail past the cap so one popular farm cannot grow a table.
+      // Trim the tail past the cap. Under concurrent signs this is a soft
+      // bound — two inserts can both count before either trims — which is
+      // fine: it exists to stop unbounded growth, not to be exact.
       const stale = await tx.guestbookEntry.findMany({
         where: { ownerId: owner.id },
         orderBy: { createdAt: 'desc' },
