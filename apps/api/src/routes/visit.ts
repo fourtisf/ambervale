@@ -37,8 +37,8 @@ export async function visitRoutes(app: FastifyInstance): Promise<void> {
 
     // One pass of cleaning, then judge the result — a note that is 140 chars
     // of newlines should fail the length check, not sneak under it.
-    // eslint-disable-next-line no-control-regex
     const text = body.text
+      // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x1f\x7f]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();

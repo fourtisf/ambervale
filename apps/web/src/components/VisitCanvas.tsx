@@ -96,8 +96,8 @@ export default function VisitCanvas({ slug }: { slug: string }) {
       gameRef.current = null;
       bridge.reset();
     };
-    // The game boots once per visit payload; later signs update React only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // The game boots once per visit payload; later signs update React only,
+    // which is why the dependency is the null-ness and not the object.
   }, [visit === null]);
 
   const sign = useCallback(async () => {

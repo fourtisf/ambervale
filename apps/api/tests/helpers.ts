@@ -135,6 +135,7 @@ export interface FarmLike {
     renown: number;
     title: string | null;
     handle: string;
+    visitSlug: string | null;
     tutorialStep: number;
     tutorialBase: Record<string, number>;
     counters: Record<string, number>;
