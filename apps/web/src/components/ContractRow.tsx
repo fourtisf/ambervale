@@ -3,16 +3,15 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /**
- * The $AMBER contract address — or the honest absence of one.
+ * The $AMBER contract address.
  *
- * There is no contract yet. Rather than leave a hole in the page that someone
- * fills in with a rumour, this states it, and the same row becomes the real
- * address with a working copy button the moment `NEXT_PUBLIC_AMBER_CA` is set.
- * No code change, and no window in which the site is displaying an address
- * that is not real — which is the failure worth engineering against here,
- * since a wrong address on a game's own site is money lost by someone who
- * trusted it.
+ * Hardcoded, deliberately — the same policy as the social links, arrived at
+ * the same way: an env knob here once shipped a literal placeholder to the
+ * live site. The address does not rotate per environment, and this is the one
+ * field where a stale value means somebody sends money nowhere. The shape
+ * check below stays as the last line of defence against a bad edit.
  */
+const AMBER_CA = 'J8xm2qrEMTJgFt7FsUNb3kfW6w5Fvwwqqxjz2Y2Mpump';
 /**
  * Does this look like a contract address anyone could actually use?
  *
@@ -33,8 +32,7 @@ function looksLikeAddress(value: string): boolean {
 }
 
 export default function ContractRow({ compact = false }: { compact?: boolean }) {
-  const configured = process.env.NEXT_PUBLIC_AMBER_CA?.trim() ?? '';
-  const address = looksLikeAddress(configured) ? configured : null;
+  const address = looksLikeAddress(AMBER_CA) ? AMBER_CA : null;
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
