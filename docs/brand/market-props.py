@@ -55,8 +55,11 @@ def pine(x, base, h, fill, trunk):
 
 
 def shade(x, y, rx):
-    return ('<ellipse cx="%.1f" cy="%.1f" rx="%.1f" ry="%.1f" fill="#1d3b22" opacity="0.22"/>'
-            % (x, y, rx, rx * 0.28))
+    # Offset slightly right of the object: the light is upper-left, and the
+    # critics caught shadows sitting straight beneath some props and drifting
+    # right of others — one sun, one rule.
+    return ('<ellipse cx="%.1f" cy="%.1f" rx="%.1f" ry="%.1f" fill="#1d3b22" opacity="0.26"/>'
+            % (x + rx * 0.16, y, rx, rx * 0.28))
 
 
 # --- the property, in the colours the game draws them -----------------------
