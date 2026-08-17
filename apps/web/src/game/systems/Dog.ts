@@ -161,6 +161,22 @@ export class Dog {
     this.lastPlayer = { x: px, y: py };
     this.stillFor = playerMoved ? 0 : this.stillFor + dt;
 
+    // Aboard. When the farmer takes the helm she rides the bow — a dog does
+    // not wait on the dock while her person sails away. No wandering, no
+    // crow-chasing, no sitting: paws on the rail until they step ashore.
+    if (bridge.sailing && bridge.boatAt) {
+      const b = bridge.boatAt;
+      if (this.sitting) {
+        this.sitting = false;
+        this.sprite.setTexture('dog');
+      }
+      this.sprite.setOrigin(0.5, 1);
+      this.sprite.setPosition(b.x + 38, b.y - 16 + Math.sin(this.elapsed / 380) * 2);
+      this.sprite.setDepth(b.y + 2);
+      this.syncOverhead();
+      return;
+    }
+
     const crow = this.crowTarget(px, py);
     const target = crow ?? { x: px, y: py };
     const stopAt = crow ? 10 : HEEL_PX;
@@ -224,8 +240,11 @@ export class Dog {
     }
 
     this.sprite.setDepth(this.sprite.y);
+    this.syncOverhead();
+  }
 
-    // Mirror for the interaction scan, and keep her name over her head.
+  /** Mirror for the interaction scan, and keep her name over her head. */
+  private syncOverhead(): void {
     bridge.dogAt = { x: this.sprite.x, y: this.sprite.y };
     const name = bridge.farm?.user.dogName ?? null;
     if (name) {

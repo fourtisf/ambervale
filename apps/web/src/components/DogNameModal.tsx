@@ -48,7 +48,7 @@ export default function DogNameModal({ onClose }: { onClose: () => void }) {
           value={name}
           maxLength={16}
           autoFocus
-          placeholder="Biji? Kopi? Tempe?"
+          placeholder="Biscuit? Clover? Rusty?"
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void save();
