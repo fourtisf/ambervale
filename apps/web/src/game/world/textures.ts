@@ -804,6 +804,82 @@ const egg: Painter = (g, s) => {
   g.fillEllipse(7 * s, 6 * s, 5 * s, 6 * s);
 };
 
+/**
+ * The farm dog, trotting. Drawn facing right like the other animals; the
+ * follower flips her by travel direction. Warm tan with a cream chest and a
+ * red collar — one saturated accent so she reads at gameplay zoom.
+ */
+const dog: Painter = (g, s) => {
+  shadow(g, s, 20, 28, 12);
+  // tail, up and curled — a happy dog, permanently
+  g.fillStyle(0xb07a44, 1);
+  g.fillEllipse(7 * s, 12 * s, 8 * s, 5 * s);
+  g.fillCircle(5 * s, 10 * s, 2.6 * s);
+  // body
+  g.fillStyle(0xc98d52, 1);
+  g.fillRoundedRect(8 * s, 14 * s, 22 * s, 11 * s, 5 * s);
+  // cream chest and belly
+  g.fillStyle(0xefdcbb, 1);
+  g.fillEllipse(26 * s, 22 * s, 10 * s, 7 * s);
+  // legs
+  g.fillStyle(0xb07a44, 1);
+  g.fillRect(11 * s, 23 * s, 3 * s, 6 * s);
+  g.fillRect(17 * s, 23 * s, 3 * s, 6 * s);
+  g.fillRect(24 * s, 23 * s, 3 * s, 6 * s);
+  g.fillRect(29 * s, 23 * s, 3 * s, 6 * s);
+  // head
+  g.fillStyle(0xc98d52, 1);
+  g.fillCircle(32 * s, 11 * s, 7 * s);
+  // muzzle
+  g.fillStyle(0xefdcbb, 1);
+  g.fillEllipse(37 * s, 13 * s, 8 * s, 6 * s);
+  g.fillStyle(0x3a2a18, 1);
+  g.fillCircle(40 * s, 12 * s, 1.8 * s);
+  // floppy ear
+  g.fillStyle(0x9a6636, 1);
+  g.fillEllipse(29 * s, 7 * s, 6 * s, 9 * s);
+  // collar
+  g.fillStyle(0xd94f3d, 1);
+  g.fillRect(27 * s, 16 * s, 8 * s, 2.6 * s);
+  g.fillStyle(0xf4d35e, 1);
+  g.fillCircle(31 * s, 19.4 * s, 1.6 * s);
+  // eye
+  g.fillStyle(0x2a1a05, 1);
+  g.fillCircle(33 * s, 10 * s, 1.5 * s);
+};
+
+/** The same dog, sat on her haunches — played when the farmer stands still. */
+const dogSit: Painter = (g, s) => {
+  shadow(g, s, 16, 30, 10);
+  // tail curled on the ground
+  g.fillStyle(0xb07a44, 1);
+  g.fillEllipse(7 * s, 28 * s, 9 * s, 5 * s);
+  // haunches
+  g.fillStyle(0xc98d52, 1);
+  g.fillEllipse(14 * s, 24 * s, 16 * s, 13 * s);
+  // upright chest
+  g.fillRoundedRect(14 * s, 10 * s, 12 * s, 18 * s, 5 * s);
+  g.fillStyle(0xefdcbb, 1);
+  g.fillEllipse(20 * s, 22 * s, 8 * s, 10 * s);
+  // front legs, straight down
+  g.fillStyle(0xb07a44, 1);
+  g.fillRect(16 * s, 24 * s, 3 * s, 7 * s);
+  g.fillRect(22 * s, 24 * s, 3 * s, 7 * s);
+  // head, tilted a touch
+  g.fillStyle(0xc98d52, 1);
+  g.fillCircle(21 * s, 8 * s, 7 * s);
+  g.fillStyle(0xefdcbb, 1);
+  g.fillEllipse(26 * s, 10 * s, 7 * s, 5.4 * s);
+  g.fillStyle(0x3a2a18, 1);
+  g.fillCircle(28.6 * s, 9.4 * s, 1.7 * s);
+  g.fillStyle(0x9a6636, 1);
+  g.fillEllipse(17 * s, 4 * s, 6 * s, 8 * s);
+  g.fillStyle(0xd94f3d, 1);
+  g.fillRect(16 * s, 14 * s, 9 * s, 2.6 * s);
+  g.fillStyle(0x2a1a05, 1);
+  g.fillCircle(22.4 * s, 7 * s, 1.5 * s);
+};
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -1069,7 +1145,6 @@ const buildSundial: Painter = (g, s) => {
   g.fillTriangle(32 * s, 10 * s, 32 * s, 27 * s, 44 * s, 27 * s);
 };
 
-
 /**
  * The Farmhouse — homestead tier 2. Same bones as the cottage, read at a
  * glance as "the same house, grown": a second storey with its own window row,
@@ -1263,6 +1338,8 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'player', w: 40, h: 56, paint: player },
   { key: 'chicken', w: 34, h: 30, paint: chicken },
   { key: 'cow', w: 62, h: 44, paint: cow },
+  { key: 'dog', w: 44, h: 32, paint: dog },
+  { key: 'dogSit', w: 32, h: 34, paint: dogSit },
   { key: 'egg', w: 20, h: 20, paint: egg },
   // Crop growth stages, one texture per crop per stage.
   ...CROP_KEYS.flatMap((key) =>

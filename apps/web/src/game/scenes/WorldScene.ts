@@ -17,6 +17,7 @@ import { Ambient } from '../systems/Ambient';
 import { AnimalLife } from '../systems/AnimalLife';
 import { CineCamera } from '../systems/CineCamera';
 import { DayNight } from '../systems/DayNight';
+import { Dog } from '../systems/Dog';
 import { Effects } from '../systems/Effects';
 import { FarmView } from '../systems/FarmView';
 import { Interactions, stampReceived } from '../systems/Interactions';
@@ -64,6 +65,7 @@ export class WorldScene extends Phaser.Scene {
   private effects?: Effects;
   private tutorial?: TutorialGuide;
   private animalLife?: AnimalLife;
+  private dog?: Dog;
   /** Fades trees and buildings that would otherwise hide the player. */
   private occlusion!: Occlusion;
   /** Last interaction pushed to the HUD, to avoid re-emitting every frame. */
@@ -162,6 +164,7 @@ export class WorldScene extends Phaser.Scene {
     const light = this.dayNight?.addDynamicLight(x, y, 170, 0xffd9a0);
 
     this.controller = new PlayerController(this, this.player, this.collision, light);
+    this.dog = new Dog(this, this.collision);
     this.interactions = new Interactions(this.controller, this.effects!, this.farmView);
     this.tutorial = new TutorialGuide(this, this.controller, this.interactions, (x, y) =>
       this.peekAt(x, y),
@@ -333,6 +336,7 @@ export class WorldScene extends Phaser.Scene {
     this.farmView?.update(delta);
     this.animalLife?.update(delta);
     this.controller?.update(delta);
+    if (this.player) this.dog?.update(delta, this.player.x, this.player.y);
     if (this.controller && bridge.started) {
       this.occlusion.update(this.controller.x, this.controller.y, delta);
     }
@@ -418,6 +422,7 @@ export class WorldScene extends Phaser.Scene {
     this.unsubscribe = [];
     this.scale.off('resize', this.onResize, this);
     audio.stop();
+    this.dog?.destroy();
     this.animalLife?.destroy();
     this.occlusion?.destroy();
     this.tutorial?.destroy();

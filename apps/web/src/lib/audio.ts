@@ -210,6 +210,14 @@ class Synth {
     this.note(760, 0.05, { wave: 'square', gain: 0.1, delay: 0.07 });
   }
 
+  /** Two quick yips — small dog, big opinion. */
+  bark(): void {
+    this.noise(0.05, 900, 0.16);
+    this.note(520, 0.09, { wave: 'square', gain: 0.18, sweepTo: 300, detune: 0.06 });
+    this.noise(0.05, 900, 0.13, 0.15);
+    this.note(560, 0.08, { wave: 'square', gain: 0.15, sweepTo: 320, delay: 0.15, detune: 0.06 });
+  }
+
   // -- ambience -------------------------------------------------------------
 
   private birdChirp(): void {
