@@ -95,6 +95,8 @@ export class WorldScene extends Phaser.Scene {
   >;
   private lastWakeAt = 0;
   private wakeCount = 0;
+  /** Where a tap asked the ship to go, mirrored from pointerdown while sailing. */
+  private sailTarget: { x: number; y: number } | null = null;
 
   private debugMode = false;
   private debugCam = { x: SPAWN.x * TILE, y: SPAWN.y * TILE };
@@ -176,6 +178,13 @@ export class WorldScene extends Phaser.Scene {
       ) as typeof this.helmKeys;
     }
     this.unsubscribe.push(bridge.on('delve', (dir) => this.delve(dir)));
+
+    // Tap-to-sail. Most desktop players move by clicking, and a helm that
+    // only answers to stick and keys reads as a ship that will not steer.
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (!this.sailing || bridge.openModal || !bridge.started) return;
+      this.sailTarget = { x: pointer.worldX, y: pointer.worldY };
+    });
 
     // The chamber's torches burn at every hour; their warmth is a dynamic
     // light so the Light2D sprites near them catch it after dark.
@@ -311,9 +320,13 @@ export class WorldScene extends Phaser.Scene {
     bridge.sailing = true;
     this.controller.frozen = true;
     this.shipVel = { x: 0, y: 0 };
+    this.sailTarget = null;
     audio.creak();
     audio.row();
-    bridge.toast('info', 'The helm is yours. Steer her; step ashore where water meets land.');
+    bridge.toast(
+      'info',
+      'The helm is yours — stick, arrow keys, or tap the water. Step ashore where water meets land.',
+    );
   }
 
   private stepAshore(): void {
@@ -325,6 +338,7 @@ export class WorldScene extends Phaser.Scene {
     this.sailing = false;
     bridge.sailing = false;
     bridge.shoreAt = null;
+    this.sailTarget = null;
     boat.setAngle(0);
     this.rowboatBaseY = boat.y;
     // Which side of the channel she is moored on only matters for flavour
@@ -368,6 +382,24 @@ export class WorldScene extends Phaser.Scene {
         }
       }
     }
+    // Direct input wins; a tapped course steers only while nothing else
+    // does, and the tap is forgotten the moment the player grabs the helm.
+    if (ix !== 0 || iy !== 0) {
+      this.sailTarget = null;
+    } else if (this.sailTarget) {
+      const dx = this.sailTarget.x - boat.x;
+      const dy = this.sailTarget.y - boat.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < 26) {
+        this.sailTarget = null;
+      } else {
+        // Ease off approaching the mark, so she arrives rather than orbits.
+        const throttle = Math.min(1, dist / 130);
+        ix = (dx / dist) * throttle;
+        iy = (dy / dist) * throttle;
+      }
+    }
+
     const mag = Math.hypot(ix, iy);
     if (mag > 1) {
       ix /= mag;

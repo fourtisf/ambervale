@@ -70,6 +70,20 @@ export class Dog {
       .setVisible(false);
 
     this.offPet = bridge.on('petDog', () => this.pet());
+
+    // Clicking her is the front door to both verbs. The E-key path and the
+    // Settings row still exist, but "click the dog to name the dog" is the
+    // only version of the instruction nobody needs told.
+    this.sprite.setInteractive({ useHandCursor: true });
+    this.sprite.on('pointerdown', () => {
+      if (!bridge.started || bridge.openModal || bridge.spectator || bridge.sailing) return;
+      if (bridge.farm?.user.dogName) {
+        audio.bark();
+        this.pet();
+      } else {
+        bridge.emit('modal', 'dogname');
+      }
+    });
   }
 
   /** The happy hop a pat earns: a bounce, a tail-wag wiggle, and a yip. */
@@ -123,9 +137,22 @@ export class Dog {
     return best;
   }
 
+  /** One nudge per session toward the name, and only while she has none. */
+  private hinted = false;
+
   update(deltaMs: number, px: number, py: number): void {
     if (!bridge.started) return;
-    if (!this.sprite.visible) this.sprite.setVisible(true);
+    if (!this.sprite.visible) {
+      this.sprite.setVisible(true);
+      if (!this.hinted && !bridge.spectator && !bridge.farm?.user.dogName) {
+        this.hinted = true;
+        this.scene.time.delayedCall(12_000, () => {
+          if (!bridge.farm?.user.dogName && bridge.started && !bridge.spectator) {
+            bridge.toast('info', 'The dog needs a name — click her, or find her in Settings.');
+          }
+        });
+      }
+    }
 
     const dt = deltaMs / 1000;
     this.elapsed += deltaMs;
