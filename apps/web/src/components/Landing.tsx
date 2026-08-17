@@ -29,8 +29,11 @@ import WorldBackdrop from './WorldBackdrop';
  * — what it is, how it plays, about the token — were cut on request. The page
  * has one job now: show the vale, take a code, and let someone in.
  */
-const X_URL = process.env.NEXT_PUBLIC_X_URL?.trim() || 'https://x.com/Ambervalefun';
-const TG_URL = process.env.NEXT_PUBLIC_TG_URL?.trim() || 'https://t.me/ambervalefun';
+// Hardcoded like the Telegram link: an env override sounds flexible and in
+// practice ships whatever stale placeholder is sitting in the server's env
+// file. The account is ours; the code is the source of truth.
+const X_URL = 'https://x.com/Ambervalefun';
+const TG_URL = 'https://t.me/ambervalefun';
 
 export default function Landing() {
   const [required, setRequired] = useState<boolean | null>(null);
