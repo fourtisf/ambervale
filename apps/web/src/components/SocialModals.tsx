@@ -35,6 +35,19 @@ export function LeaderboardModal({ onClose }: { onClose: () => void }) {
   const [data, setData] = useState<Leaderboard | null>(null);
   const [board, setBoard] = useState<Board>('renown');
   const [error, setError] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const slug = bridge.farm?.user.visitSlug ?? null;
+  const copyLink = useCallback(async () => {
+    if (!slug) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/v/${slug}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      bridge.toast('warn', `Your link: ${window.location.origin}/v/${slug}`);
+    }
+  }, [slug]);
 
   useEffect(() => {
     let live = true;
@@ -50,6 +63,18 @@ export function LeaderboardModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal title="The Vale" onClose={onClose}>
+      {slug && (
+        <div className="share">
+          <div className="sharetext">
+            <b>Your farm has an address</b>
+            <small>Anyone in the vale can walk your fields and sign your gate book.</small>
+          </div>
+          <button type="button" onClick={() => void copyLink()}>
+            {copied ? 'Copied ✓' : 'Copy link'}
+          </button>
+        </div>
+      )}
+
       {data && (
         <p className="count">
           <b>{data.activeToday}</b> {data.activeToday === 1 ? 'farmer' : 'farmers'} tended the vale
@@ -96,6 +121,38 @@ export function LeaderboardModal({ onClose }: { onClose: () => void }) {
       )}
 
       <style jsx>{`
+        .share {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          margin: 0 0 0.9rem;
+          padding: 0.65rem 0.8rem;
+          border-radius: 12px;
+          background: rgba(159, 232, 255, 0.08);
+          border: 1px solid rgba(159, 232, 255, 0.25);
+        }
+        .sharetext b {
+          display: block;
+          font-size: 0.84rem;
+        }
+        .sharetext small {
+          font-size: 0.7rem;
+          opacity: 0.72;
+          line-height: 1.4;
+        }
+        .share button {
+          flex: 0 0 auto;
+          padding: 0.5rem 0.85rem;
+          border-radius: 999px;
+          border: 0;
+          background: #9fe8ff;
+          color: #0a2e3d;
+          font-weight: 700;
+          font-size: 0.74rem;
+          cursor: pointer;
+          white-space: nowrap;
+        }
         .count {
           margin: 0 0 0.8rem;
           font-size: 0.78rem;

@@ -30,6 +30,7 @@ export type ApiErrorCode =
   | 'ALREADY_EXPANDED'
   | 'ALREADY_BUILT'
   | 'HOMESTEAD_MAX'
+  | 'OWN_BOOK'
   | 'INSUFFICIENT_AMBER'
   | 'MAX_TIER'
   | 'NEEDS_UPGRADE'

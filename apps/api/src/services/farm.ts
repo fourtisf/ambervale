@@ -352,6 +352,8 @@ export interface FarmState {
     title: string | null;
     handle: string;
     tutorialStep: number;
+    /** URL slug of this player's public visit page, once minted. */
+    visitSlug: string | null;
     /**
      * Counters as they stood when the tutorial last started. The steps read
      * `counters - tutorialBase`, so replaying it asks for the work again
@@ -614,6 +616,7 @@ export async function getFarmState(
       title: titleFor(user.renown),
       handle: handleFor(user.id),
       tutorialStep: user.tutorialStep,
+      visitSlug: user.visitSlug,
       tutorialBase: readCounterSnapshot(user.tutorialBase),
       questIndex: user.questIndex,
       firstPlantDone: user.firstPlantDone,

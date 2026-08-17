@@ -92,6 +92,10 @@ export class Interactions {
   currentInteraction(): Interaction | null {
     const farm = bridge.farm;
     if (!farm || !bridge.started) return null;
+    // A visitor has no verbs. Not one disabled button per thing — nothing:
+    // an "act" that fired here would act on the visitor's own farm while
+    // they are looking at somebody else's.
+    if (bridge.spectator) return null;
 
     const reach = PLAYER.reach;
     const candidates: { interaction: Interaction; distance: number }[] = [];

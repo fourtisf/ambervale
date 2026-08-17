@@ -32,6 +32,7 @@ import {
   type AwayReport,
 } from '../services/farm';
 import { effectsFor } from '../services/upgrades';
+import { ensureVisitSlug } from '../services/visit';
 
 export async function farmRoutes(app: FastifyInstance): Promise<void> {
   app.get('/farm', async (req, reply) => {
@@ -51,6 +52,8 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
       // World rows the config has grown since this account was seeded — the
       // Far Shore's plots and stands appear here for pre-island farms.
       await ensureWorldRows(tx, user.id);
+      // And the public address of this farm, minted on first read.
+      await ensureVisitSlug(tx, user);
 
       // Crops are counted before the repairs, but from timestamps, so ordering
       // does not matter — what matters is that a crop which came ready during

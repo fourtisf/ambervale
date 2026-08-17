@@ -190,6 +190,8 @@ export interface FarmUser {
   renown: number;
   title: string | null;
   handle: string;
+  /** URL slug of this player's public visit page, once minted by the server. */
+  visitSlug: string | null;
   tutorialStep: number;
   /** Counters as they stood when the tutorial last started; steps read the
    *  difference, so replaying it asks for the work again. */
@@ -330,6 +332,28 @@ export const authGuest = (): Promise<{ created: boolean; farm: FarmState }> =>
   apiPost('/auth/guest', { deviceId: getDeviceId() });
 
 export const fetchFarm = (): Promise<FarmState> => apiGet('/farm');
+
+// ---------------------------------------------------------------------------
+// Visiting
+// ---------------------------------------------------------------------------
+
+export interface GuestbookEntry {
+  author: string;
+  text: string;
+  at: number;
+}
+
+/** A farm seen from the road: FarmState-shaped, private fields zeroed. */
+export interface VisitState extends FarmState {
+  spectator: true;
+  guestbook: GuestbookEntry[];
+}
+
+export const fetchVisit = (slug: string): Promise<VisitState> =>
+  apiGet(`/visit/${encodeURIComponent(slug)}`);
+
+export const signGuestbook = (slug: string, text: string): Promise<VisitState> =>
+  apiPost(`/visit/${encodeURIComponent(slug)}/sign`, { text });
 
 // ---------------------------------------------------------------------------
 // Leaderboard

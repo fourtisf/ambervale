@@ -91,8 +91,11 @@ model User {
   daily         DailyState?
   market        MarketGood[]
   builds        Build[]
+  guestbook     GuestbookEntry[] @relation("guestbookOwner")
   /// The house's current tier: 1 Cottage, 2 Farmhouse, 3 Manor.
   homesteadTier Int       @default(1)
+  /// URL slug for the public visit page, minted lazily from the handle.
+  visitSlug     String?   @unique
 
   @@index([createdAt])
   @@index([renown])
@@ -341,6 +344,20 @@ model DailyState {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+/// A note left on someone's farm by a visitor. The text is stored verbatim
+/// and rendered as text — never as markup — on the way out.
+model GuestbookEntry {
+  id       String @id @default(cuid())
+  ownerId  String
+  owner    User   @relation("guestbookOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  authorId String
+
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([ownerId, createdAt])
 }
 
 model Expansion {

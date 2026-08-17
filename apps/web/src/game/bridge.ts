@@ -98,6 +98,13 @@ class GameBridge {
   started = false;
 
   /**
+   * True when the world is showing someone ELSE'S farm. The scan for
+   * interactions returns nothing in this mode — a visitor walks, looks, and
+   * signs the guestbook; every other verb belongs to the owner.
+   */
+  spectator = false;
+
+  /**
    * Movement intent, in the range [-1, 1] per axis.
    *
    * Deliberately a mutable object polled once per frame rather than an event:
@@ -185,6 +192,8 @@ class GameBridge {
     this.handlers.clear();
     this.farm = null;
     this.started = false;
+    this.spectator = false;
+    this.boatAt = null;
     this.interaction = null;
     this.openModal = null;
     this.gated = false;
