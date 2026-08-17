@@ -630,6 +630,20 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           {farm?.user.dogName ? 'Rename' : 'Name her'}
         </button>
       </div>
+      <div className="row">
+        <span>
+          Community
+          <em className="state">News, drops, neighbours</em>
+        </span>
+        <a
+          className="linkbtn"
+          href="https://t.me/ambervalefun"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Telegram
+        </a>
+      </div>
       <div className="row danger">
         <span>Reset run</span>
         {confirmReset ? (
@@ -677,6 +691,15 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           color: #f5e6c8;
           cursor: pointer;
           font-weight: 600;
+        }
+        .row .linkbtn {
+          padding: 0.45rem 1rem;
+          border-radius: 9px;
+          border: 1px solid rgba(159, 232, 255, 0.4);
+          color: #9fe8ff;
+          text-decoration: none;
+          font-weight: 600;
+          font-size: 0.85rem;
         }
         .danger button {
           border-color: rgba(242, 160, 154, 0.6);

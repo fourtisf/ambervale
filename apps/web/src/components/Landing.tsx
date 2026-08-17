@@ -30,6 +30,7 @@ import WorldBackdrop from './WorldBackdrop';
  * has one job now: show the vale, take a code, and let someone in.
  */
 const X_URL = process.env.NEXT_PUBLIC_X_URL?.trim() || 'https://x.com/Ambervalefun';
+const TG_URL = process.env.NEXT_PUBLIC_TG_URL?.trim() || 'https://t.me/ambervalefun';
 
 export default function Landing() {
   const [required, setRequired] = useState<boolean | null>(null);
@@ -79,6 +80,15 @@ export default function Landing() {
                 />
               </svg>
               <span>Follow on X</span>
+            </a>
+            <a href={TG_URL} target="_blank" rel="noopener noreferrer" className="xlink">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M21.9 4.3 18.6 19.8c-.25 1.1-.9 1.37-1.83.85l-5.06-3.73-2.44 2.35c-.27.27-.5.5-1.02.5l.36-5.15L18 6.16c.41-.36-.09-.57-.63-.2L5.79 13.25l-4.98-1.56c-1.08-.34-1.1-1.08.23-1.6L20.5 2.55c.9-.33 1.69.2 1.4 1.74Z"
+                />
+              </svg>
+              <span>Telegram</span>
             </a>
             <Link href="/play" className="barcta">
               {locked ? 'Enter code' : 'Play'}

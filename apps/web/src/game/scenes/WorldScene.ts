@@ -9,8 +9,6 @@
  */
 
 import {
-  BOAT_LANDINGS,
-  BOAT_MOORINGS,
   CAVE_ENTRY,
   CAVE_EXIT,
   CAVE_TORCHES,
@@ -88,8 +86,15 @@ export class WorldScene extends Phaser.Scene {
   private peekDeadline = 0;
   /** Whether the camera is currently locked to the player. */
   private followingPlayer = false;
-  /** True while the rowboat is carrying the player across the channel. */
-  private crossing = false;
+  /** True while the player holds the ship's helm. */
+  private sailing = false;
+  private shipVel = { x: 0, y: 0 };
+  private helmKeys?: Record<
+    'W' | 'A' | 'S' | 'D' | 'UP' | 'LEFT' | 'DOWN' | 'RIGHT',
+    Phaser.Input.Keyboard.Key
+  >;
+  private lastWakeAt = 0;
+  private wakeCount = 0;
 
   private debugMode = false;
   private debugCam = { x: SPAWN.x * TILE, y: SPAWN.y * TILE };
@@ -160,7 +165,16 @@ export class WorldScene extends Phaser.Scene {
     // stays invisible and the camera never attaches, for the whole session.
     if (bridge.started) this.beginPlay();
     this.unsubscribe.push(bridge.on('sleep', () => this.sleep()));
-    this.unsubscribe.push(bridge.on('row', (shore) => this.rowAcross(shore)));
+    this.unsubscribe.push(
+      bridge.on('row', (dir) => (dir === 'board' ? this.board() : this.stepAshore())),
+    );
+    // The helm's own keys, alive in every mode — the controller keeps its
+    // pair, and freezing it must not take the ship's steering with it.
+    if (this.input.keyboard) {
+      this.helmKeys = this.input.keyboard.addKeys(
+        'W,A,S,D,UP,LEFT,DOWN,RIGHT',
+      ) as typeof this.helmKeys;
+    }
     this.unsubscribe.push(bridge.on('delve', (dir) => this.delve(dir)));
 
     // The chamber's torches burn at every hour; their warmth is a dynamic
@@ -285,82 +299,166 @@ export class WorldScene extends Phaser.Scene {
   }
 
   /**
-   * The boat crossing. Pure traversal — no request, no server state. The
-   * controller is frozen while the water has the player, the boat is tweened
-   * to the other mooring with the player seated in it, and the camera simply
-   * follows the player as it always does. The boat stays where it lands, so
-   * the way back starts from the far side, like a real boat.
+   * The helm. Boarding hands the ship to the player: their stick and keys
+   * drive her directly, with inertia, and she goes only where there is water.
+   * Pure traversal — no request, no server state — and stepping ashore is a
+   * verb of its own, offered wherever the shoreline is within a stride.
    */
-  private rowAcross(shore: 'east' | 'west'): void {
-    if (this.crossing || !this.player || !this.controller) return;
-    if (bridge.boatAt && bridge.boatAt.shore === shore) return; // already there
+  private board(): void {
+    if (this.sailing || !this.player || !this.controller || this.controller.frozen) return;
+
+    this.sailing = true;
+    bridge.sailing = true;
+    this.controller.frozen = true;
+    this.shipVel = { x: 0, y: 0 };
+    audio.creak();
+    audio.row();
+    bridge.toast('info', 'The helm is yours. Steer her; step ashore where water meets land.');
+  }
+
+  private stepAshore(): void {
+    if (!this.sailing || !this.controller) return;
+    const spot = bridge.shoreAt;
+    if (!spot) return;
 
     const boat = this.layout.rowboat;
-    const to = BOAT_MOORINGS[shore];
-    const landing = BOAT_LANDINGS[shore];
-    const player = this.player;
+    this.sailing = false;
+    bridge.sailing = false;
+    bridge.shoreAt = null;
+    boat.setAngle(0);
+    this.rowboatBaseY = boat.y;
+    // Which side of the channel she is moored on only matters for flavour
+    // now, but the mirror keeps it truthful.
+    bridge.boatAt = {
+      x: boat.x,
+      y: boat.y,
+      shore: boat.x < 52 * TILE ? 'west' : 'east',
+    };
 
-    this.crossing = true;
-    this.controller.frozen = true;
-
-    // Bow to the heading: the ship is painted facing east, and sails home
-    // mirrored. She keeps whichever way she faced when she moored.
-    boat.setFlipX(shore === 'west');
-    audio.creak();
-
-    // A wash every beat: the water sound and a wake ring shed off the stern.
-    const BEAT_MS = 1150;
+    this.controller.placeAt(spot.x, spot.y);
+    this.controller.frozen = false;
+    this.dog?.place(spot.x + 26, spot.y + 20);
     audio.row();
-    const wake = this.time.addEvent({
-      delay: BEAT_MS,
-      loop: true,
-      callback: () => {
-        audio.row();
-        const behind = shore === 'east' ? -70 : 70;
-        const ring = this.add
-          .ellipse(boat.x + behind, boat.y - 4, 12, 7)
-          .setStrokeStyle(2.5, 0xd6ecf6, 0.7)
-          .setDepth(boat.depth - 2);
-        this.tweens.add({
-          targets: ring,
-          scaleX: 3.2,
-          scaleY: 2.6,
-          alpha: 0,
-          duration: 1100,
-          ease: 'Quad.easeOut',
-          onComplete: () => ring.destroy(),
-        });
-      },
-    });
+  }
 
-    this.tweens.add({
-      targets: boat,
-      x: to.x * TILE + TILE / 2,
-      y: to.y * TILE + TILE / 2,
-      duration: 2600,
-      ease: 'Sine.easeInOut',
-      onUpdate: () => {
-        // On deck amidships. The ship is anchored at her waterline, so the
-        // deck rail sits well above boat.y; she rolls gently about it.
-        player.setPosition(boat.x - 4, boat.y - 28);
-        player.setDepth(boat.depth + 1);
-        boat.setAngle(Math.sin(this.elapsed / 380) * 2);
-      },
-      onComplete: () => {
-        wake.remove(false);
-        boat.setAngle(0);
-        this.rowboatBaseY = boat.y;
-        bridge.boatAt = { x: boat.x, y: boat.y, shore };
+  /** Drives the ship from input, one frame. Only called while sailing. */
+  private updateHelm(deltaMs: number): void {
+    const boat = this.layout.rowboat;
+    const player = this.player;
+    if (!player) return;
+    const dt = deltaMs / 1000;
 
-        const lx = landing.x * TILE + TILE / 2;
-        const ly = landing.y * TILE + TILE / 2;
-        this.controller?.placeAt(lx, ly);
-        this.dog?.place(lx + 26, ly + 22);
-        if (this.controller) this.controller.frozen = false;
-        this.crossing = false;
-        if (shore === 'east') bridge.toast('info', 'The Far Shore.');
-      },
-    });
+    // Stick first, keys override — the same order the controller uses.
+    let ix = 0;
+    let iy = 0;
+    if (!bridge.openModal) {
+      ix = bridge.input.moveX;
+      iy = bridge.input.moveY;
+      const k = this.helmKeys;
+      if (k) {
+        let kx = 0;
+        let ky = 0;
+        if (k.A.isDown || k.LEFT.isDown) kx -= 1;
+        if (k.D.isDown || k.RIGHT.isDown) kx += 1;
+        if (k.W.isDown || k.UP.isDown) ky -= 1;
+        if (k.S.isDown || k.DOWN.isDown) ky += 1;
+        if (kx !== 0 || ky !== 0) {
+          ix = kx;
+          iy = ky;
+        }
+      }
+    }
+    const mag = Math.hypot(ix, iy);
+    if (mag > 1) {
+      ix /= mag;
+      iy /= mag;
+    }
+
+    // Inertia: she leans toward the ordered speed rather than snapping to
+    // it. A ship that stops like a character stops feels like a costume.
+    const MAX = 190;
+    const blend = 1 - Math.pow(0.001, dt);
+    this.shipVel.x += (ix * MAX - this.shipVel.x) * blend;
+    this.shipVel.y += (iy * MAX - this.shipVel.y) * blend;
+
+    // Water only, axis by axis so she slides along the shore, never onto it.
+    const floats = (px: number, py: number): boolean => {
+      const tx = Math.floor(px / TILE);
+      const ty = Math.floor(py / TILE);
+      if (tx < 1 || ty < 1 || tx >= WORLD.w - 1 || ty >= WORLD.h - 1) return false;
+      return this.map.isWater(tx, ty);
+    };
+    let nx = boat.x + this.shipVel.x * dt;
+    let ny = boat.y + this.shipVel.y * dt;
+    if (!floats(nx, boat.y)) {
+      nx = boat.x;
+      this.shipVel.x = 0;
+    }
+    if (!floats(nx, ny)) {
+      ny = boat.y;
+      this.shipVel.y = 0;
+    }
+    boat.setPosition(nx, ny);
+    boat.setDepth(ny);
+
+    const speed = Math.hypot(this.shipVel.x, this.shipVel.y);
+    if (Math.abs(this.shipVel.x) > 18) boat.setFlipX(this.shipVel.x < 0);
+    boat.setAngle(Math.sin(this.elapsed / 380) * (speed > 40 ? 2 : 0.8));
+
+    // The player stands the deck; the rail sits well above the waterline.
+    player.setPosition(boat.x - 4, boat.y - 28);
+    player.setDepth(ny + 1);
+
+    // Wake and water sounds only when she is actually making way.
+    if (speed > 55 && this.elapsed - this.lastWakeAt > 640) {
+      this.lastWakeAt = this.elapsed;
+      if (this.wakeCount++ % 2 === 0) audio.row();
+      const back =
+        speed > 0 ? { x: -this.shipVel.x / speed, y: -this.shipVel.y / speed } : { x: 0, y: 0 };
+      const ring = this.add
+        .ellipse(boat.x + back.x * 70, boat.y - 4 + back.y * 30, 12, 7)
+        .setStrokeStyle(2.5, 0xd6ecf6, 0.7)
+        .setDepth(ny - 2);
+      this.tweens.add({
+        targets: ring,
+        scaleX: 3.2,
+        scaleY: 2.6,
+        alpha: 0,
+        duration: 1100,
+        ease: 'Quad.easeOut',
+        onComplete: () => ring.destroy(),
+      });
+    }
+
+    // Can we land here? Scanned every frame; the action button reads it.
+    bridge.shoreAt = this.findShore(boat.x, boat.y);
+    bridge.boatAt = { x: boat.x, y: boat.y, shore: boat.x < 52 * TILE ? 'west' : 'east' };
+  }
+
+  /**
+   * Nearest ground a person could actually stand on, within a stride of the
+   * ship: land or dock planks, never open water, never a building's box.
+   */
+  private findShore(px: number, py: number): { x: number; y: number } | null {
+    const ctx = Math.floor(px / TILE);
+    const cty = Math.floor(py / TILE);
+    let best: { x: number; y: number } | null = null;
+    let bestDist = 150;
+
+    for (let ty = cty - 2; ty <= cty + 2; ty++) {
+      for (let tx = ctx - 2; tx <= ctx + 2; tx++) {
+        if (tx < 1 || ty < 1 || tx >= WORLD.w - 1 || ty >= WORLD.h - 1) continue;
+        const cx = tx * TILE + TILE / 2;
+        const cy = ty * TILE + TILE / 2;
+        if (this.collision.blocked(cx, cy)) continue;
+        const d = Math.hypot(cx - px, cy - py);
+        if (d < bestDist) {
+          bestDist = d;
+          best = { x: cx, y: cy };
+        }
+      }
+    }
+    return best;
   }
 
   /**
@@ -372,7 +470,7 @@ export class WorldScene extends Phaser.Scene {
   private delve(dir: 'in' | 'out'): void {
     // `frozen` doubles as the in-progress latch: a second press during the
     // fade would queue a duplicate teleport onto the same completion event.
-    if (!this.controller || this.crossing || this.controller.frozen) return;
+    if (!this.controller || this.controller.frozen) return;
 
     const to = dir === 'in' ? CAVE_ENTRY : CAVE_EXIT;
     const cam = this.cameras.main;
@@ -494,7 +592,9 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.layout.windmillBlades.rotation += (BLADE_SPEED * delta) / 1000;
-    if (!this.crossing) {
+    if (this.sailing) {
+      if (bridge.started) this.updateHelm(delta);
+    } else {
       this.layout.rowboat.y = this.rowboatBaseY + Math.sin(this.elapsed / 620) * 3;
       this.layout.rowboat.rotation = Math.sin(this.elapsed / 900) * 0.05;
     }

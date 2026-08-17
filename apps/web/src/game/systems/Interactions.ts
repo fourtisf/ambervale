@@ -93,6 +93,17 @@ export class Interactions {
     const farm = bridge.farm;
     if (!farm || !bridge.started) return null;
 
+    // At the helm, the world narrows to one question: can you land here?
+    // The scene scans the shoreline each frame and mirrors the answer.
+    if (bridge.sailing) {
+      return {
+        kind: 'row',
+        label: bridge.shoreAt ? 'Step ashore' : 'Open water',
+        target: 'ashore',
+        enabled: bridge.shoreAt !== null,
+      };
+    }
+
     const reach = PLAYER.reach;
     const candidates: { interaction: Interaction; distance: number }[] = [];
 
@@ -323,9 +334,10 @@ export class Interactions {
       CAVE_LADDER.y * TILE + TILE,
     );
 
-    // The rowboat, wherever it is moored. Its own reach, wider than an arm's
-    // length: the boat is moored a stride off the shore, and a boat you can
-    // see but not board reads as broken.
+    // The ship, wherever she was last moored. Her own reach, wider than an
+    // arm's length: she floats a stride off the shore, and a ship you can
+    // see but not board reads as broken. Boarding takes the helm — from
+    // there the player steers her themselves.
     const boat = bridge.boatAt ?? {
       x: BOAT_MOORINGS.west.x * TILE + TILE / 2,
       y: BOAT_MOORINGS.west.y * TILE + TILE / 2,
@@ -334,12 +346,7 @@ export class Interactions {
     const boatDistance = this.player.distanceTo(boat.x, boat.y);
     if (boatDistance <= 150) {
       candidates.push({
-        interaction: {
-          kind: 'row',
-          label: boat.shore === 'west' ? 'Sail to the Far Shore' : 'Sail home',
-          target: boat.shore === 'west' ? 'east' : 'west',
-          enabled: true,
-        },
+        interaction: { kind: 'row', label: 'Board the ship', target: 'board', enabled: true },
         distance: boatDistance,
       });
     }
@@ -373,7 +380,7 @@ export class Interactions {
     if (interaction.kind === 'bag') return void bridge.emit('modal', 'bag');
     if (interaction.kind === 'sleep') return void bridge.emit('sleep', undefined);
     if (interaction.kind === 'row') {
-      return void bridge.emit('row', interaction.target as 'east' | 'west');
+      return void bridge.emit('row', interaction.target as 'board' | 'ashore');
     }
     if (interaction.kind === 'delve') {
       return void bridge.emit('delve', interaction.target as 'in' | 'out');

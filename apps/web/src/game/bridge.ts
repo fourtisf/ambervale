@@ -72,8 +72,8 @@ export interface BridgeEvents {
   modal: string | null;
   /** The player slept at the house; the world skips its clock to dawn. */
   sleep: void;
-  /** The player took the rowboat; the world plays the crossing. */
-  row: 'east' | 'west';
+  /** The player boarded the ship, or stepped off it onto the shore. */
+  row: 'board' | 'ashore';
   /** The player stepped through the Amber Deep's mouth, or climbed out. */
   delve: 'in' | 'out';
   /** The player petted the dog; she reacts. */
@@ -163,6 +163,16 @@ class GameBridge {
   /** Where the dog is, mirrored each frame like playerAt. */
   dogAt: { x: number; y: number } | null = null;
 
+  /** True while the player holds the ship's helm. */
+  sailing = false;
+
+  /**
+   * The nearest walkable ground the ship could put the player ashore on,
+   * scanned each frame while sailing. Null in open water — which is exactly
+   * when the action button should say so and refuse.
+   */
+  shoreAt: { x: number; y: number } | null = null;
+
   on<K extends keyof BridgeEvents>(event: K, handler: Handler<K>): () => void {
     let set = this.handlers.get(event);
     if (!set) {
@@ -201,6 +211,8 @@ class GameBridge {
     this.spectator = false;
     this.boatAt = null;
     this.dogAt = null;
+    this.sailing = false;
+    this.shoreAt = null;
     this.interaction = null;
     this.openModal = null;
     this.gated = false;
