@@ -15,7 +15,12 @@
 export const TILE = 64;
 
 /** World size in tiles. */
-export const WORLD = { w: 56, h: 44 } as const;
+/**
+ * 84 wide since the Far Shore: columns 0–51 are the home vale, a water
+ * channel runs roughly 52–60, and the island lies beyond it — reachable only
+ * by the rowboat, which is the point of it.
+ */
+export const WORLD = { w: 84, h: 44 } as const;
 
 /** Player movement tuning. `reach` is the interaction radius in pixels. */
 /**
@@ -166,8 +171,8 @@ export interface RockDef extends NodeDefBase {
 }
 
 export const NODES: { oak: OakDef; rock: RockDef } = {
-  oak: { hits: 3, yield: { wood: 3 }, xpOnFell: 12, respawnSec: 90, count: 10 },
-  rock: { hits: 3, yield: { stone: 2 }, xpOnBreak: 14, respawnSec: 120, count: 8 },
+  oak: { hits: 3, yield: { wood: 3 }, xpOnFell: 12, respawnSec: 90, count: 14 },
+  rock: { hits: 3, yield: { stone: 2 }, xpOnBreak: 14, respawnSec: 120, count: 12 },
 };
 
 export const NODE_KEYS = Object.keys(NODES) as NodeKey[];
@@ -267,15 +272,33 @@ export const EXPANSION_EAST = {
   unlockLv: 7,
 } as const;
 
-export type ExpansionZone = 'north' | 'east';
+/**
+ * The island field, across the water. The last and largest land purchase:
+ * everything about it — the price, the level, the boat ride to reach it —
+ * says late-game. Requires the east meadow so the chain stays one line.
+ */
+export const EXPANSION_ISLE = {
+  coins: 8000,
+  wood: 100,
+  stone: 70,
+  amber: 8,
+  plotsAdded: 6,
+  xp: 500,
+  /** Requires the east meadow first. */
+  requiresEast: true,
+  unlockLv: 8,
+} as const;
+
+export type ExpansionZone = 'north' | 'east' | 'isle';
 
 export const EXPANSIONS = {
   north: EXPANSION_NORTH,
   east: EXPANSION_EAST,
+  isle: EXPANSION_ISLE,
 } as const;
 
 export const isExpansionZone = (key: string): key is ExpansionZone =>
-  key === 'north' || key === 'east';
+  key === 'north' || key === 'east' || key === 'isle';
 
 // ---------------------------------------------------------------------------
 // New accounts

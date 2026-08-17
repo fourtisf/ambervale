@@ -160,6 +160,30 @@ export async function bootstrapFarm(userId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /**
+ * Backfills world rows the config has grown since this farm was seeded.
+ *
+ * bootstrapFarm runs exactly once per account, so a plot or node added to
+ * game-config later — the Far Shore's stands, the island field — would exist
+ * for new players and silently not for old ones. createMany with
+ * skipDuplicates makes this an idempotent no-op on farms that are current.
+ */
+export async function ensureWorldRows(tx: Prisma.TransactionClient, userId: string): Promise<void> {
+  await tx.plot.createMany({
+    data: PLOTS.map((p) => ({ userId, index: p.index, zone: p.zone })),
+    skipDuplicates: true,
+  });
+  await tx.resourceNode.createMany({
+    data: NODE_SLOTS.map((n) => ({
+      userId,
+      index: n.index,
+      kind: n.kind,
+      hp: NODES[n.kind].hits,
+    })),
+    skipDuplicates: true,
+  });
+}
+
+/**
  * Restores nodes whose respawn time has passed.
  *
  * Respawns are computed on read rather than on a timer: with no scheduler,
@@ -253,7 +277,12 @@ export async function repairPlots(
     const crow = crowState(now, readyAt, plot.guardedUntil?.getTime() ?? null, scarecrowMs);
     if (!crow.ruined) continue;
 
-    if (awaySince !== null && crow.ruinsAt !== null && crow.ruinsAt > awaySince && readyAt !== null) {
+    if (
+      awaySince !== null &&
+      crow.ruinsAt !== null &&
+      crow.ruinsAt > awaySince &&
+      readyAt !== null
+    ) {
       // Shift plantedAt so readyAt lands at "now": every stored offset (water
       // cut, fast flag) rides along, and crowState starts its grace afresh.
       await tx.plot.update({
@@ -333,7 +362,7 @@ export interface FarmState {
     firstPlantDone: boolean;
     counters: Record<string, number>;
   };
-  expansion: { north: boolean; east: boolean };
+  expansion: { north: boolean; east: boolean; isle: boolean };
   /** Landmarks this player has built. Position comes from BUILDS by key. */
   builds: { key: string; builtAt: number }[];
   plots: FarmPlotDto[];
@@ -607,7 +636,11 @@ export async function getFarmState(
       },
     },
     homesteadTier: user.homesteadTier,
-    expansion: { north: expansion?.north ?? false, east: expansion?.east ?? false },
+    expansion: {
+      north: expansion?.north ?? false,
+      east: expansion?.east ?? false,
+      isle: expansion?.isle ?? false,
+    },
     plots: plots.map((p) => plotToDto(p, effects.growth, effects.scarecrowMs)),
     prices,
     builds: builds.map((b: { key: string; builtAt: Date }) => ({

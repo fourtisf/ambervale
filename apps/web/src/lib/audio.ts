@@ -210,6 +210,13 @@ class Synth {
     this.note(760, 0.05, { wave: 'square', gain: 0.1, delay: 0.07 });
   }
 
+  /** An oar stroke: the dip, the pull, the drip off the blade. */
+  row(): void {
+    this.noise(0.18, 600, 0.2);
+    this.note(140, 0.24, { wave: 'sine', gain: 0.12, sweepTo: 100, detune: 0.05 });
+    this.noise(0.08, 1400, 0.08, 0.3);
+  }
+
   /** Two quick yips — small dog, big opinion. */
   bark(): void {
     this.noise(0.05, 900, 0.16);

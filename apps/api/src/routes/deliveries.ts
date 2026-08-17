@@ -187,10 +187,13 @@ export async function deliveryRoutes(app: FastifyInstance): Promise<void> {
         throw conflict('ALREADY_EXPANDED', `The ${zone} meadow is already yours.`);
       }
 
-      // The east meadow is the second purchase, not an alternative to the
-      // first: buying it out of order would leave a gap in the map.
+      // The meadows are a chain, not a menu: north, then east, then the
+      // island. Buying out of order would leave a gap in the map.
       if ('requiresNorth' in def && def.requiresNorth && !expansion?.north) {
         throw conflict('PLOT_LOCKED', 'Claim the north meadow first.');
+      }
+      if ('requiresEast' in def && def.requiresEast && !expansion?.east) {
+        throw conflict('PLOT_LOCKED', 'Claim the east meadow first.');
       }
 
       const fresh = await tx.user.findUniqueOrThrow({ where: { id: user.id } });

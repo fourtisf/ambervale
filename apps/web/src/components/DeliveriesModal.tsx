@@ -267,9 +267,13 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
   useEffect(() => bridge.on('farm', setFarm), []);
   if (!farm) return null;
 
-  // The two meadows are bought in order, so the sheet always shows the next
+  // The meadows are bought in order, so the sheet always shows the next
   // one rather than making the player choose between a gate and a purchase.
-  const zone: ExpansionZone = farm.expansion['north'] ? 'east' : 'north';
+  const zone: ExpansionZone = !farm.expansion['north']
+    ? 'north'
+    : !farm.expansion['east']
+      ? 'east'
+      : 'isle';
   const def = EXPANSIONS[zone];
   const owned = farm.expansion[zone] === true;
   const amberNeeded = 'amber' in def ? def.amber : 0;
@@ -288,7 +292,12 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
     try {
       const r = await apiPost<DeliverReply>('/act/expand', { zone });
       commit(r);
-      bridge.toast('good', `The ${zone} meadow is yours — ${def.plotsAdded} new plots.`);
+      bridge.toast(
+        'good',
+        zone === 'isle'
+          ? `The island field is yours — ${def.plotsAdded} plots across the water.`
+          : `The ${zone} meadow is yours — ${def.plotsAdded} new plots.`,
+      );
       onClose();
     } catch (err) {
       audio.error();
@@ -299,13 +308,20 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal title={zone === 'north' ? 'North meadow' : 'East meadow'} onClose={onClose}>
+    <Modal
+      title={
+        zone === 'north' ? 'North meadow' : zone === 'east' ? 'East meadow' : 'The island field'
+      }
+      onClose={onClose}
+    >
       {owned ? (
-        <p className="empty">Every meadow in the vale is already yours.</p>
+        <p className="empty">Every meadow in the vale is already yours, the island included.</p>
       ) : (
         <>
           <p className="lead">
-            Clear the {zone} meadow for {def.plotsAdded} more plots and {def.xp} XP.
+            {zone === 'isle'
+              ? `Clear the field on the Far Shore for ${def.plotsAdded} plots and ${def.xp} XP. Out across the water — the rowboat is the only way to reach the harvest.`
+              : `Clear the ${zone} meadow for ${def.plotsAdded} more plots and ${def.xp} XP.`}
           </p>
           <ul className="cost">
             {cost.map((c) => (
@@ -326,7 +342,9 @@ export function ExpandModal({ onClose }: { onClose: () => void }) {
               ? `Opens at level ${'unlockLv' in def ? def.unlockLv : ''}`
               : busy
                 ? 'Clearing…'
-                : 'Claim the meadow'}
+                : zone === 'isle'
+                  ? 'Claim the island field'
+                  : 'Claim the meadow'}
           </button>
         </>
       )}

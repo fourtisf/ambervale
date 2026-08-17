@@ -139,8 +139,25 @@ export class PlayerController {
     return this.baseY;
   }
 
+  /**
+   * While true, input is ignored entirely — the world is carrying the player
+   * (the boat crossing). Kept out of `bridge.openModal` because no modal is
+   * up; the sky and water should keep animating around the trip.
+   */
+  frozen = false;
+
+  /** Sets the player down somewhere, feet first. Used when the boat lands. */
+  placeAt(x: number, y: number): void {
+    this.walkTarget = null;
+    this.sprite.setPosition(x, y);
+    this.baseY = y;
+    this.sprite.setDepth(y);
+    this.light?.setPosition(x, y - 16);
+  }
+
   update(deltaMs: number): void {
     if (!bridge.started) return;
+    if (this.frozen) return;
 
     const dt = deltaMs / 1000;
     let vx = 0;

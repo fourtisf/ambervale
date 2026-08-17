@@ -6,7 +6,9 @@
  */
 
 import {
+  CHANNEL,
   DOCK_PLANKS,
+  FAR_PLANKS,
   PATHS,
   PATH_RADIUS,
   STRUCTURES,
@@ -85,6 +87,20 @@ function waterField(body: WaterBody, tx: number, ty: number, noise: ValueNoise):
   return (r - d) / r;
 }
 
+/**
+ * The channel to the Far Shore: > 0 inside, 1 at the centreline. Both banks
+ * wander with noise sampled on y alone, so each shoreline is a coherent curve
+ * rather than per-tile fringe. The band spans the full map height — the water
+ * is what makes the island an island.
+ */
+function channelField(tx: number, ty: number, noise: ValueNoise): number {
+  const mid = (CHANNEL.x0 + CHANNEL.x1) / 2;
+  const half = (CHANNEL.x1 - CHANNEL.x0) / 2;
+  const drift = (noise.fbm(3.7, ty * 0.11, 3) - 0.5) * 2 * CHANNEL.wobble;
+  const width = half + (noise.fbm(9.2, ty * 0.09, 3) - 0.5) * CHANNEL.wobble;
+  return (width - Math.abs(tx - (mid + drift))) / Math.max(width, 0.001);
+}
+
 export function generateWorld(): WorldMap {
   const { w, h } = WORLD;
   const rng = mulberry32(WORLD_SEED);
@@ -105,7 +121,8 @@ export function generateWorld(): WorldMap {
 
       const lake = waterField(WATER.lake, tx, ty, noise);
       const pond = waterField(WATER.pond, tx, ty, noise);
-      const water = Math.max(lake, pond);
+      const channel = channelField(tx, ty, noise);
+      const water = Math.max(lake, pond, channel);
 
       if (water > 0) {
         tiles[i] = Tile.Water;
@@ -167,7 +184,7 @@ export interface Collision {
  * per axis and slide along walls.
  */
 export function buildCollision(map: WorldMap): Collision {
-  const walkableWater = new Set(DOCK_PLANKS.map((p) => `${p.x},${p.y}`));
+  const walkableWater = new Set([...DOCK_PLANKS, ...FAR_PLANKS].map((p) => `${p.x},${p.y}`));
 
   const solids = STRUCTURES.filter((s) => s.solid).map((s) => {
     const solid = s.solid!;

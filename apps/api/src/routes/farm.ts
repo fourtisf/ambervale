@@ -24,6 +24,7 @@ import { ensureDaily } from '../services/daily';
 import { ensureDeliverySlots } from '../services/deliveries';
 import {
   bootstrapFarm,
+  ensureWorldRows,
   getFarmState,
   growMsFor,
   repairNodes,
@@ -47,6 +48,10 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
     // Lazy repair: node respawns and delivery refills are materialised when
     // someone looks, so no scheduler is needed for a farm left alone for days.
     const away = await prisma.$transaction(async (tx) => {
+      // World rows the config has grown since this account was seeded — the
+      // Far Shore's plots and stands appear here for pre-island farms.
+      await ensureWorldRows(tx, user.id);
+
       // Crops are counted before the repairs, but from timestamps, so ordering
       // does not matter — what matters is that a crop which came ready during
       // the gap is counted even though nobody was there to see it.

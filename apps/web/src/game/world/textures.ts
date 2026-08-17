@@ -880,6 +880,56 @@ const dogSit: Painter = (g, s) => {
   g.fillCircle(22.4 * s, 7 * s, 1.5 * s);
 };
 
+/**
+ * The Amber Deep's mouth: a rocky hillock with a timber-propped opening, the
+ * dark of it warmed by a faint amber glow from below. It sits on the Far
+ * Shore as the island's landmark — the thing you can see from the boat and
+ * want to walk to.
+ */
+const cave: Painter = (g, s) => {
+  shadow(g, s, 75, 102, 52);
+
+  // The hillock, two masses of grey rock with a mossy crown.
+  g.fillStyle(0x6d7466, 1);
+  g.fillEllipse(75 * s, 62 * s, 132 * s, 84 * s);
+  g.fillStyle(0x7c8474, 1);
+  g.fillEllipse(58 * s, 48 * s, 84 * s, 58 * s);
+  g.fillStyle(0x5c6356, 1);
+  g.fillEllipse(104 * s, 66 * s, 62 * s, 52 * s);
+  // moss
+  g.fillStyle(0x5c8a4e, 1);
+  g.fillEllipse(70 * s, 28 * s, 74 * s, 26 * s);
+  g.fillEllipse(102 * s, 38 * s, 40 * s, 16 * s);
+
+  // Face around the mouth, darker so the opening reads as depth not paint.
+  g.fillStyle(0x4c5246, 1);
+  g.fillEllipse(75 * s, 78 * s, 66 * s, 52 * s);
+
+  // The mouth itself — near-black arch, amber breathing at its floor.
+  g.fillStyle(0x14100e, 1);
+  g.fillRoundedRect(57 * s, 58 * s, 36 * s, 46 * s, { tl: 18 * s, tr: 18 * s, bl: 0, br: 0 });
+  g.fillStyle(0xf4b942, 0.22);
+  g.fillEllipse(75 * s, 100 * s, 26 * s, 10 * s);
+  g.fillStyle(0xf4b942, 0.5);
+  g.fillCircle(70 * s, 96 * s, 1.6 * s);
+  g.fillCircle(80 * s, 92 * s, 1.3 * s);
+
+  // Timber props: two posts and a lintel, the promise that people work here.
+  g.fillStyle(0x6b4a2a, 1);
+  g.fillRect(53 * s, 58 * s, 6 * s, 46 * s);
+  g.fillRect(91 * s, 58 * s, 6 * s, 46 * s);
+  g.fillRect(49 * s, 52 * s, 52 * s, 8 * s);
+  g.fillStyle(0x54371d, 1);
+  g.fillRect(49 * s, 58 * s, 52 * s, 2 * s);
+
+  // Scree at the entrance.
+  g.fillStyle(0x8a8f98, 1);
+  g.fillEllipse(46 * s, 102 * s, 14 * s, 8 * s);
+  g.fillEllipse(104 * s, 104 * s, 18 * s, 9 * s);
+  g.fillStyle(0x777c85, 1);
+  g.fillEllipse(112 * s, 100 * s, 10 * s, 6 * s);
+};
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -1306,6 +1356,7 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'dockPlank', w: 64, h: 40, paint: dockPlank },
   { key: 'rowboat', w: 72, h: 40, paint: rowboat },
   { key: 'sign', w: 64, h: 58, paint: sign },
+  { key: 'cave', w: 150, h: 110, paint: cave },
   { key: 'lamp', w: 28, h: 62, paint: lamp },
   { key: 'fenceH', w: 64, h: 28, paint: fenceH },
   { key: 'fenceV', w: 28, h: 64, paint: fenceV },

@@ -8,7 +8,15 @@
  * Screen-space HUD lives in HudScene; panels and modals are React.
  */
 
-import { SPAWN, TILE, WORLD, baseZoom, structureAt } from '@ambervale/game-config';
+import {
+  BOAT_LANDINGS,
+  BOAT_MOORINGS,
+  SPAWN,
+  TILE,
+  WORLD,
+  baseZoom,
+  structureAt,
+} from '@ambervale/game-config';
 import * as Phaser from 'phaser';
 import type { FarmState } from '@/lib/api';
 import { bridge } from '../bridge';
@@ -77,6 +85,8 @@ export class WorldScene extends Phaser.Scene {
   private peekDeadline = 0;
   /** Whether the camera is currently locked to the player. */
   private followingPlayer = false;
+  /** True while the rowboat is carrying the player across the channel. */
+  private crossing = false;
 
   private debugMode = false;
   private debugCam = { x: SPAWN.x * TILE, y: SPAWN.y * TILE };
@@ -139,7 +149,20 @@ export class WorldScene extends Phaser.Scene {
     if (bridge.farm) this.applyFarm(bridge.farm);
     this.unsubscribe.push(bridge.on('farm', (state) => this.applyFarm(state)));
     this.unsubscribe.push(bridge.on('start', () => this.beginPlay()));
+    // Start may already have been pressed — sprite baking takes real seconds
+    // on a slow device, and a press that lands mid-boot was emitted into a
+    // room this scene had not entered yet. Without this catch-up the player
+    // stays invisible and the camera never attaches, for the whole session.
+    if (bridge.started) this.beginPlay();
     this.unsubscribe.push(bridge.on('sleep', () => this.sleep()));
+    this.unsubscribe.push(bridge.on('row', (shore) => this.rowAcross(shore)));
+
+    // The boat starts on the home shore; the interaction scan reads this.
+    bridge.boatAt = {
+      x: this.layout.rowboat.x,
+      y: this.layout.rowboat.y,
+      shore: 'west',
+    };
 
     this.scene.launch('HudScene', { map: this.map });
     bridge.emit('worldReady', undefined);
@@ -205,6 +228,7 @@ export class WorldScene extends Phaser.Scene {
     // Each zone's dashed outlines disappear the moment that zone is bought.
     this.layout.ghostPlots['north']?.setVisible(!state.expansion.north);
     this.layout.ghostPlots['east']?.setVisible(!state.expansion.east);
+    this.layout.ghostPlots['isle']?.setVisible(!state.expansion.isle);
 
     // The Homestead: the house sprite follows the tier. Same image object, so
     // occlusion and depth carry over; only the texture (and thus size) change.
@@ -246,6 +270,56 @@ export class WorldScene extends Phaser.Scene {
     cam.fadeOut(320, 5, 12, 20);
     cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => cam.fadeIn(520, 5, 12, 20));
     bridge.toast('info', 'You sleep until sunrise. The farm kept its own time.');
+  }
+
+  /**
+   * The boat crossing. Pure traversal — no request, no server state. The
+   * controller is frozen while the water has the player, the boat is tweened
+   * to the other mooring with the player seated in it, and the camera simply
+   * follows the player as it always does. The boat stays where it lands, so
+   * the way back starts from the far side, like a real boat.
+   */
+  private rowAcross(shore: 'east' | 'west'): void {
+    if (this.crossing || !this.player || !this.controller) return;
+    if (bridge.boatAt && bridge.boatAt.shore === shore) return; // already there
+
+    const boat = this.layout.rowboat;
+    const to = BOAT_MOORINGS[shore];
+    const landing = BOAT_LANDINGS[shore];
+    const player = this.player;
+
+    this.crossing = true;
+    this.controller.frozen = true;
+    audio.row();
+    const midSplash = this.time.delayedCall(1300, () => audio.row());
+
+    this.tweens.add({
+      targets: boat,
+      x: to.x * TILE + TILE / 2,
+      y: to.y * TILE + TILE / 2,
+      duration: 2600,
+      ease: 'Sine.easeInOut',
+      onUpdate: () => {
+        // Seated in the stern, rocking with the stroke.
+        player.setPosition(boat.x, boat.y + 6);
+        player.setDepth(boat.y + 1);
+        boat.setAngle(Math.sin(this.elapsed / 240) * 3);
+      },
+      onComplete: () => {
+        midSplash.remove(false);
+        boat.setAngle(0);
+        this.rowboatBaseY = boat.y;
+        bridge.boatAt = { x: boat.x, y: boat.y, shore };
+
+        const lx = landing.x * TILE + TILE / 2;
+        const ly = landing.y * TILE + TILE / 2;
+        this.controller?.placeAt(lx, ly);
+        this.dog?.place(lx + 26, ly + 22);
+        if (this.controller) this.controller.frozen = false;
+        this.crossing = false;
+        if (shore === 'east') bridge.toast('info', 'The Far Shore.');
+      },
+    });
   }
 
   /** Locks the camera back onto the player. */
@@ -350,8 +424,10 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.layout.windmillBlades.rotation += (BLADE_SPEED * delta) / 1000;
-    this.layout.rowboat.y = this.rowboatBaseY + Math.sin(this.elapsed / 620) * 3;
-    this.layout.rowboat.rotation = Math.sin(this.elapsed / 900) * 0.05;
+    if (!this.crossing) {
+      this.layout.rowboat.y = this.rowboatBaseY + Math.sin(this.elapsed / 620) * 3;
+      this.layout.rowboat.rotation = Math.sin(this.elapsed / 900) * 0.05;
+    }
 
     if (this.debugMode) this.updateDebugCamera(delta);
     else this.cine?.update(delta);

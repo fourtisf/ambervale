@@ -143,10 +143,17 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
-      if (plot.zone === 'north') {
+      // Any zone beyond the base field must actually be owned. Checked by
+      // zone name rather than a hand-kept list, so a new zone cannot be
+      // forgotten here and ship plantable-before-purchase (the east meadow
+      // shipped exactly that way).
+      if (plot.zone !== 'base') {
         const expansion = await tx.expansion.findUnique({ where: { userId: user.id } });
-        if (!expansion?.north) {
-          throw conflict('PLOT_LOCKED', 'The north meadow is not yours yet.');
+        const owned =
+          expansion !== null &&
+          (expansion as unknown as Record<string, unknown>)[plot.zone] === true;
+        if (!owned) {
+          throw conflict('PLOT_LOCKED', 'That ground is not yours yet.');
         }
       }
 

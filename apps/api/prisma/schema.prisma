@@ -350,6 +350,8 @@ model Expansion {
 
   north Boolean @default(false)
   east  Boolean @default(false)
+  /// The island field on the Far Shore, third and last in the chain.
+  isle  Boolean @default(false)
 
   updatedAt DateTime @updatedAt
 }

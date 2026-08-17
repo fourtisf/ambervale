@@ -58,6 +58,31 @@ export const WATER: { lake: WaterBody; pond: WaterBody } = {
   pond: { cx: 24, cy: 37, r: 4, wobble: 1.1 },
 };
 
+/**
+ * The channel: a north–south band of water separating the home vale from the
+ * Far Shore. It merges with the lake (the lake's east rim reaches past x=52),
+ * so from the dock the whole thing reads as one body of water with land on
+ * the other side. Every tile in the band is water for the full height of the
+ * map — the island must not be reachable on foot, or the boat is scenery.
+ */
+export const CHANNEL = { x0: 52, x1: 60, wobble: 1.6 } as const;
+
+/**
+ * The rowboat's two moorings. The boat itself lives wherever it was last
+ * rowed; these are the points it travels between, chosen to line up with the
+ * dock planks on each side.
+ */
+export const BOAT_MOORINGS = {
+  west: { x: 42, y: 15 },
+  east: { x: 60, y: 15 },
+} as const;
+
+/** Where the player steps ashore after each crossing. */
+export const BOAT_LANDINGS = {
+  west: { x: 40.5, y: 15 },
+  east: { x: 62, y: 15 },
+} as const;
+
 // ---------------------------------------------------------------------------
 // Paths
 // ---------------------------------------------------------------------------
@@ -116,7 +141,17 @@ export const PATHS: readonly (readonly TileVec[])[] = [
 // ---------------------------------------------------------------------------
 
 export type StructureKey =
-  'house' | 'barn' | 'windmill' | 'market' | 'board' | 'coop' | 'dock' | 'rowboat' | 'sign';
+  | 'house'
+  | 'barn'
+  | 'windmill'
+  | 'market'
+  | 'board'
+  | 'coop'
+  | 'dock'
+  | 'rowboat'
+  | 'sign'
+  | 'cave'
+  | 'isleSign';
 
 export interface Structure {
   key: StructureKey;
@@ -138,6 +173,10 @@ export const STRUCTURES: readonly Structure[] = [
   { key: 'dock', x: 39, y: 15 },
   { key: 'rowboat', x: 42, y: 15 },
   { key: 'sign', x: 19, y: 14 },
+  // The Far Shore. The cave mouth is the island's landmark, dark against the
+  // hillside; the sign names the island field the way the north sign does.
+  { key: 'cave', x: 75, y: 10, solid: { w: 4.2, h: 2.4 } },
+  { key: 'isleSign', x: 68, y: 18 },
 ];
 
 export const structureAt = (key: StructureKey): Structure => {
@@ -154,12 +193,22 @@ export const DOCK_PLANKS: readonly TileVec[] = [
   { x: 42, y: 15 },
 ];
 
+/** The Far Shore's landing stage, mirroring the home dock across the water. */
+export const FAR_PLANKS: readonly TileVec[] = [
+  { x: 58, y: 15 },
+  { x: 59, y: 15 },
+  { x: 60, y: 15 },
+  { x: 61, y: 15 },
+];
+
 /** Warm point lights that switch on at dusk. */
 export const LAMPS: readonly TileVec[] = [
   { x: 16, y: 19 },
   { x: 22, y: 19 },
   { x: 12, y: 24 },
   { x: 17, y: 28 },
+  // One on the far landing, so the island shows a light across the night water.
+  { x: 63, y: 14 },
 ];
 
 /** Windows that glow at night: [x, y, radius in tiles]. */
@@ -185,7 +234,7 @@ export const FENCES: readonly { x: number; y: number; w: number; h: number }[] =
 // Plots
 // ---------------------------------------------------------------------------
 
-export type PlotZone = 'base' | 'north' | 'east';
+export type PlotZone = 'base' | 'north' | 'east' | 'isle';
 
 export interface PlotSlot {
   index: number;
@@ -227,11 +276,21 @@ export const PLOTS: readonly PlotSlot[] = [
   { index: 18, zone: 'east', x: 25, y: 22 },
   { index: 19, zone: 'east', x: 27, y: 22 },
   { index: 20, zone: 'east', x: 29, y: 22 },
+
+  // The island field, on the Far Shore. Bought after the east meadow; a farm
+  // out here means a boat ride with the harvest, which is the romance of it.
+  { index: 21, zone: 'isle', x: 66, y: 20 },
+  { index: 22, zone: 'isle', x: 68, y: 20 },
+  { index: 23, zone: 'isle', x: 70, y: 20 },
+  { index: 24, zone: 'isle', x: 66, y: 22 },
+  { index: 25, zone: 'isle', x: 68, y: 22 },
+  { index: 26, zone: 'isle', x: 70, y: 22 },
 ];
 
 export const BASE_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'base').length;
 export const NORTH_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'north').length;
 export const EAST_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'east').length;
+export const ISLE_PLOT_COUNT = PLOTS.filter((p) => p.zone === 'isle').length;
 
 export const plotAt = (index: number): PlotSlot | undefined => PLOTS.find((p) => p.index === index);
 
@@ -273,6 +332,18 @@ export const NODE_SLOTS: readonly NodeSlot[] = [
   { index: 15, kind: 'rock', x: 29, y: 34 },
   { index: 16, kind: 'rock', x: 15, y: 7 },
   { index: 17, kind: 'rock', x: 48, y: 36 },
+
+  // The Far Shore's stands — wilder ground, so it carries more than its share
+  // of timber and stone. New accounts seed these rows like any other; older
+  // farms get them lazily backfilled the next time /farm is read.
+  { index: 18, kind: 'oak', x: 66, y: 8 },
+  { index: 19, kind: 'oak', x: 70, y: 26 },
+  { index: 20, kind: 'oak', x: 78, y: 20 },
+  { index: 21, kind: 'oak', x: 64, y: 34 },
+  { index: 22, kind: 'rock', x: 69, y: 12 },
+  { index: 23, kind: 'rock', x: 80, y: 14 },
+  { index: 24, kind: 'rock', x: 76, y: 31 },
+  { index: 25, kind: 'rock', x: 82, y: 37 },
 ];
 
 export const nodeSlotAt = (index: number): NodeSlot | undefined =>
@@ -309,6 +380,7 @@ export const LANDMARKS: readonly Landmark[] = [
   { key: 'board', label: 'Deliveries', color: 0xf4b942 },
   { key: 'coop', label: 'Coop', color: 0xe0a05a },
   { key: 'dock', label: 'Dock', color: 0x7ec8e3 },
+  { key: 'cave', label: 'Amber Deep', color: 0x8a76b8 },
 ];
 
 /** Minimap texture width in pixels; height follows the world aspect ratio. */

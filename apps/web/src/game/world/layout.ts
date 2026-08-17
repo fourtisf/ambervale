@@ -11,6 +11,7 @@ import {
   BUILDS,
   BUILD_KEYS,
   DOCK_PLANKS,
+  FAR_PLANKS,
   FENCES,
   LAMPS,
   PLOTS,
@@ -82,7 +83,7 @@ function drawGhostPlots(scene: Phaser.Scene, zone: string): Phaser.GameObjects.G
 
 export function buildLayout(scene: Phaser.Scene): LayoutRefs {
   // Dock planks lie flat on the water, below everything that stands on them.
-  for (const plank of DOCK_PLANKS) {
+  for (const plank of [...DOCK_PLANKS, ...FAR_PLANKS]) {
     scene.add
       .image(plank.x * TILE + TILE / 2, plank.y * TILE + TILE / 2, 'dockPlank')
       .setOrigin(0.5, 0.5)
@@ -111,6 +112,7 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
   const ghostPlots: Record<string, Phaser.GameObjects.Graphics> = {
     north: drawGhostPlots(scene, 'north'),
     east: drawGhostPlots(scene, 'east'),
+    isle: drawGhostPlots(scene, 'isle'),
   };
   const occluders: Phaser.GameObjects.Image[] = [];
 
@@ -129,7 +131,8 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
         .setPipeline('Light2D');
       continue;
     }
-    const img = place(scene, s.key, s.x, s.y);
+    // The island's signpost shares the sign texture; only the words differ.
+    const img = place(scene, s.key === 'isleSign' ? 'sign' : s.key, s.x, s.y);
     if (s.key === 'house') house = img;
     occluders.push(img);
   }
@@ -159,6 +162,18 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
     })
     .setOrigin(0.5, 0.5)
     .setDepth(sign.y * TILE + 1);
+
+  // And the island's, naming the field across the water.
+  const isleSign = structureAt('isleSign');
+  scene.add
+    .text(isleSign.x * TILE + TILE / 2, (isleSign.y - 0.42) * TILE, 'THE FAR SHORE', {
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#4d3521',
+    })
+    .setOrigin(0.5, 0.5)
+    .setDepth(isleSign.y * TILE + 1);
 
   return { windmillBlades, rowboat: rowboat!, ghostPlots, occluders, house: house! };
 }
@@ -191,11 +206,16 @@ export function buildScenery(
 
       // Keep the farm hub clear so the playable area stays readable.
       if (tx > 9 && tx < 30 && ty > 10 && ty < 30) continue;
+      // And the island field with its landing lane — the Far Shore is wilder
+      // everywhere except the pocket a farm goes.
+      if (tx > 63 && tx < 73 && ty > 13 && ty < 25) continue;
       if (clearing(tx, ty)) continue;
 
+      // Denser stands past the channel: nobody mows the Far Shore.
+      const isle = tx > 60;
       const roll = h01(tx, ty, 101);
-      if (roll < 0.035) placed.push(place(scene, 'pine', tx, ty));
-      else if (roll < 0.075) placed.push(place(scene, 'bush', tx, ty));
+      if (roll < (isle ? 0.075 : 0.035)) placed.push(place(scene, 'pine', tx, ty));
+      else if (roll < (isle ? 0.13 : 0.075)) placed.push(place(scene, 'bush', tx, ty));
     }
   }
 

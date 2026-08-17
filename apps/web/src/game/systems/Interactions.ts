@@ -9,6 +9,7 @@
 
 import {
   ANIMALS,
+  BOAT_MOORINGS,
   CROPS,
   PADDOCKS,
   PLAYER,
@@ -250,6 +251,28 @@ export class Interactions {
       house.y * TILE,
     );
 
+    // The rowboat, wherever it is moored. Crossing is traversal, not economy —
+    // no request is sent; the world scene plays the trip and owns the boat.
+    // Its own reach, wider than an arm's length: the boat is moored a stride
+    // off the shore, and a boat you can see but not board reads as broken.
+    const boat = bridge.boatAt ?? {
+      x: BOAT_MOORINGS.west.x * TILE + TILE / 2,
+      y: BOAT_MOORINGS.west.y * TILE + TILE / 2,
+      shore: 'west' as const,
+    };
+    const boatDistance = this.player.distanceTo(boat.x, boat.y);
+    if (boatDistance <= 150) {
+      candidates.push({
+        interaction: {
+          kind: 'row',
+          label: boat.shore === 'west' ? 'Row to the Far Shore' : 'Row home',
+          target: boat.shore === 'west' ? 'east' : 'west',
+          enabled: true,
+        },
+        distance: boatDistance,
+      });
+    }
+
     if (candidates.length === 0) return null;
     // Nearest wins, so standing between a plot and a tree does the obvious thing.
     candidates.sort((a, b) => a.distance - b.distance);
@@ -283,6 +306,9 @@ export class Interactions {
     if (interaction.kind === 'mill') return void bridge.emit('modal', 'mill');
     if (interaction.kind === 'bag') return void bridge.emit('modal', 'bag');
     if (interaction.kind === 'sleep') return void bridge.emit('sleep', undefined);
+    if (interaction.kind === 'row') {
+      return void bridge.emit('row', interaction.target as 'east' | 'west');
+    }
 
     this.busy = true;
     try {

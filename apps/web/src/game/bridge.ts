@@ -35,7 +35,8 @@ export interface Interaction {
     | 'fish'
     | 'mill'
     | 'bag'
-    | 'sleep';
+    | 'sleep'
+    | 'row';
   label: string;
   /** Plot/node index or ground-item id, whichever the action needs. */
   target: number | string;
@@ -69,6 +70,8 @@ export interface BridgeEvents {
   modal: string | null;
   /** The player slept at the house; the world skips its clock to dawn. */
   sleep: void;
+  /** The player took the rowboat; the world plays the crossing. */
+  row: 'east' | 'west';
   /** The invite gate is up; canvas-drawn HUD hides behind it. */
   gated: boolean;
   /**
@@ -134,6 +137,15 @@ class GameBridge {
    * second, which is the right granularity for "are you there yet".
    */
   playerAt: { x: number; y: number } | null = null;
+
+  /**
+   * Where the rowboat is moored, mirrored by the world whenever it moves.
+   *
+   * The boat lives on whichever shore it was last rowed to, and the "row"
+   * interaction has to stand where the boat actually is — so the scene owns
+   * the truth and mirrors it here for the interaction scan to read.
+   */
+  boatAt: { x: number; y: number; shore: 'west' | 'east' } | null = null;
 
   on<K extends keyof BridgeEvents>(event: K, handler: Handler<K>): () => void {
     let set = this.handlers.get(event);
