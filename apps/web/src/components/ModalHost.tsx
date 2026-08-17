@@ -15,6 +15,7 @@ import { TUTORIAL, TUTORIAL_DONE } from '@/game/tutorial';
 import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import BuildPanel from './BuildPanel';
+import ShopBanner from './ShopBanner';
 import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
 import { AwayModal, DailyModal, MillModal, UpgradesPanel } from './EconomyModals';
 import { LeaderboardModal, ValeFundPanel } from './SocialModals';
@@ -173,112 +174,122 @@ function MarketModal({ onClose, initialTab }: { onClose: () => void; initialTab?
         <BuildPanel />
       ) : tab === 'upgrades' ? (
         <>
+          <ShopBanner scene="upgrades" />
           <ValeFundPanel />
           <UpgradesPanel />
         </>
       ) : tab === 'buy' ? (
-        <ul className="rows">
-          {CROP_KEYS.map((key) => {
-            const crop = CROPS[key];
-            const locked = farm.user.level < crop.unlockLv;
-            return (
-              <li key={key} data-locked={locked}>
-                <div className="name">
-                  <b>{key}</b>
-                  <small>
-                    {locked
-                      ? `Unlocks at level ${crop.unlockLv}`
-                      : `${crop.seedCost} coins · grows ${Math.round(
-                          crop.growSec * farm.effects.growth,
-                        )}s · sells ${priceOf(key)}`}
-                  </small>
-                </div>
-                {/*
+        <>
+          <ShopBanner scene="buy" />
+          <ul className="rows">
+            {CROP_KEYS.map((key) => {
+              const crop = CROPS[key];
+              const locked = farm.user.level < crop.unlockLv;
+              return (
+                <li key={key} data-locked={locked}>
+                  <div className="name">
+                    <b>{key}</b>
+                    <small>
+                      {locked
+                        ? `Unlocks at level ${crop.unlockLv}`
+                        : `${crop.seedCost} coins · grows ${Math.round(
+                            crop.growSec * farm.effects.growth,
+                          )}s · sells ${priceOf(key)}`}
+                    </small>
+                  </div>
+                  {/*
                   The price is on the button, not only in the blurb above it.
                   "×5" alone asks the player to multiply in their head and then
                   compare against a purse that the modal is covering up — and
                   the only feedback for getting it wrong was a button that
                   would not press, with no reason given.
                 */}
-                <div className="actions">
-                  <span className="have">×{farm.seeds[key] ?? 0}</span>
-                  {([1, 5] as const).map((qty) => {
-                    const cost = crop.seedCost * qty;
-                    const tooPoor = farm.user.coins < cost;
-                    return (
-                      <button
-                        key={qty}
-                        type="button"
-                        className="buy"
-                        disabled={locked || busy || tooPoor}
-                        title={tooPoor ? `You have ${farm.user.coins} coins` : undefined}
-                        onClick={() => void buy(key, qty)}
-                      >
-                        <span className="qty">×{qty}</span>
-                        {!locked && <span className="cost">{cost}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="actions">
+                    <span className="have">×{farm.seeds[key] ?? 0}</span>
+                    {([1, 5] as const).map((qty) => {
+                      const cost = crop.seedCost * qty;
+                      const tooPoor = farm.user.coins < cost;
+                      return (
+                        <button
+                          key={qty}
+                          type="button"
+                          className="buy"
+                          disabled={locked || busy || tooPoor}
+                          title={tooPoor ? `You have ${farm.user.coins} coins` : undefined}
+                          onClick={() => void buy(key, qty)}
+                        >
+                          <span className="qty">×{qty}</span>
+                          {!locked && <span className="cost">{cost}</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
       ) : sellable.length === 0 ? (
-        <p className="empty">Your bag is empty. Harvest something first.</p>
+        <>
+          <ShopBanner scene="sell" />
+          <p className="empty">Your bag is empty. Harvest something first.</p>
+        </>
       ) : (
-        <ul className="rows">
-          {sellable.map(([key, qty]) => (
-            <li key={key}>
-              <div className="name">
-                <b>{key}</b>
-                <small>
-                  {priceOf(key)} coins each · {qty} in bag
-                  {farm.effects.sell > 1 && <em> (cellar)</em>}
-                </small>
-                {/*
+        <>
+          <ShopBanner scene="sell" />
+          <ul className="rows">
+            {sellable.map(([key, qty]) => (
+              <li key={key}>
+                <div className="name">
+                  <b>{key}</b>
+                  <small>
+                    {priceOf(key)} coins each · {qty} in bag
+                    {farm.effects.sell > 1 && <em> (cellar)</em>}
+                  </small>
+                  {/*
                   A sagging price has to say so here, or the mechanic is only
                   ever met as coins that came out lower than expected.
                 */}
-                {/*
+                  {/*
                   Today's demand, said on the row it applies to. The Today
                   sheet names the good; this is where the player is holding it
                   and deciding whether to sell now or keep it until tomorrow.
                 */}
-                {relativeDemand(key) > 1.02 && (
-                  <small className="sought">
-                    ▲ buyers want these today — pays {demandOf(key).toFixed(1)}×
-                  </small>
-                )}
-                {relativeDemand(key) < 0.98 && (
-                  <small className="glut">▼ too many of these about today — worth holding</small>
-                )}
-                {glut(key) && (
-                  <small className="glut">
-                    ▼ {Math.round((1 - (marketOf(key)?.multiplier ?? 1)) * 100)}% — you have sold a
-                    lot of these lately
-                    {recovers(key) ? `, worth selling again in ${recovers(key)}` : ''}
-                  </small>
-                )}
-              </div>
-              <div className="actions">
-                <button
-                  type="button"
-                  className="buy"
-                  disabled={busy}
-                  onClick={() => void sell(key)}
-                >
-                  <span className="qty">Sell all ({estimate(key, qty)})</span>
-                  {batchMultiplier(key, qty) < 0.95 && (
-                    <span className="batch">
-                      ×{batchMultiplier(key, qty).toFixed(2)} this batch
-                    </span>
+                  {relativeDemand(key) > 1.02 && (
+                    <small className="sought">
+                      ▲ buyers want these today — pays {demandOf(key).toFixed(1)}×
+                    </small>
                   )}
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                  {relativeDemand(key) < 0.98 && (
+                    <small className="glut">▼ too many of these about today — worth holding</small>
+                  )}
+                  {glut(key) && (
+                    <small className="glut">
+                      ▼ {Math.round((1 - (marketOf(key)?.multiplier ?? 1)) * 100)}% — you have sold
+                      a lot of these lately
+                      {recovers(key) ? `, worth selling again in ${recovers(key)}` : ''}
+                    </small>
+                  )}
+                </div>
+                <div className="actions">
+                  <button
+                    type="button"
+                    className="buy"
+                    disabled={busy}
+                    onClick={() => void sell(key)}
+                  >
+                    <span className="qty">Sell all ({estimate(key, qty)})</span>
+                    {batchMultiplier(key, qty) < 0.95 && (
+                      <span className="batch">
+                        ×{batchMultiplier(key, qty).toFixed(2)} this batch
+                      </span>
+                    )}
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <style jsx>{`
