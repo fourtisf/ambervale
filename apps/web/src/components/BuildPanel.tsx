@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { BUILDS, BUILD_KEYS, type BuildKey } from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
+import BuildBanner from './BuildBanner';
 import { apiPost } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import { commit, reportError, useFarm, type ActionReply } from './farmState';
@@ -47,6 +48,7 @@ export default function BuildPanel() {
 
   return (
     <div className="builds">
+      <BuildBanner />
       <p className="intro">
         Nothing here earns you anything. It stands in the vale, it is visible from the road, and it
         is still there tomorrow.
