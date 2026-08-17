@@ -635,14 +635,24 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           Community
           <em className="state">News, drops, neighbours</em>
         </span>
-        <a
-          className="linkbtn"
-          href="https://t.me/ambervalefun"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Telegram
-        </a>
+        <span className="links">
+          <a
+            className="linkbtn"
+            href="https://t.me/ambervalefun"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Telegram
+          </a>
+          <a
+            className="linkbtn"
+            href="https://x.com/Ambervalefun"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            X
+          </a>
+        </span>
       </div>
       <div className="row danger">
         <span>Reset run</span>
@@ -691,6 +701,10 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           color: #f5e6c8;
           cursor: pointer;
           font-weight: 600;
+        }
+        .links {
+          display: flex;
+          gap: 0.4rem;
         }
         .row .linkbtn {
           padding: 0.45rem 1rem;
