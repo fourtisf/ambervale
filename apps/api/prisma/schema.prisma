@@ -96,6 +96,8 @@ model User {
   homesteadTier Int       @default(1)
   /// URL slug for the public visit page, minted lazily from the handle.
   visitSlug     String?   @unique
+  /// What the farm dog answers to, once the player names her.
+  dogName       String?
 
   @@index([createdAt])
   @@index([renown])

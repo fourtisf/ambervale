@@ -313,15 +313,88 @@ const dockPlank: Painter = (g, s) => {
   g.fillRect(0, 0, 64 * s, 2 * s);
 };
 
+/**
+ * The rowboat, seen from above the way the whole world is: a proper hull with
+ * a rim, planked interior, a seat thwart and a small bow deck. It used to be
+ * a brown ellipse the size of a bush, and a player riding it mid-channel
+ * looked like they were standing on the lake.
+ */
 const rowboat: Painter = (g, s) => {
+  // water shadow
+  g.fillStyle(0x0a2e3d, 0.2);
+  g.fillEllipse(45 * s, 30 * s, 84 * s, 32 * s);
+  // hull — dark outer, pointed at the bow (right)
   g.fillStyle(PALETTE.woodDark, 1);
-  g.fillEllipse(36 * s, 22 * s, 68 * s, 26 * s);
-  g.fillStyle(PALETTE.woodLight, 1);
-  g.fillEllipse(36 * s, 20 * s, 58 * s, 18 * s);
+  g.fillPoints(
+    [
+      { x: 6 * s, y: 27 * s },
+      { x: 10 * s, y: 16 * s },
+      { x: 30 * s, y: 11 * s },
+      { x: 62 * s, y: 12 * s },
+      { x: 86 * s, y: 27 * s },
+      { x: 62 * s, y: 42 * s },
+      { x: 30 * s, y: 43 * s },
+      { x: 10 * s, y: 38 * s },
+    ],
+    true,
+  );
+  // gunwale rim
   g.fillStyle(PALETTE.wood, 1);
-  g.fillRect(24 * s, 14 * s, 24 * s, 4 * s);
-  g.lineStyle(2.5 * s, PALETTE.woodDark, 1);
-  g.lineBetween(44 * s, 18 * s, 66 * s, 8 * s);
+  g.fillPoints(
+    [
+      { x: 11 * s, y: 27 * s },
+      { x: 14 * s, y: 18 * s },
+      { x: 31 * s, y: 14 * s },
+      { x: 60 * s, y: 15 * s },
+      { x: 80 * s, y: 27 * s },
+      { x: 60 * s, y: 39 * s },
+      { x: 31 * s, y: 40 * s },
+      { x: 14 * s, y: 36 * s },
+    ],
+    true,
+  );
+  // planked interior
+  g.fillStyle(0xc9a86a, 1);
+  g.fillPoints(
+    [
+      { x: 16 * s, y: 27 * s },
+      { x: 19 * s, y: 20 * s },
+      { x: 32 * s, y: 17 * s },
+      { x: 58 * s, y: 18 * s },
+      { x: 74 * s, y: 27 * s },
+      { x: 58 * s, y: 36 * s },
+      { x: 32 * s, y: 37 * s },
+      { x: 19 * s, y: 34 * s },
+    ],
+    true,
+  );
+  g.lineStyle(1.4 * s, 0xb08d52, 1);
+  for (let i = 0; i < 4; i++) {
+    g.lineBetween(20 * s, (20 + i * 4.6) * s, 70 * s, (20 + i * 4.6) * s);
+  }
+  // seat thwart and bow deck
+  g.fillStyle(PALETTE.wood, 1);
+  g.fillRect(34 * s, 17 * s, 8 * s, 20 * s);
+  g.fillPoints(
+    [
+      { x: 66 * s, y: 21 * s },
+      { x: 80 * s, y: 27 * s },
+      { x: 66 * s, y: 33 * s },
+    ],
+    true,
+  );
+  // rowlocks, where the oars sit
+  g.fillStyle(0x3a3a3a, 1);
+  g.fillCircle(38 * s, 13.5 * s, 2.2 * s);
+  g.fillCircle(38 * s, 40.5 * s, 2.2 * s);
+};
+
+/** One oar: shaft and blade, pivoted at its rowlock end by the scene. */
+const oar: Painter = (g, s) => {
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillRect(2 * s, 3.4 * s, 30 * s, 3.2 * s);
+  g.fillStyle(PALETTE.wood, 1);
+  g.fillEllipse(36 * s, 5 * s, 14 * s, 8 * s);
 };
 
 const sign: Painter = (g, s) => {
@@ -1464,7 +1537,8 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'board', w: 80, h: 80, paint: board },
   { key: 'coop', w: 88, h: 76, paint: coop },
   { key: 'dockPlank', w: 64, h: 40, paint: dockPlank },
-  { key: 'rowboat', w: 72, h: 40, paint: rowboat },
+  { key: 'rowboat', w: 92, h: 50, paint: rowboat, zoom: 1.3 },
+  { key: 'oar', w: 44, h: 10, paint: oar },
   { key: 'sign', w: 64, h: 58, paint: sign },
   { key: 'cave', w: 150, h: 110, paint: cave },
   { key: 'lamp', w: 28, h: 62, paint: lamp },

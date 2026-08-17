@@ -149,6 +149,37 @@ describe('the world backfill', () => {
   });
 });
 
+describe('the dog', () => {
+  it('takes a name, cleans it, and bounds it', async () => {
+    const { client } = await newPlayer();
+
+    const named = await paced(() =>
+      client.call<{ dogName: string; farm: FarmLike }>('/act/dogName', {
+        text: 'ignored',
+        name: '  Bi\n\nji  ',
+      }),
+    );
+    assert.equal(named.status, 200);
+    assert.equal(named.body.dogName, 'Bi ji', 'control chars collapse to spaces, ends trimmed');
+    assert.equal(named.body.farm.user.dogName, 'Bi ji');
+
+    const short = await paced(() => client.call<{ error: string }>('/act/dogName', { name: 'x' }));
+    assert.equal(short.status, 400);
+    const long = await paced(() =>
+      client.call<{ error: string }>('/act/dogName', { name: 'a'.repeat(30) }),
+    );
+    assert.equal(long.status, 400);
+
+    // Renaming is the same verb with regret in it.
+    const renamed = await paced(() =>
+      client.call<{ dogName: string }>('/act/dogName', { name: 'Kopi' }),
+    );
+    assert.equal(renamed.body.dogName, 'Kopi');
+    const fresh = await farmOf(client);
+    assert.equal(fresh.user.dogName, 'Kopi', 'the name survives a fresh read');
+  });
+});
+
 describe('visiting', () => {
   it('mints a slug, hides the private half, and takes a note in the book', async () => {
     const owner = await newPlayer();

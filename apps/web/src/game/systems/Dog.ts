@@ -31,11 +31,14 @@ export class Dog {
   private readonly scene: Phaser.Scene;
   private readonly collision: Collision;
   private readonly sprite: Phaser.GameObjects.Image;
+  /** Her name, floating just over her head once the player gives her one. */
+  private readonly label: Phaser.GameObjects.Text;
   private elapsed = 0;
   private stillFor = 0;
   private sitting = false;
   private lastBark = -Infinity;
   private lastPlayer = { x: 0, y: 0 };
+  private readonly offPet: () => void;
 
   constructor(scene: Phaser.Scene, collision: Collision) {
     this.scene = scene;
@@ -52,6 +55,42 @@ export class Dog {
       .setDepth(y)
       .setPipeline('Light2D')
       .setVisible(false);
+
+    this.label = scene.add
+      .text(x, y, '', {
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#f5e6c8',
+        stroke: '#0a2e3d',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(9000)
+      .setVisible(false);
+
+    this.offPet = bridge.on('petDog', () => this.pet());
+  }
+
+  /** The happy hop a pat earns: a bounce, a tail-wag wiggle, and a yip. */
+  private pet(): void {
+    this.scene.tweens.killTweensOf(this.sprite);
+    this.sprite.setAngle(0);
+    this.scene.tweens.add({
+      targets: this.sprite,
+      y: this.sprite.y - 14,
+      duration: 150,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+    });
+    this.scene.tweens.add({
+      targets: this.sprite,
+      angle: { from: -6, to: 6 },
+      duration: 90,
+      yoyo: true,
+      repeat: 3,
+      onComplete: () => this.sprite.setAngle(0),
+    });
   }
 
   /** Moves her instantly — used when the farmer crosses water she cannot. */
@@ -158,9 +197,23 @@ export class Dog {
     }
 
     this.sprite.setDepth(this.sprite.y);
+
+    // Mirror for the interaction scan, and keep her name over her head.
+    bridge.dogAt = { x: this.sprite.x, y: this.sprite.y };
+    const name = bridge.farm?.user.dogName ?? null;
+    if (name) {
+      if (this.label.text !== name) this.label.setText(name);
+      this.label.setPosition(this.sprite.x, this.sprite.y - this.sprite.displayHeight - 4);
+      if (!this.label.visible) this.label.setVisible(true);
+    } else if (this.label.visible) {
+      this.label.setVisible(false);
+    }
   }
 
   destroy(): void {
+    this.offPet();
     this.sprite.destroy();
+    this.label.destroy();
+    bridge.dogAt = null;
   }
 }

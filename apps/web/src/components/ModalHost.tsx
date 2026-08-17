@@ -20,6 +20,7 @@ import { DeliveriesModal, ExpandModal } from './DeliveriesModal';
 import { AwayModal, DailyModal, MillModal, UpgradesPanel } from './EconomyModals';
 import { LeaderboardModal, ValeFundPanel } from './SocialModals';
 import Modal from './Modal';
+import DogNameModal from './DogNameModal';
 import WalletPanel from './WalletPanel';
 import { commit, reportError, useFarm, type ActionReply } from './farmState';
 
@@ -620,6 +621,15 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           {running ? 'Restart' : 'Replay'}
         </button>
       </div>
+      <div className="row">
+        <span>
+          The dog
+          <em className="state">{farm?.user.dogName ?? 'Unnamed'}</em>
+        </span>
+        <button type="button" onClick={() => bridge.emit('modal', 'dogname')}>
+          {farm?.user.dogName ? 'Rename' : 'Name her'}
+        </button>
+      </div>
       <div className="row danger">
         <span>Reset run</span>
         {confirmReset ? (
@@ -721,6 +731,8 @@ export default function ModalHost() {
       return <AwayModal onClose={close} />;
     case 'wallet':
       return <WalletModal onClose={close} />;
+    case 'dogname':
+      return <DogNameModal onClose={close} />;
     case 'settings':
       return <SettingsModal onClose={close} />;
     default:

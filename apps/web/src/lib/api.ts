@@ -192,6 +192,8 @@ export interface FarmUser {
   handle: string;
   /** URL slug of this player's public visit page, once minted by the server. */
   visitSlug: string | null;
+  /** What the farm dog answers to, or null while she is just "the dog". */
+  dogName: string | null;
   tutorialStep: number;
   /** Counters as they stood when the tutorial last started; steps read the
    *  difference, so replaying it asks for the work again. */

@@ -272,6 +272,29 @@ export class Interactions {
 
     this.considerTraversal(consider, candidates);
 
+    // The dog, wherever she currently is. Naming her is the first press;
+    // after that every press is a pat — the one interaction in the game that
+    // produces nothing and is pressed anyway. Her distance carries a heavy
+    // penalty in the nearest-wins sort: she is at heel by design, which
+    // means she is usually the closest thing to the player, and a harvest
+    // button that turns into "Pet" whenever she sits down would make her a
+    // nuisance instead of a dog. She wins only when nothing else is in reach.
+    if (bridge.dogAt) {
+      const named = farm.user.dogName;
+      const dogDistance = this.player.distanceTo(bridge.dogAt.x, bridge.dogAt.y);
+      if (dogDistance <= reach) {
+        candidates.push({
+          interaction: {
+            kind: 'dog',
+            label: named ? `Pet ${named}` : 'Name the dog',
+            target: named ? 'pet' : 'name',
+            enabled: true,
+          },
+          distance: dogDistance + 900,
+        });
+      }
+    }
+
     if (candidates.length === 0) return null;
     // Nearest wins, so standing between a plot and a tree does the obvious thing.
     candidates.sort((a, b) => a.distance - b.distance);
@@ -354,6 +377,15 @@ export class Interactions {
     }
     if (interaction.kind === 'delve') {
       return void bridge.emit('delve', interaction.target as 'in' | 'out');
+    }
+    if (interaction.kind === 'dog') {
+      if (interaction.target === 'name') return void bridge.emit('modal', 'dogname');
+      // A pat: hearts where she stands, a happy noise, and her little hop.
+      if (bridge.dogAt) {
+        this.effects.burst(bridge.dogAt.x, bridge.dogAt.y - 18, 0xf2a0c0, 7);
+      }
+      audio.bark();
+      return void bridge.emit('petDog', undefined);
     }
 
     this.busy = true;
