@@ -84,6 +84,16 @@ export default function Hud({ onOpen }: { onOpen: (modal: string) => void }) {
         <button type="button" onClick={() => onOpen('deliveries')} aria-label="Deliveries">
           Orders
         </button>
+        {/* Its own button, not a fourth tab inside Market.
+
+            The landmarks are the largest coin sink in the game — 40,800 for
+            the set against 14,450 for every upgrade and both meadows — and
+            they were reachable only by opening a sheet called "Market" and
+            finding the last tab. Asked twice where it was, which is the whole
+            answer: a feature nobody can find is a feature that is not there. */}
+        <button type="button" onClick={() => onOpen('market:build')} aria-label="Build">
+          Build
+        </button>
         <button
           type="button"
           onClick={() => onOpen('daily')}
