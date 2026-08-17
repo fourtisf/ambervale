@@ -189,17 +189,50 @@ def build():
 
     # The eight, placed by depth rather than in a row. A row is a product grid;
     # staggered across three ridges is a place.
-    # Drawn far ridge first, near ridge second. Painted in reading order the
-    # watchtower — which stands on the *further* ridge — was overlapping the
-    # great oak in front of it, and the depth of the whole scene collapsed.
-    marks = (lit(beehives(700, ridge_y(700, **R[1]) + 4, 1.05))
-             + lit(stones(968, ridge_y(968, **R[1]) + 4, 1.30))
-             + lit(silo(1096, ridge_y(1096, **R[1]) + 4, 1.20))
-             + lit(watchtower(1352, ridge_y(1352, **R[1]) + 4, 1.30))
-             + lit(garden(612, ridge_y(612, **R[2]) + 5, 0.95))
-             + lit(well(838, ridge_y(838, **R[2]) + 5, 1.25))
-             + lit(greatoak(1268, ridge_y(1268, **R[2]) + 6, 1.25))
-             + lit(sundial(1478, ridge_y(1478, **R[2]) + 6, 1.15)))
+    # Declared once each, so the same table drives the silhouette and the
+    # shadow it throws. Far ridge first, near ridge second: painted in reading
+    # order the watchtower — on the *further* ridge — overlapped the great oak
+    # in front of it and the depth of the whole scene collapsed.
+    PLACED = [
+        (beehives, 700, 1, 1.05, 58, 84),
+        (stones, 968, 1, 1.30, 70, 84),
+        (silo, 1096, 1, 1.20, 30, 164),
+        (watchtower, 1352, 1, 1.30, 38, 206),
+        (garden, 612, 2, 0.95, 58, 60),
+        (well, 838, 2, 1.25, 36, 116),
+        (greatoak, 1268, 2, 1.25, 92, 208),
+        (sundial, 1478, 2, 1.15, 40, 106),
+    ]
+
+    marks, shadows = [], []
+    for fn, x, ri, sc, halfw, ht in PLACED:
+        b = ridge_y(x, **R[ri]) + (4 if ri == 1 else 6)
+        marks.append(lit(fn(x, b, sc)))
+        # The sun sits low and behind, so shadows run toward the viewer and
+        # splay away from its x. This is the single cheapest thing that turns a
+        # row of cut-outs into objects standing on ground in late light.
+        hw = halfw * sc
+        length = ht * sc * 0.5
+        off = (x - SUN_X) * 0.30
+        shadows.append(
+            '<path d="M %.1f %.1f L %.1f %.1f L %.1f %.1f L %.1f %.1f Z" fill="#02100a" opacity="0.34"/>'
+            % (x - hw, b, x + hw, b,
+               x + hw * 1.25 + off, b + length, x - hw * 1.25 + off, b + length))
+    marks = "".join(marks)
+    shadows = '<g filter="url(#soften)">%s</g>' % "".join(shadows)
+
+    # Warm air pooling along every crest. Without it the ridges are three flat
+    # cut-outs; with it there is distance between them.
+    haze = "".join(
+        '<ellipse cx="%d" cy="%.1f" rx="%d" ry="%d" fill="#ffc477" opacity="%.2f" filter="url(#hazy)"/>'
+        % (SUN_X, ridge_y(SUN_X, **r) + 4, 640 - i * 90, 26 - i * 6, 0.20 - i * 0.06)
+        for i, r in enumerate(R))
+
+    motes = "".join(
+        '<circle cx="%d" cy="%d" r="%.1f" fill="#ffd89a" opacity="%.2f"/>'
+        % (random.randint(560, W - 40), random.randint(430, 720),
+           random.uniform(1.2, 3.0), random.uniform(0.18, 0.6))
+        for _ in range(54))
 
     tuft_xs, gx = [], -10
     while gx < W + 20:
@@ -211,6 +244,19 @@ def build():
         'stroke-width="%.1f" stroke-linecap="round"/>'
         % (x, ridge_y(x, **FG) + 2, h * 0.3, -h * 0.62, h * 0.12, -h, max(1.5, h * 0.12))
         for x, h in ((x, random.uniform(9, 32)) for x in tuft_xs))
+
+    # Blades standing right at the lens, near-black and much larger than the
+    # ones on the ridge. A picture with nothing in front of it has no depth to
+    # sell; this is the frame the rest of the scene sits inside.
+    front = "".join(
+        '<path d="M %.1f %d q %.1f %.1f %.1f %.1f" fill="none" stroke="#020a06" '
+        'stroke-width="%.1f" stroke-linecap="round"/>'
+        % (x, H + 10, h * 0.10, -h * 0.62, h * (0.05 + random.uniform(-0.09, 0.09)), -h,
+           max(2.2, h * 0.026))
+        for x, h in (
+            (random.choice((random.uniform(-50, 470), random.uniform(W - 470, W + 50))),
+             random.uniform(70, 210))
+            for _ in range(80)))
 
     return '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}"
      role="img" aria-label="Ambervale — coins that leave a mark">
@@ -243,10 +289,22 @@ def build():
       <stop offset="0" stop-color="#02100a" stop-opacity="0.66"/>
       <stop offset="1" stop-color="#02100a" stop-opacity="0"/>
     </linearGradient>
+    <filter id="soften" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="11"/>
+    </filter>
+    <filter id="hazy" x="-40%" y="-200%" width="180%" height="500%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <radialGradient id="bloom" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff2d0" stop-opacity="0.55"/>
+      <stop offset="0.4" stop-color="#ffd489" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffc477" stop-opacity="0"/>
+    </radialGradient>
     {grain}
   </defs>
 
   <rect width="{W}" height="{H}" fill="url(#sky)"/>
+  <circle cx="{sx}" cy="{sy}" r="{sr3}" fill="url(#bloom)"/>
   {rays}
   <circle cx="{sx}" cy="{sy}" r="{sr2}" fill="url(#halo)"/>
   <circle cx="{sx}" cy="{sy}" r="{sr}" fill="#ffe6ae" opacity="0.92"/>
@@ -255,46 +313,58 @@ def build():
   {far}
   <path d="{r1}" fill="#243428"/>
   {mid}
+  {haze}
 
-  <!-- everything you paid for, standing between the sun and the viewer -->
+  <!-- the light behaving: what each thing throws, then the thing itself -->
+  {shadows}
   {marks}
+  {motes}
 
   <path d="{r2}" fill="#0c1b12"/>
   <!-- day one: one farmer, nothing built, held in shadow -->
   <g fill="{ink}">{figure}</g>
   <path d="{rfg}" fill="#040f0a"/>
   {tufts}
+  {front}
 
   <!-- the left third kept dim, so "before" and "after" read without a caption -->
   <rect x="0" y="0" width="560" height="{H}" fill="url(#empty)"/>
 
-  <rect width="{W}" height="330" fill="url(#topshade)"/>
-  <text x="72" y="120" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="64" font-weight="800" letter-spacing="-1.2" fill="#f7ead2">Coins should leave a mark.</text>
-  <text x="74" y="170" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="25" fill="#f7ead2" opacity="0.84">
-    Eight landmarks you can build. Not one of them earns you anything.
-  </text>
-  <text x="74" y="208" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="21" fill="#f4b942" opacity="0.95">
-    They stand in the vale, they are visible from the road, and they are still there tomorrow.
-  </text>
+  <rect width="{W}" height="360" fill="url(#topshade)"/>
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif">
+    <text x="74" y="86" font-size="15" font-weight="700" letter-spacing="6.5"
+          fill="#f4b942" opacity="0.9">AMBERVALE · LANDMARKS</text>
+    <text x="72" y="164" font-size="72" font-weight="800" letter-spacing="-1.8"
+          fill="#f7ead2">Coins should leave a mark.</text>
+    <line x1="74" y1="196" x2="286" y2="196" stroke="#f4b942" stroke-width="2" opacity="0.75"/>
+    <text x="74" y="238" font-size="25" fill="#f7ead2" opacity="0.86">
+      Eight landmarks you can build. Not one of them earns you anything.
+    </text>
+    <text x="74" y="274" font-size="21" fill="#f7ead2" opacity="0.62">
+      They stand in the vale, visible from the road, and still there tomorrow.
+    </text>
+  </g>
 
-  <rect x="0" y="716" width="{W}" height="184" fill="url(#footer)"/>
-  <text x="{W2}" y="806" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="21" font-weight="700" letter-spacing="5.6" fill="#f7ead2" opacity="0.95">
-    WELL · BEEHIVES · STANDING STONES · SILO · GREAT OAK · WATCHTOWER · SUNDIAL
-  </text>
-  <text x="{W2}" y="842" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="17" fill="#f7ead2" opacity="0.6">
-    40,800 coins for the set · +43 renown · hour twenty should look nothing like hour two
-  </text>
-  <text x="{W2}" y="878" text-anchor="middle" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-        font-size="17" font-weight="700" letter-spacing="7" fill="#f4b942" opacity="0.92">AMBERVALE.FUN</text>
+  <rect x="0" y="700" width="{W}" height="200" fill="url(#footer)"/>
+  <g font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+     text-anchor="middle">
+    <line x1="{c1}" y1="792" x2="{c2}" y2="792" stroke="#f7ead2" stroke-width="1" opacity="0.16"/>
+    <text x="{W2}" y="832" font-size="19" font-weight="700" letter-spacing="6.2"
+          fill="#f7ead2" opacity="0.92">
+      GARDEN · WELL · BEEHIVES · STONES · SILO · OAK · TOWER · SUNDIAL
+    </text>
+    <text x="{W2}" y="864" font-size="16" fill="#f7ead2" opacity="0.52">
+      40,800 coins for the set · +43 renown · hour twenty should look nothing like hour two
+    </text>
+    <text x="{W2}" y="893" font-size="16" font-weight="700" letter-spacing="7.5"
+          fill="#f4b942" opacity="0.9">AMBERVALE.FUN</text>
+  </g>
   {grainrect}
 </svg>
 '''.format(W=W, H=H, W2=W / 2, grain=GRAIN, rays=rays,
-           sx=SUN_X, sy=SUN_Y, sr=SUN_R, sr2=SUN_R * 2.1,
+           sx=SUN_X, sy=SUN_Y, sr=SUN_R, sr2=SUN_R * 2.1, sr3=SUN_R * 4.6,
+           haze=haze, shadows=shadows, motes=motes, front=front,
+           c1=W / 2 - 300, c2=W / 2 + 300,
            r0=ridge_path(W, H, **R[0]), far=far,
            r1=ridge_path(W, H, **R[1]), mid=mid,
            marks=marks,
