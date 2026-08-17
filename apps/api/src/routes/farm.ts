@@ -10,7 +10,13 @@
  * are a by-product of repairs that were happening anyway.
  */
 
-import { AWAY } from '@ambervale/game-config';
+import {
+  AWAY,
+  HOMESTEAD_GIFT_SEEDS,
+  conditionsFor,
+  homesteadGiftCoins,
+  isCropKey,
+} from '@ambervale/game-config';
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../lib/prisma';
 import { materialiseAnimalYields } from '../services/animals';
@@ -51,10 +57,48 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
       // rule, and reported rather than silently vanished: a field that is
       // three plots emptier than you left it needs to say why.
       const effects = await effectsFor(tx, user.id);
-      const cropsRuined = await repairPlots(tx, user.id, effects.growth, effects.scarecrowMs);
+      // Ruins that would have happened while nobody was here are forgiven —
+      // the crop waits, ripe, for the player who comes back.
+      const plotRepair = await repairPlots(
+        tx,
+        user.id,
+        effects.growth,
+        effects.scarecrowMs,
+        reportable ? lastSeen : null,
+      );
       const yields = await materialiseAnimalYields(tx, user.id);
       const ordersRefreshed = await ensureDeliverySlots(tx, user.id);
       await ensureDaily(tx, user.id, now);
+
+      // The Farmhouse perk: a neighbour minds the place. Coins scaled by the
+      // absence (capped at a day — a welcome, not an income) plus a couple of
+      // seeds of whatever the market wants today, so the gift points at the
+      // day's decision as well as warming the return.
+      let gift: AwayReport['gift'] = null;
+      const giftCoins = reportable ? homesteadGiftCoins(awayMs, user.homesteadTier) : 0;
+      if (giftCoins > 0) {
+        const sought = conditionsFor(now).market.sought;
+        const seedKey = isCropKey(sought) ? sought : null;
+        await tx.user.update({
+          where: { id: user.id },
+          data: { coins: { increment: giftCoins } },
+        });
+        if (seedKey) {
+          await tx.seedItem.upsert({
+            where: { userId_cropKey: { userId: user.id, cropKey: seedKey } },
+            create: { userId: user.id, cropKey: seedKey, qty: HOMESTEAD_GIFT_SEEDS },
+            update: { qty: { increment: HOMESTEAD_GIFT_SEEDS } },
+          });
+        }
+        await tx.eventLog.create({
+          data: {
+            userId: user.id,
+            kind: 'homestead.gift',
+            payload: { coins: giftCoins, seedKey, seeds: seedKey ? HOMESTEAD_GIFT_SEEDS : 0 },
+          },
+        });
+        gift = { coins: giftCoins, seedKey, seeds: seedKey ? HOMESTEAD_GIFT_SEEDS : 0 };
+      }
 
       await tx.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date(now) } });
 
@@ -66,8 +110,10 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
         milkReady: yields.milkReady,
         nodesRegrown,
         cropsReady,
-        cropsRuined,
+        cropsRuined: plotRepair.ruined,
+        cropsSpared: plotRepair.spared,
         ordersRefreshed,
+        gift,
       };
 
       // Nothing happened worth a card. Say nothing rather than open a modal
@@ -78,6 +124,8 @@ export async function farmRoutes(app: FastifyInstance): Promise<void> {
         report.nodesRegrown > 0 ||
         report.cropsReady > 0 ||
         report.cropsRuined > 0 ||
+        report.cropsSpared > 0 ||
+        report.gift !== null ||
         report.ordersRefreshed > 0;
 
       return anything ? report : null;

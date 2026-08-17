@@ -162,7 +162,7 @@ export class WorldScene extends Phaser.Scene {
     const light = this.dayNight?.addDynamicLight(x, y, 170, 0xffd9a0);
 
     this.controller = new PlayerController(this, this.player, this.collision, light);
-    this.interactions = new Interactions(this.controller, this.effects!);
+    this.interactions = new Interactions(this.controller, this.effects!, this.farmView);
     this.tutorial = new TutorialGuide(this, this.controller, this.interactions, (x, y) =>
       this.peekAt(x, y),
     );
@@ -202,6 +202,18 @@ export class WorldScene extends Phaser.Scene {
     // Each zone's dashed outlines disappear the moment that zone is bought.
     this.layout.ghostPlots['north']?.setVisible(!state.expansion.north);
     this.layout.ghostPlots['east']?.setVisible(!state.expansion.east);
+
+    // The Homestead: the house sprite follows the tier. Same image object, so
+    // occlusion and depth carry over; only the texture (and thus size) change.
+    const houseKey =
+      state.homesteadTier >= 3
+        ? 'houseManor'
+        : state.homesteadTier >= 2
+          ? 'houseFarmhouse'
+          : 'house';
+    if (this.layout.house.texture.key !== houseKey) {
+      this.layout.house.setTexture(houseKey);
+    }
   }
 
   private beginPlay(): void {

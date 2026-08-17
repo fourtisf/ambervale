@@ -11,3 +11,4 @@ export * from './field';
 export * from './world';
 export * from './builds';
 export * from './weather';
+export * from './homestead';

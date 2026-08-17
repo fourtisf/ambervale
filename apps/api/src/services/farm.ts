@@ -230,15 +230,46 @@ export async function repairPlots(
   userId: string,
   growthMul = 1,
   scarecrowMs = 0,
-): Promise<number> {
+  /**
+   * When the player was last here, in ms — the crow amnesty line.
+   *
+   * The comeback moment used to be a loss report: any crop that ripened while
+   * the player was offline was crow-ruined by the time they returned, so
+   * opening the game tomorrow began with "the crows destroyed 6 crops". Now a
+   * ruin that would have happened *while nobody was here* is forgiven — the
+   * crop is shifted so it ripens the moment they return, crow clock fresh.
+   * A crop the player watched die (ruined before they left) still dies: the
+   * amnesty covers absence, not neglect.
+   */
+  awaySince: number | null = null,
+): Promise<{ ruined: number; spared: number }> {
   const planted = await tx.plot.findMany({ where: { userId, cropKey: { not: null } } });
   const now = Date.now();
   let ruined = 0;
+  let spared = 0;
 
   for (const plot of planted) {
     const readyAt = readyAtFor(plot, growthMul);
     const crow = crowState(now, readyAt, plot.guardedUntil?.getTime() ?? null, scarecrowMs);
     if (!crow.ruined) continue;
+
+    if (awaySince !== null && crow.ruinsAt !== null && crow.ruinsAt > awaySince && readyAt !== null) {
+      // Shift plantedAt so readyAt lands at "now": every stored offset (water
+      // cut, fast flag) rides along, and crowState starts its grace afresh.
+      await tx.plot.update({
+        where: { id: plot.id },
+        data: { plantedAt: new Date(plot.plantedAt!.getTime() + (now - readyAt)) },
+      });
+      await tx.eventLog.create({
+        data: {
+          userId,
+          kind: 'plot.spared',
+          payload: { plotIndex: plot.index, cropKey: plot.cropKey },
+        },
+      });
+      spared++;
+      continue;
+    }
 
     await tx.plot.update({ where: { id: plot.id }, data: { ...CLEARED_PLOT } });
     await tx.eventLog.create({
@@ -251,7 +282,7 @@ export async function repairPlots(
     ruined++;
   }
 
-  return ruined;
+  return { ruined, spared };
 }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +365,8 @@ export interface FarmState {
     current: number;
     target: number;
   } | null;
+  /** The house's tier: 1 Cottage, 2 Farmhouse, 3 Manor. */
+  homesteadTier: number;
   /** Owned tier per upgrade key, plus what the shop should render. */
   upgrades: Record<string, number>;
   shop: UpgradeDto[];
@@ -392,6 +425,10 @@ export interface AwayReport {
   cropsReady: number;
   /** Crops the crows destroyed while nobody was here. */
   cropsRuined: number;
+  /** Crops the crows would have taken, held safe for the player's return. */
+  cropsSpared: number;
+  /** What the neighbour left (Farmhouse and up), or null below tier 2. */
+  gift: { coins: number; seedKey: string | null; seeds: number } | null;
   ordersRefreshed: number;
 }
 
@@ -569,6 +606,7 @@ export async function getFarmState(
         renown: user.renown,
       },
     },
+    homesteadTier: user.homesteadTier,
     expansion: { north: expansion?.north ?? false, east: expansion?.east ?? false },
     plots: plots.map((p) => plotToDto(p, effects.growth, effects.scarecrowMs)),
     prices,

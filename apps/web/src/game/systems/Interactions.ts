@@ -22,6 +22,7 @@ import { bridge, type Interaction } from '../bridge';
 import { ApiRequestError, apiPost, type FarmState } from '@/lib/api';
 import { audio } from '@/lib/audio';
 import { COLORS, type Effects } from './Effects';
+import type { FarmView } from './FarmView';
 import type { PlayerController } from './PlayerController';
 
 interface ActionReply {
@@ -66,13 +67,22 @@ function preferredSeed(farm: FarmState): CropKey | null {
 export class Interactions {
   private readonly player: PlayerController;
   private readonly effects: Effects;
+  private readonly farmView?: FarmView;
   private busy = false;
   /** Seed the UI asked us to plant next, overriding the default choice. */
   forcedSeed: CropKey | null = null;
+  /**
+   * The harvest chain: consecutive harvests inside a short window. Client-side
+   * and cosmetic only — it raises the pitch and shows a count, it pays
+   * nothing, so there is nothing here for the server to distrust.
+   */
+  private chain = 0;
+  private chainAt = 0;
 
-  constructor(player: PlayerController, effects: Effects) {
+  constructor(player: PlayerController, effects: Effects, farmView?: FarmView) {
     this.player = player;
     this.effects = effects;
+    this.farmView = farmView;
     bridge.on('act', () => void this.perform());
   }
 
@@ -349,7 +359,19 @@ export class Interactions {
         const at = this.plotPoint(interaction.target);
         this.player.kneel(at.x, 140);
         const r = await apiPost<ActionReply>('/act/harvest', { plotIndex: interaction.target });
-        audio.harvest();
+
+        // The chain: each harvest within eight seconds of the last pitches the
+        // jingle up a step and counts along. Clearing a whole ready field is
+        // the best moment the game has, and until now the seventh pull sounded
+        // identical to the first.
+        const nowMs = Date.now();
+        this.chain = nowMs - this.chainAt <= 8000 ? this.chain + 1 : 1;
+        this.chainAt = nowMs;
+        audio.harvest(this.chain);
+        if (this.chain >= 2) {
+          this.effects.float(at.x, at.y - 44, `×${this.chain}`, '#f4b942');
+        }
+
         this.effects.burst(at.x, at.y - 10, COLORS.leaf, 12);
         if (r.xp) this.effects.float(px, py - 30, `+${r.xp} XP`, '#9fe8ff');
         this.commit(r, px, py);
@@ -360,6 +382,10 @@ export class Interactions {
       case 'mine': {
         const endpoint = interaction.kind === 'chop' ? '/act/chop' : '/act/mine';
         this.player.swing();
+        // The shudder is optimistic, like the swing: it plays on the press,
+        // not on the reply, because feedback that arrives a round-trip after
+        // the axe is feedback for a different hit.
+        this.farmView?.hitNode(Number(interaction.target));
         if (interaction.kind === 'chop') audio.chop();
         else audio.mine();
 
@@ -370,6 +396,13 @@ export class Interactions {
 
         this.effects.dust(nx, ny, interaction.kind === 'chop' ? COLORS.wood : COLORS.stone);
         if (r.felled) {
+          // Before commit(): the topple ghost copies whatever texture the
+          // sprite is wearing, and commit is what swaps it to the stump.
+          this.farmView?.fellNode(
+            Number(interaction.target),
+            interaction.kind === 'chop' ? 'oak' : 'rock',
+          );
+          audio.fell(interaction.kind === 'chop' ? 'oak' : 'rock');
           this.effects.burst(nx, ny, interaction.kind === 'chop' ? COLORS.wood : COLORS.stone, 16);
           for (const [key, qty] of Object.entries(r.gained ?? {})) {
             this.effects.float(nx, ny - 30, `+${qty} ${key}`, '#f5e6c8');

@@ -31,6 +31,8 @@ export interface LayoutRefs {
   ghostPlots: Record<string, Phaser.GameObjects.Graphics>;
   /** Standing sprites tall enough to hide the player; see Occlusion. */
   occluders: Phaser.GameObjects.Image[];
+  /** The player's house, kept addressable so the Homestead can rebuild it. */
+  house: Phaser.GameObjects.Image;
 }
 
 /** Sprites drawn bottom-anchored, sorted by their feet. */
@@ -114,6 +116,8 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
 
   let rowboat: Phaser.GameObjects.Image | undefined;
 
+  let house: Phaser.GameObjects.Image | undefined;
+
   for (const s of STRUCTURES) {
     if (s.key === 'dock') continue; // planks already drawn
     if (s.key === 'rowboat') {
@@ -125,7 +129,9 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
         .setPipeline('Light2D');
       continue;
     }
-    occluders.push(place(scene, s.key, s.x, s.y));
+    const img = place(scene, s.key, s.x, s.y);
+    if (s.key === 'house') house = img;
+    occluders.push(img);
   }
 
   // Blades pivot about their own centre, in front of the mill's cap.
@@ -154,7 +160,7 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
     .setOrigin(0.5, 0.5)
     .setDepth(sign.y * TILE + 1);
 
-  return { windmillBlades, rowboat: rowboat!, ghostPlots, occluders };
+  return { windmillBlades, rowboat: rowboat!, ghostPlots, occluders, house: house! };
 }
 
 /**

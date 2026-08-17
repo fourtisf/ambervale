@@ -333,6 +333,73 @@ export class FarmView {
     }
   }
 
+  /**
+   * The thwack: the tree shudders the instant the axe lands, before the server
+   * has said anything. Purely optimistic — if the hit is rejected the shudder
+   * was all that ever happened, which is exactly what a glancing blow looks
+   * like. Origin is at the foot, so the angle wobble pivots where trunk meets
+   * ground instead of spinning the whole sprite about its middle.
+   */
+  hitNode(index: number): void {
+    const sprite = this.nodes.get(index);
+    if (!sprite || sprite.getData('falling') === true) return;
+
+    this.scene.tweens.killTweensOf(sprite);
+    sprite.setScale(SPRITE_SCALE);
+    this.scene.tweens.add({
+      targets: sprite,
+      angle: { from: (Math.random() < 0.5 ? -1 : 1) * 3.5, to: 0 },
+      scaleX: { from: SPRITE_SCALE * 1.05, to: SPRITE_SCALE },
+      scaleY: { from: SPRITE_SCALE * 0.95, to: SPRITE_SCALE },
+      duration: 150,
+      ease: 'Back.easeOut',
+    });
+  }
+
+  /**
+   * The last hit. A ghost of the standing sprite topples and fades while the
+   * real one becomes the stump underneath it — the commit that swaps textures
+   * lands milliseconds after this, so animating the real sprite would just be
+   * overwritten mid-fall. Call this BEFORE committing the reply, while the
+   * standing texture is still on the sprite.
+   */
+  fellNode(index: number, kind: 'oak' | 'rock'): void {
+    const sprite = this.nodes.get(index);
+    if (!sprite) return;
+
+    this.scene.tweens.killTweensOf(sprite);
+    sprite.setAngle(0).setScale(SPRITE_SCALE);
+
+    if (kind === 'oak') {
+      const ghost = this.scene.add
+        .image(sprite.x, sprite.y, sprite.texture.key)
+        .setOrigin(0.5, 1)
+        .setScale(SPRITE_SCALE)
+        .setDepth(sprite.depth + 1)
+        .setPipeline('Light2D');
+      // Hide the real sprite until the stump texture arrives, so the ghost
+      // is not falling through a still-standing copy of itself.
+      sprite.setData('falling', true);
+      sprite.setAlpha(0);
+      this.scene.tweens.add({
+        targets: ghost,
+        angle: (Math.random() < 0.5 ? -1 : 1) * 84,
+        alpha: 0,
+        duration: 640,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          ghost.destroy();
+          sprite.setData('falling', false);
+          sprite.setAlpha((sprite.getData('baseAlpha') as number) ?? 1);
+        },
+      });
+    }
+
+    // Rocks do not topple — they crack apart where they stand, and the burst
+    // the caller plays is the whole show. Either way the ground remembers it.
+    this.scene.cameras.main.shake(130, kind === 'oak' ? 0.0045 : 0.003);
+  }
+
   /** Node hp, for the client's optimistic swing feedback. */
   nodeHp(index: number): number {
     const node = this.state?.nodes.find((n) => n.index === index);

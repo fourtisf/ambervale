@@ -255,6 +255,10 @@ export interface FarmAway {
   cropsReady: number;
   /** Crops the crows destroyed while nobody was here. */
   cropsRuined: number;
+  /** Crops the crows would have taken, held safe until the player returned. */
+  cropsSpared: number;
+  /** What the neighbour left (Farmhouse and up), or null below tier 2. */
+  gift: { coins: number; seedKey: string | null; seeds: number } | null;
   ordersRefreshed: number;
 }
 
@@ -279,6 +283,8 @@ export interface FarmState {
   expansion: Record<string, boolean>;
   /** Landmarks built. Position comes from BUILDS in game-config, by key. */
   builds: { key: string; builtAt: number }[];
+  /** The house's tier: 1 Cottage, 2 Farmhouse, 3 Manor. */
+  homesteadTier: number;
   plots: FarmPlot[];
   nodes: FarmNode[];
   animals: FarmAnimal[];

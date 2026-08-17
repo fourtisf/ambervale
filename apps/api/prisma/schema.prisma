@@ -91,6 +91,8 @@ model User {
   daily         DailyState?
   market        MarketGood[]
   builds        Build[]
+  /// The house's current tier: 1 Cottage, 2 Farmhouse, 3 Manor.
+  homesteadTier Int       @default(1)
 
   @@index([createdAt])
   @@index([renown])
@@ -330,6 +332,9 @@ model DailyState {
   claimed  Int  @default(0)
 
   streak          Int @default(0)
+  /// Banked streak insurance: one missed day is forgiven per mend. Earned by
+  /// finishing a full day of goals, capped in game-config.
+  mends           Int @default(1)
   /// Last day whose goals were all finished, so a streak cannot double-count.
   lastCompleteDay Int @default(-1)
 

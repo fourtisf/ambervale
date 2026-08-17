@@ -164,6 +164,7 @@ export interface FarmLike {
     unlocked: boolean;
   }[];
   expansion: Record<string, boolean>;
+  homesteadTier: number;
   today: { day: number; sky: string; market: { sought: string; glut: string } };
   tomorrow: { day: number; sky: string; market: { sought: string; glut: string } };
   builds: { key: string; builtAt: number }[];
@@ -212,6 +213,9 @@ export interface FarmLike {
     eggsLaid: number;
     nodesRegrown: number;
     cropsReady: number;
+    cropsRuined: number;
+    cropsSpared: number;
+    gift: { coins: number; seedKey: string | null; seeds: number } | null;
   } | null;
 }
 

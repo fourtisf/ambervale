@@ -62,18 +62,27 @@ class Synth {
   private note(
     freq: number,
     duration: number,
-    options: { wave?: Wave; gain?: number; delay?: number; sweepTo?: number } = {},
+    options: { wave?: Wave; gain?: number; delay?: number; sweepTo?: number; detune?: number } = {},
   ): void {
     const ctx = this.ensure();
     if (!ctx || !this.master || this.muted) return;
+
+    // Humanising drift for the action sounds: the hundredth chop should not
+    // be sample-identical to the first. One factor for both ends of a sweep,
+    // so the gesture keeps its shape and only its register wanders. Kept off
+    // the music and fanfares — ±4% is most of a semitone, and a melody that
+    // drifts that far is not humanised, it is out of tune.
+    const drift = options.detune ? 1 + (Math.random() * 2 - 1) * options.detune : 1;
 
     const t0 = ctx.currentTime + (options.delay ?? 0);
     const osc = ctx.createOscillator();
     const env = ctx.createGain();
 
     osc.type = options.wave ?? 'sine';
-    osc.frequency.setValueAtTime(freq, t0);
-    if (options.sweepTo) osc.frequency.exponentialRampToValueAtTime(options.sweepTo, t0 + duration);
+    osc.frequency.setValueAtTime(freq * drift, t0);
+    if (options.sweepTo) {
+      osc.frequency.exponentialRampToValueAtTime(options.sweepTo * drift, t0 + duration);
+    }
 
     const peak = options.gain ?? 0.5;
     env.gain.setValueAtTime(0.0001, t0);
@@ -119,22 +128,35 @@ class Synth {
 
   plant(): void {
     this.noise(0.14, 500, 0.3);
-    this.note(320, 0.16, { wave: 'triangle', gain: 0.3, sweepTo: 420 });
+    this.note(320, 0.16, { wave: 'triangle', gain: 0.3, sweepTo: 420, detune: 0.04 });
   }
 
-  harvest(): void {
-    this.note(523, 0.12, { wave: 'triangle', gain: 0.4 });
-    this.note(784, 0.16, { wave: 'triangle', gain: 0.35, delay: 0.07 });
+  /**
+   * The chain climbs: each consecutive harvest lifts the jingle a step, so
+   * clearing a ready field sounds like something building rather than the
+   * same two notes seven times. Capped where it still sounds like a bell.
+   */
+  harvest(chain = 1): void {
+    const rate = Math.pow(1.06, Math.min(Math.max(chain, 1) - 1, 8));
+    this.note(523 * rate, 0.12, { wave: 'triangle', gain: 0.4, detune: 0.015 });
+    this.note(784 * rate, 0.16, { wave: 'triangle', gain: 0.35, delay: 0.07, detune: 0.015 });
   }
 
   chop(): void {
     this.noise(0.13, 260, 0.45);
-    this.note(150, 0.1, { wave: 'square', gain: 0.18, sweepTo: 90 });
+    this.note(150, 0.1, { wave: 'square', gain: 0.18, sweepTo: 90, detune: 0.04 });
   }
 
   mine(): void {
     this.noise(0.11, 1600, 0.35);
-    this.note(240, 0.09, { wave: 'square', gain: 0.16, sweepTo: 140 });
+    this.note(240, 0.09, { wave: 'square', gain: 0.16, sweepTo: 140, detune: 0.04 });
+  }
+
+  /** The last hit: a low whump under the topple, deeper for the oak. */
+  fell(kind: 'oak' | 'rock'): void {
+    const base = kind === 'oak' ? 90 : 130;
+    this.noise(0.3, kind === 'oak' ? 180 : 900, 0.5);
+    this.note(base, 0.34, { wave: 'sine', gain: 0.3, sweepTo: base * 0.55, detune: 0.03 });
   }
 
   water(): void {
@@ -142,8 +164,8 @@ class Synth {
     // it. Sharing the plant sound would have made the second verb feel like
     // the first, which is the opposite of the point.
     this.noise(0.26, 900, 0.16);
-    this.note(190, 0.22, { wave: 'sine', gain: 0.14, sweepTo: 140 });
-    this.note(420, 0.18, { wave: 'sine', gain: 0.08, delay: 0.06, sweepTo: 300 });
+    this.note(190, 0.22, { wave: 'sine', gain: 0.14, sweepTo: 140, detune: 0.04 });
+    this.note(420, 0.18, { wave: 'sine', gain: 0.08, delay: 0.06, sweepTo: 300, detune: 0.04 });
   }
 
   shoo(): void {
@@ -175,7 +197,7 @@ class Synth {
   }
 
   pickup(): void {
-    this.note(700, 0.1, { wave: 'sine', gain: 0.28, sweepTo: 1000 });
+    this.note(700, 0.1, { wave: 'sine', gain: 0.28, sweepTo: 1000, detune: 0.04 });
   }
 
   moo(): void {

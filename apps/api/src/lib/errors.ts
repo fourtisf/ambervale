@@ -29,6 +29,7 @@ export type ApiErrorCode =
   | 'SLOT_NOT_OPEN'
   | 'ALREADY_EXPANDED'
   | 'ALREADY_BUILT'
+  | 'HOMESTEAD_MAX'
   | 'INSUFFICIENT_AMBER'
   | 'MAX_TIER'
   | 'NEEDS_UPGRADE'

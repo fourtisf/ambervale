@@ -1069,8 +1069,159 @@ const buildSundial: Painter = (g, s) => {
   g.fillTriangle(32 * s, 10 * s, 32 * s, 27 * s, 44 * s, 27 * s);
 };
 
+
+/**
+ * The Farmhouse — homestead tier 2. Same bones as the cottage, read at a
+ * glance as "the same house, grown": a second storey with its own window row,
+ * and a porch over the door.
+ */
+const houseFarmhouse: Painter = (g, s) => {
+  shadow(g, s, 74, 146, 60);
+  // walls, two storeys tall
+  g.fillStyle(PALETTE.wall, 1);
+  g.fillRoundedRect(20 * s, 46 * s, 108 * s, 98 * s, 4 * s);
+  g.fillStyle(PALETTE.wallShade, 1);
+  g.fillRect(20 * s, 112 * s, 108 * s, 32 * s);
+  // storey line
+  g.fillStyle(PALETTE.woodDark, 0.5);
+  g.fillRect(20 * s, 92 * s, 108 * s, 2.5 * s);
+  // roof
+  g.fillStyle(PALETTE.roof, 1);
+  g.fillPoints(
+    [
+      { x: 8 * s, y: 50 * s },
+      { x: 74 * s, y: 8 * s },
+      { x: 140 * s, y: 50 * s },
+    ],
+    true,
+  );
+  g.fillStyle(PALETTE.roofDark, 1);
+  g.fillPoints(
+    [
+      { x: 74 * s, y: 8 * s },
+      { x: 140 * s, y: 50 * s },
+      { x: 122 * s, y: 50 * s },
+      { x: 74 * s, y: 21 * s },
+    ],
+    true,
+  );
+  // chimney
+  g.fillStyle(PALETTE.stoneDark, 1);
+  g.fillRect(104 * s, 14 * s, 14 * s, 26 * s);
+  // porch: two posts and a small canopy over the door
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillRect(56 * s, 108 * s, 3.5 * s, 36 * s);
+  g.fillRect(88 * s, 108 * s, 3.5 * s, 36 * s);
+  g.fillStyle(PALETTE.roofLight, 1);
+  g.fillRoundedRect(52 * s, 102 * s, 44 * s, 8 * s, 2 * s);
+  // door
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillRoundedRect(64 * s, 112 * s, 20 * s, 32 * s, 3 * s);
+  g.fillStyle(PALETTE.amber, 1);
+  g.fillCircle(80 * s, 129 * s, 2 * s);
+  // windows, both storeys — the tiles that glow at night
+  g.fillStyle(PALETTE.amber, 1);
+  g.fillRoundedRect(30 * s, 116 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(100 * s, 116 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(32 * s, 62 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(65 * s, 62 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(98 * s, 62 * s, 18 * s, 16 * s, 2 * s);
+  g.lineStyle(1.5 * s, PALETTE.woodDark, 1);
+  g.strokeRoundedRect(30 * s, 116 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(100 * s, 116 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(32 * s, 62 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(65 * s, 62 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(98 * s, 62 * s, 18 * s, 16 * s, 2 * s);
+};
+
+/**
+ * The Manor — homestead tier 3. The farmhouse plus a stone wing and a second
+ * gable, with more window-glass than wall: at night it is the brightest thing
+ * in the vale, which is the whole perk.
+ */
+const houseManor: Painter = (g, s) => {
+  shadow(g, s, 86, 158, 74);
+  // stone wing, left
+  g.fillStyle(PALETTE.stone, 1);
+  g.fillRoundedRect(6 * s, 76 * s, 48 * s, 80 * s, 4 * s);
+  g.fillStyle(PALETTE.stoneDark, 1);
+  g.fillRect(6 * s, 126 * s, 48 * s, 30 * s);
+  g.fillStyle(PALETTE.roofDark, 1);
+  g.fillPoints(
+    [
+      { x: 0 * s, y: 80 * s },
+      { x: 30 * s, y: 54 * s },
+      { x: 60 * s, y: 80 * s },
+    ],
+    true,
+  );
+  // main hall, two storeys
+  g.fillStyle(PALETTE.wall, 1);
+  g.fillRoundedRect(48 * s, 56 * s, 118 * s, 100 * s, 4 * s);
+  g.fillStyle(PALETTE.wallShade, 1);
+  g.fillRect(48 * s, 124 * s, 118 * s, 32 * s);
+  g.fillStyle(PALETTE.woodDark, 0.5);
+  g.fillRect(48 * s, 104 * s, 118 * s, 2.5 * s);
+  // twin gables
+  g.fillStyle(PALETTE.roof, 1);
+  g.fillPoints(
+    [
+      { x: 40 * s, y: 60 * s },
+      { x: 107 * s, y: 14 * s },
+      { x: 174 * s, y: 60 * s },
+    ],
+    true,
+  );
+  g.fillStyle(PALETTE.roofDark, 1);
+  g.fillPoints(
+    [
+      { x: 107 * s, y: 14 * s },
+      { x: 174 * s, y: 60 * s },
+      { x: 156 * s, y: 60 * s },
+      { x: 107 * s, y: 27 * s },
+    ],
+    true,
+  );
+  g.fillStyle(PALETTE.roofLight, 1);
+  g.fillPoints(
+    [
+      { x: 118 * s, y: 44 * s },
+      { x: 140 * s, y: 26 * s },
+      { x: 162 * s, y: 44 * s },
+    ],
+    true,
+  );
+  // chimneys
+  g.fillStyle(PALETTE.stoneDark, 1);
+  g.fillRect(64 * s, 22 * s, 13 * s, 26 * s);
+  g.fillRect(144 * s, 18 * s, 13 * s, 24 * s);
+  // door with fanlight
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillRoundedRect(96 * s, 122 * s, 22 * s, 34 * s, 3 * s);
+  g.fillStyle(PALETTE.amber, 1);
+  g.fillCircle(107 * s, 120 * s, 6 * s);
+  g.fillCircle(113 * s, 140 * s, 2 * s);
+  // window glass everywhere — the manor burns gold at night
+  g.fillStyle(PALETTE.amber, 1);
+  g.fillRoundedRect(58 * s, 128 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(134 * s, 128 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(58 * s, 74 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(96 * s, 74 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(134 * s, 74 * s, 18 * s, 16 * s, 2 * s);
+  g.fillRoundedRect(16 * s, 92 * s, 13 * s, 14 * s, 2 * s);
+  g.fillRoundedRect(34 * s, 92 * s, 13 * s, 14 * s, 2 * s);
+  g.lineStyle(1.5 * s, PALETTE.woodDark, 1);
+  g.strokeRoundedRect(58 * s, 128 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(134 * s, 128 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(58 * s, 74 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(96 * s, 74 * s, 18 * s, 16 * s, 2 * s);
+  g.strokeRoundedRect(134 * s, 74 * s, 18 * s, 16 * s, 2 * s);
+};
+
 export const SPRITES: readonly SpriteDef[] = [
   { key: 'house', w: 136, h: 124, paint: house },
+  { key: 'houseFarmhouse', w: 148, h: 150, paint: houseFarmhouse },
+  { key: 'houseManor', w: 176, h: 162, paint: houseManor },
   { key: 'barn', w: 148, h: 132, paint: barn },
   { key: 'windmill', w: 96, h: 128, paint: windmill },
   { key: 'windmillBlades', w: 120, h: 120, paint: windmillBlades },

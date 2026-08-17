@@ -517,9 +517,12 @@ export const DAILY = {
   picks: 10,
   /** $AMBER paid the first time all of a day's goals are finished. */
   completionAmber: 2,
-  /** Extra coins per consecutive day, capped. */
+  /** Extra coins per consecutive day. The cap applies to the payout only —
+   *  the streak itself counts on forever, which is what leaderboards rank. */
   streakCoins: 40,
   streakCap: 7,
+  /** Most streak mends a player can bank. One covers one missed day. */
+  mendCap: 2,
 } as const;
 
 /** Days elapsed since the Unix epoch, UTC. The daily reset boundary. */

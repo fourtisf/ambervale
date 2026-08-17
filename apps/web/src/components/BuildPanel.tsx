@@ -1,7 +1,13 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { BUILDS, BUILD_KEYS, type BuildKey } from '@ambervale/game-config';
+import {
+  BUILDS,
+  BUILD_KEYS,
+  homesteadNext,
+  homesteadTier,
+  type BuildKey,
+} from '@ambervale/game-config';
 import { bridge } from '@/game/bridge';
 import ShopBanner from './ShopBanner';
 import { apiPost } from '@/lib/api';
@@ -46,9 +52,78 @@ export default function BuildPanel() {
   const built = new Set(farm.builds?.map((b) => b.key) ?? []);
   const have = (item: 'wood' | 'stone') => farm.inventory[item] ?? 0;
 
+  const tier = homesteadTier(farm.homesteadTier ?? 1);
+  const next = homesteadNext(tier.tier);
+  const nextShort: string[] = [];
+  if (next && farm.user.level >= next.unlockLv) {
+    if (farm.user.coins < next.cost.coins) nextShort.push('coins');
+    if (next.cost.amber && farm.user.amberBalance < next.cost.amber) nextShort.push('$AMBER');
+    if (next.cost.wood && have('wood') < next.cost.wood) nextShort.push('wood');
+    if (next.cost.stone && have('stone') < next.cost.stone) nextShort.push('stone');
+  }
+
+  const raise = async () => {
+    if (!next) return;
+    setBusy('homestead');
+    try {
+      const r = await apiPost<ActionReply>('/act/homestead', {});
+      commit(r);
+      audio.amber();
+      bridge.toast('good', `The ${next.name} stands where the cottage was.`);
+      bridge.emit('modal', null);
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div className="builds">
       <ShopBanner scene="build" />
+
+      {/*
+        The Homestead: the one big upgrade, above the landmark list because it
+        is the largest thing on the sheet and the only one that changes the
+        building the player already lives in.
+      */}
+      <div className="homestead" data-max={!next}>
+        <div className="hometext">
+          <em className="eyebrow">The Homestead</em>
+          <b>
+            {tier.name}
+            {next ? ` → ${next.name}` : ' — complete'}
+          </b>
+          <small>{next ? next.blurb : tier.blurb}</small>
+          {next && <small className="perk">{next.perk}</small>}
+          {next && (
+            <em className="cost">
+              {next.cost.coins} coins
+              {next.cost.amber ? ` · ${next.cost.amber} $AMBER` : ''}
+              {next.cost.wood ? ` · ${next.cost.wood} wood` : ''}
+              {next.cost.stone ? ` · ${next.cost.stone} stone` : ''}
+              {` · +${next.renown} renown`}
+            </em>
+          )}
+          {nextShort.length > 0 && <em className="short">Short on {nextShort.join(', ')}.</em>}
+        </div>
+        {next ? (
+          <button
+            type="button"
+            disabled={farm.user.level < next.unlockLv || nextShort.length > 0 || busy !== null}
+            onClick={() => void raise()}
+          >
+            {farm.user.level < next.unlockLv
+              ? `Level ${next.unlockLv}`
+              : busy === 'homestead'
+                ? 'Raising…'
+                : 'Raise it'}
+          </button>
+        ) : (
+          <span className="tick">✓</span>
+        )}
+      </div>
+
       <p className="intro">
         Nothing here earns you anything. It stands in the vale, it is visible from the road, and it
         is still there tomorrow.
@@ -105,6 +180,65 @@ export default function BuildPanel() {
       </ul>
 
       <style jsx>{`
+        .homestead {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 0.75rem;
+          margin: 0 0 0.9rem;
+          padding: 0.75rem 0.85rem;
+          border-radius: 14px;
+          background: rgba(244, 185, 66, 0.1);
+          border: 1px solid rgba(244, 185, 66, 0.35);
+        }
+        .homestead[data-max='true'] {
+          background: rgba(122, 200, 130, 0.12);
+          border-color: rgba(122, 200, 130, 0.4);
+        }
+        .hometext {
+          flex: 1;
+          min-width: 0;
+        }
+        .eyebrow {
+          display: block;
+          font-style: normal;
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          color: #f4b942;
+          margin-bottom: 0.15rem;
+        }
+        .hometext b {
+          font-size: 0.92rem;
+        }
+        .hometext small {
+          display: block;
+          margin-top: 0.15rem;
+          font-size: 0.72rem;
+          opacity: 0.75;
+          line-height: 1.4;
+        }
+        .hometext .perk {
+          color: #9fe8ff;
+          opacity: 0.9;
+        }
+        .homestead button {
+          flex: 0 0 auto;
+          padding: 0.55rem 0.95rem;
+          border-radius: 999px;
+          border: 0;
+          background: #f4b942;
+          color: #2a1a05;
+          font-weight: 700;
+          font-size: 0.78rem;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .homestead button:disabled {
+          opacity: 0.4;
+          cursor: default;
+        }
         .intro {
           margin: 0 0 0.9rem;
           font-size: 0.8rem;

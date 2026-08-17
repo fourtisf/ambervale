@@ -85,7 +85,25 @@ export async function ensureDaily(
 
   if (row.day === day) return;
 
-  const streak = row.lastCompleteDay === day - 1 ? row.streak : 0;
+  /*
+    Streak survival, in order of grace:
+    - completed yesterday: it lives.
+    - missed exactly one day and a mend is banked: the mend is spent and the
+      streak lives. One night away should not erase three weeks.
+    - anything longer: it dies. Mends cover a slip, not a departure.
+  */
+  let streak = row.streak;
+  let mends = row.mends;
+  if (row.lastCompleteDay !== day - 1) {
+    if (row.lastCompleteDay === day - 2 && mends > 0) {
+      mends -= 1;
+      await tx.eventLog.create({
+        data: { userId, kind: 'streak.mended', payload: { day, streak } },
+      });
+    } else {
+      streak = 0;
+    }
+  }
 
   await tx.dailyState.update({
     where: { userId },
@@ -94,6 +112,7 @@ export async function ensureDaily(
       baseline: snapshotOf(user as unknown as Record<string, unknown>),
       claimed: 0,
       streak,
+      mends,
     },
   });
 }
@@ -238,8 +257,14 @@ export async function evaluateDaily(
   let dayComplete: DailyOutcome['dayComplete'] = null;
 
   if (finishedToday) {
-    const streak = Math.min(DAILY.streakCap, row.streak + 1);
-    const coins = DAILY.streakCoins * streak;
+    // The streak itself is now stored uncapped — the cap applies only to the
+    // payout. Capping the stored value flattened the streak leaderboard into
+    // a permanent seven-way tie and made day 8+ of showing up worth nothing.
+    const streak = row.streak + 1;
+    const coins = DAILY.streakCoins * Math.min(DAILY.streakCap, streak);
+    // Finishing a full day banks a mend (up to the cap): insurance is earned
+    // by the same behaviour it protects.
+    const mends = Math.min(DAILY.mendCap, row.mends + 1);
 
     await tx.amberLedger.create({
       data: {
@@ -252,7 +277,7 @@ export async function evaluateDaily(
     await tx.user.update({ where: { id: userId }, data: { coins: { increment: coins } } });
     await tx.dailyState.update({
       where: { userId },
-      data: { claimed, streak, lastCompleteDay: row.day },
+      data: { claimed, streak, mends, lastCompleteDay: row.day },
     });
 
     dayComplete = { streak, amber: DAILY.completionAmber, coins };

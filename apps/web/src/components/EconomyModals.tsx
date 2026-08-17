@@ -758,6 +758,16 @@ export function AwayModal({ onClose }: { onClose: () => void }) {
   if (away.milkReady) lines.push('the cow is ready to milk');
   if (away.nodesRegrown > 0) lines.push(`${away.nodesRegrown} oaks and rocks came back`);
   if (away.ordersRefreshed > 0) lines.push(`${away.ordersRefreshed} new orders on the board`);
+  // The amnesty, said warmly: these were dead under the old rules.
+  if (away.gift)
+    lines.push(
+      `a neighbour minded the place — ${away.gift.coins} coins on the table` +
+        (away.gift.seedKey ? ` and ${away.gift.seeds} ${away.gift.seedKey} seeds` : ''),
+    );
+  if ((away.cropsSpared ?? 0) > 0)
+    lines.push(
+      `the crows circled ${away.cropsSpared} ripe ${away.cropsSpared === 1 ? 'crop' : 'crops'} — but held off until you got back`,
+    );
 
   // Kept out of the list above and given its own line: a loss reported in the
   // same breath as the good news reads as good news, and a field three plots
