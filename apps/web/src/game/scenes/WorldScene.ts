@@ -303,30 +303,22 @@ export class WorldScene extends Phaser.Scene {
     this.crossing = true;
     this.controller.frozen = true;
 
-    // The oars come out for the trip: one each side, pivoted at the rowlock,
-    // sweeping in stroke rhythm. They exist only while the water has you —
-    // a moored boat shows bare rowlocks.
-    const oars = [-1, 1].map((side) => {
-      const img = this.add
-        .image(boat.x, boat.y + side * 15, 'oar')
-        .setOrigin(0, 0.5)
-        .setScale(SPRITE_SCALE)
-        .setDepth(boat.depth + (side < 0 ? -1 : 2));
-      img.setAngle(side < 0 ? -90 : 90);
-      return { img, side };
-    });
+    // Bow to the heading: the ship is painted facing east, and sails home
+    // mirrored. She keeps whichever way she faced when she moored.
+    boat.setFlipX(shore === 'west');
+    audio.creak();
 
-    // A stroke every beat: the dip sound and a wake ring shed off the stern.
-    const STROKE_MS = 1150;
+    // A wash every beat: the water sound and a wake ring shed off the stern.
+    const BEAT_MS = 1150;
     audio.row();
-    const stroke = this.time.addEvent({
-      delay: STROKE_MS,
+    const wake = this.time.addEvent({
+      delay: BEAT_MS,
       loop: true,
       callback: () => {
         audio.row();
-        const behind = shore === 'east' ? -34 : 34;
+        const behind = shore === 'east' ? -70 : 70;
         const ring = this.add
-          .ellipse(boat.x + behind, boat.y + 6, 10, 6)
+          .ellipse(boat.x + behind, boat.y - 4, 12, 7)
           .setStrokeStyle(2.5, 0xd6ecf6, 0.7)
           .setDepth(boat.depth - 2);
         this.tweens.add({
@@ -348,20 +340,14 @@ export class WorldScene extends Phaser.Scene {
       duration: 2600,
       ease: 'Sine.easeInOut',
       onUpdate: () => {
-        // Seated amidships, rocking with the stroke; the oars sweep about
-        // their rowlocks in the same rhythm the splashes keep.
-        player.setPosition(boat.x - 4, boat.y + 10);
-        player.setDepth(boat.y + 1);
-        boat.setAngle(Math.sin(this.elapsed / 240) * 3);
-        const sweep = Math.sin((this.elapsed / STROKE_MS) * Math.PI * 2) * 26;
-        for (const { img, side } of oars) {
-          img.setPosition(boat.x + 2, boat.y + side * 15);
-          img.setAngle(side < 0 ? -90 - sweep : 90 + sweep);
-        }
+        // On deck amidships. The ship is anchored at her waterline, so the
+        // deck rail sits well above boat.y; she rolls gently about it.
+        player.setPosition(boat.x - 4, boat.y - 28);
+        player.setDepth(boat.depth + 1);
+        boat.setAngle(Math.sin(this.elapsed / 380) * 2);
       },
       onComplete: () => {
-        stroke.remove(false);
-        for (const { img } of oars) img.destroy();
+        wake.remove(false);
         boat.setAngle(0);
         this.rowboatBaseY = boat.y;
         bridge.boatAt = { x: boat.x, y: boat.y, shore };

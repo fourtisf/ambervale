@@ -336,7 +336,7 @@ export class Interactions {
       candidates.push({
         interaction: {
           kind: 'row',
-          label: boat.shore === 'west' ? 'Row to the Far Shore' : 'Row home',
+          label: boat.shore === 'west' ? 'Sail to the Far Shore' : 'Sail home',
           target: boat.shore === 'west' ? 'east' : 'west',
           enabled: true,
         },

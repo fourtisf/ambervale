@@ -397,6 +397,157 @@ const oar: Painter = (g, s) => {
   g.fillEllipse(36 * s, 5 * s, 14 * s, 8 * s);
 };
 
+/**
+ * The wooden ship, drawn in the same three-quarter view as every building —
+ * a real hull seen from the shore, not a smudge seen from a bird. Bow to the
+ * right; the scene flips her by heading. Bottom of the canvas is the
+ * waterline: the sprite is anchored so the hull sits IN the water, with the
+ * mast, sail and pennant standing well above it.
+ */
+const ship: Painter = (g, s) => {
+  // waterline shadow
+  g.fillStyle(0x0a2e3d, 0.22);
+  g.fillEllipse(88 * s, 122 * s, 150 * s, 16 * s);
+
+  // -- rigging first, so the lines run behind the mast and sail
+  g.lineStyle(1.6 * s, 0x4d3521, 1);
+  g.lineBetween(88 * s, 22 * s, 158 * s, 96 * s); // forestay to bow
+  g.lineBetween(88 * s, 22 * s, 22 * s, 98 * s); // backstay to stern
+
+  // -- hull: planked side, swept up at both ends, higher at the bow
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillPoints(
+    [
+      { x: 14 * s, y: 92 * s },
+      { x: 20 * s, y: 84 * s },
+      { x: 150 * s, y: 84 * s },
+      { x: 166 * s, y: 88 * s },
+      { x: 158 * s, y: 104 * s },
+      { x: 146 * s, y: 118 * s },
+      { x: 120 * s, y: 124 * s },
+      { x: 52 * s, y: 124 * s },
+      { x: 26 * s, y: 116 * s },
+      { x: 16 * s, y: 104 * s },
+    ],
+    true,
+  );
+  // planking strakes
+  g.fillStyle(PALETTE.wood, 1);
+  g.fillPoints(
+    [
+      { x: 22 * s, y: 96 * s },
+      { x: 152 * s, y: 96 * s },
+      { x: 146 * s, y: 108 * s },
+      { x: 30 * s, y: 108 * s },
+    ],
+    true,
+  );
+  g.fillStyle(PALETTE.woodLight, 1);
+  g.fillPoints(
+    [
+      { x: 24 * s, y: 98 * s },
+      { x: 150 * s, y: 98 * s },
+      { x: 147 * s, y: 102 * s },
+      { x: 26 * s, y: 102 * s },
+    ],
+    true,
+  );
+  g.lineStyle(1.2 * s, 0x54371d, 0.8);
+  g.lineBetween(24 * s, 112 * s, 140 * s, 112 * s);
+  g.lineBetween(20 * s, 92 * s, 158 * s, 92 * s);
+
+  // gunwale cap
+  g.fillStyle(0x54371d, 1);
+  g.fillRect(18 * s, 84 * s, 140 * s, 4 * s);
+
+  // stem post at the bow, proud of the rail
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillPoints(
+    [
+      { x: 150 * s, y: 84 * s },
+      { x: 168 * s, y: 74 * s },
+      { x: 172 * s, y: 82 * s },
+      { x: 166 * s, y: 92 * s },
+    ],
+    true,
+  );
+  // rudder at the stern
+  g.fillPoints(
+    [
+      { x: 16 * s, y: 92 * s },
+      { x: 6 * s, y: 100 * s },
+      { x: 8 * s, y: 116 * s },
+      { x: 18 * s, y: 110 * s },
+    ],
+    true,
+  );
+
+  // -- mast, yard, and the working sail
+  g.fillStyle(0x54371d, 1);
+  g.fillRect(85 * s, 16 * s, 6 * s, 70 * s);
+  g.fillRect(52 * s, 26 * s, 72 * s, 4 * s); // yard
+  // sail: cream canvas bellying to the right, an amber band woven through
+  g.fillStyle(0xf0e2c0, 1);
+  g.fillPoints(
+    [
+      { x: 54 * s, y: 30 * s },
+      { x: 122 * s, y: 30 * s },
+      { x: 132 * s, y: 56 * s },
+      { x: 124 * s, y: 78 * s },
+      { x: 56 * s, y: 78 * s },
+      { x: 48 * s, y: 54 * s },
+    ],
+    true,
+  );
+  g.fillStyle(0xdccaa2, 1);
+  g.fillPoints(
+    [
+      { x: 54 * s, y: 30 * s },
+      { x: 66 * s, y: 30 * s },
+      { x: 62 * s, y: 78 * s },
+      { x: 56 * s, y: 78 * s },
+      { x: 48 * s, y: 54 * s },
+    ],
+    true,
+  );
+  g.fillStyle(0xf4b942, 0.85);
+  g.fillPoints(
+    [
+      { x: 50 * s, y: 58 * s },
+      { x: 129 * s, y: 58 * s },
+      { x: 127 * s, y: 66 * s },
+      { x: 52 * s, y: 66 * s },
+    ],
+    true,
+  );
+  // sheet lines from sail corners down to the rail
+  g.lineStyle(1.4 * s, 0x4d3521, 1);
+  g.lineBetween(124 * s, 78 * s, 140 * s, 86 * s);
+  g.lineBetween(56 * s, 78 * s, 40 * s, 86 * s);
+
+  // masthead pennant
+  g.fillStyle(0xd94f3d, 1);
+  g.fillPoints(
+    [
+      { x: 88 * s, y: 10 * s },
+      { x: 112 * s, y: 14 * s },
+      { x: 88 * s, y: 19 * s },
+    ],
+    true,
+  );
+
+  // stern lantern, lit whatever the hour
+  g.fillStyle(0x3a3a3a, 1);
+  g.fillRect(20 * s, 74 * s, 3 * s, 10 * s);
+  g.fillStyle(0xf4b942, 1);
+  g.fillCircle(21.5 * s, 72 * s, 3.4 * s);
+
+  // bow wave licking the hull
+  g.fillStyle(0xd6ecf6, 0.55);
+  g.fillEllipse(154 * s, 118 * s, 26 * s, 7 * s);
+  g.fillEllipse(36 * s, 121 * s, 20 * s, 6 * s);
+};
+
 const sign: Painter = (g, s) => {
   g.fillStyle(PALETTE.woodDark, 1);
   g.fillRect(28 * s, 30 * s, 5 * s, 26 * s);
@@ -1539,6 +1690,7 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'dockPlank', w: 64, h: 40, paint: dockPlank },
   { key: 'rowboat', w: 92, h: 50, paint: rowboat, zoom: 1.3 },
   { key: 'oar', w: 44, h: 10, paint: oar },
+  { key: 'ship', w: 178, h: 128, paint: ship },
   { key: 'sign', w: 64, h: 58, paint: sign },
   { key: 'cave', w: 150, h: 110, paint: cave },
   { key: 'lamp', w: 28, h: 62, paint: lamp },

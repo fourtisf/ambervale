@@ -126,9 +126,12 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
   for (const s of STRUCTURES) {
     if (s.key === 'dock') continue; // planks already drawn
     if (s.key === 'rowboat') {
+      // The ship. Anchored near the bottom of its canvas — that row is the
+      // waterline, so the position IS where she floats and the mast simply
+      // stands up out of it.
       rowboat = scene.add
-        .image(s.x * TILE + TILE / 2, s.y * TILE + TILE / 2, 'rowboat')
-        .setOrigin(0.5, 0.5)
+        .image(s.x * TILE + TILE / 2, s.y * TILE + TILE / 2, 'ship')
+        .setOrigin(0.5, 0.93)
         .setScale(SPRITE_SCALE)
         .setDepth(s.y * TILE)
         .setPipeline('Light2D');

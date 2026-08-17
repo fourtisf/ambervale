@@ -221,6 +221,12 @@ class Synth {
     }
   }
 
+  /** Timber taking the strain: the sound a wooden ship makes getting under way. */
+  creak(): void {
+    this.note(110, 0.5, { wave: 'sawtooth', gain: 0.08, sweepTo: 78, detune: 0.06 });
+    this.note(160, 0.35, { wave: 'sawtooth', gain: 0.05, delay: 0.25, sweepTo: 120, detune: 0.06 });
+  }
+
   /** An oar stroke: the dip, the pull, the drip off the blade. */
   row(): void {
     this.noise(0.18, 600, 0.2);
