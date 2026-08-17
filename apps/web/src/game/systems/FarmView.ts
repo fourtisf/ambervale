@@ -20,7 +20,13 @@ import {
 } from '@ambervale/game-config';
 import type Phaser from 'phaser';
 import type { FarmState } from '@/lib/api';
-import { CROP_STAGES, SPRITE_SCALE, cropTextureKey, rockTextureKey } from '../world/textures';
+import {
+  CROP_STAGES,
+  SPRITE_SCALE,
+  cropTextureKey,
+  rockTextureKey,
+  veinTextureKey,
+} from '../world/textures';
 import type { AnimalLife } from './AnimalLife';
 import type { DayNight } from './DayNight';
 import type { Occlusion } from './Occlusion';
@@ -209,6 +215,8 @@ export class FarmView {
       const depleted = node.hp <= 0;
       if (node.kind === 'oak') {
         sprite.setTexture(depleted ? 'stump' : 'oak');
+      } else if (node.kind === 'vein') {
+        sprite.setTexture(veinTextureKey(depleted ? 0 : node.hp));
       } else {
         sprite.setTexture(rockTextureKey(depleted ? 0 : node.hp));
       }

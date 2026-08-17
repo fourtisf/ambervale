@@ -200,7 +200,7 @@ export async function repairNodes(
   if (due.length === 0) return 0;
 
   for (const node of due) {
-    const kind = node.kind === 'oak' ? 'oak' : 'rock';
+    const kind = node.kind === 'oak' || node.kind === 'vein' ? node.kind : ('rock' as const);
     await tx.resourceNode.update({
       where: { id: node.id },
       data: { hp: NODES[kind].hits, respawnAt: null },

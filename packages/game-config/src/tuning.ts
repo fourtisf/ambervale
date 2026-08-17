@@ -101,7 +101,7 @@ export const FIRST_CROP_FAST_SEC = 10;
 // ---------------------------------------------------------------------------
 
 export type GoodKey =
-  'egg' | 'milk' | 'wood' | 'stone' | 'fish' | 'flour' | 'butter' | 'pie' | 'cake';
+  'egg' | 'milk' | 'wood' | 'stone' | 'fish' | 'flour' | 'butter' | 'pie' | 'cake' | 'geode';
 
 export interface GoodDef {
   /** Coin value of one unit. */
@@ -124,6 +124,9 @@ export const GOODS: Record<GoodKey, GoodDef> = {
   butter: { sell: 92, crafted: true },
   pie: { sell: 210, crafted: true },
   cake: { sell: 430, crafted: true },
+  // Only the Amber Deep's veins drop these. Priced against the trip: a boat
+  // ride, a walk, and five swings a vein — rare enough to stay an event.
+  geode: { sell: 160 },
 };
 
 export const GOOD_KEYS = Object.keys(GOODS) as GoodKey[];
@@ -149,7 +152,7 @@ export const sellPrice = (key: ItemKey): number =>
 // Resource nodes
 // ---------------------------------------------------------------------------
 
-export type NodeKey = 'oak' | 'rock';
+export type NodeKey = 'oak' | 'rock' | 'vein';
 
 export interface NodeDefBase {
   /** Tool hits required to fell/break the node. */
@@ -170,16 +173,33 @@ export interface RockDef extends NodeDefBase {
   xpOnBreak: number;
 }
 
-export const NODES: { oak: OakDef; rock: RockDef } = {
+export interface VeinDef extends NodeDefBase {
+  xpOnBreak: number;
+  /** Chance a broken vein also gives up a geode. Rolled server-side. */
+  geodeChance: number;
+}
+
+export const NODES: { oak: OakDef; rock: RockDef; vein: VeinDef } = {
   oak: { hits: 3, yield: { wood: 3 }, xpOnFell: 12, respawnSec: 90, count: 14 },
   rock: { hits: 3, yield: { stone: 2 }, xpOnBreak: 14, respawnSec: 120, count: 12 },
+  // The Amber Deep's veins: five swings, four stone, a one-in-three shot at a
+  // geode, and a ten-minute regrowth — a place worth the boat ride, without
+  // outclassing an afternoon of honest surface rocks.
+  vein: {
+    hits: 5,
+    yield: { stone: 4 },
+    xpOnBreak: 30,
+    geodeChance: 0.34,
+    respawnSec: 600,
+    count: 4,
+  },
 };
 
 export const NODE_KEYS = Object.keys(NODES) as NodeKey[];
 
 /** XP for depleting a node, normalising over oak's `xpOnFell` / rock's `xpOnBreak`. */
 export const nodeDepleteXp = (key: NodeKey): number =>
-  key === 'oak' ? NODES.oak.xpOnFell : NODES.rock.xpOnBreak;
+  key === 'oak' ? NODES.oak.xpOnFell : NODES[key].xpOnBreak;
 
 /** Minimum ms between two hits on the same node by the same user. */
 export const NODE_HIT_COOLDOWN_MS = 350;

@@ -7,7 +7,7 @@
  * over 16 static images.
  */
 
-import { CHUNK_TILES, PATHS, PATH_RADIUS, TILE, WORLD } from '@ambervale/game-config';
+import { CAVE_TORCHES, CHUNK_TILES, PATHS, PATH_RADIUS, TILE, WORLD } from '@ambervale/game-config';
 import type Phaser from 'phaser';
 import { h01 } from './rng';
 import { Tile, type WorldMap } from './tilemap';
@@ -43,6 +43,13 @@ const COLORS = {
   tuft: 0x376b30,
   tuftLight: 0x5e9c48,
   clover: 0x4d8c40,
+  caveWall: 0x352f29,
+  caveWallDark: 0x241f1c,
+  caveWallEdge: 0x4a4238,
+  caveFloor: 0x211d1a,
+  caveFloorLight: 0x2c2622,
+  caveChip: 0x4d463e,
+  caveGlow: 0xf4b942,
 } as const;
 
 export interface Terrain {
@@ -238,6 +245,71 @@ function paintChunk(
     }
   }
 
+  // 6.5. The Amber Deep — painted opaque over whatever the meadow put here,
+  // because a chamber floor with grass shading bleeding through reads as a
+  // rendering bug, not a cave. Walls first, then floor, then the baked warm
+  // pools under the torch brackets (the sprites carry the flames; the bake
+  // carries the light they have already thrown on the stone).
+  for (let ty = ty0 - 1; ty < ty0 + th + 1; ty++) {
+    for (let tx = tx0 - 1; tx < tx0 + tw + 1; tx++) {
+      if (!inBounds(tx, ty)) continue;
+      const kind = map.at(tx, ty);
+      if (kind !== Tile.CaveWall && kind !== Tile.Cave) continue;
+
+      if (kind === Tile.CaveWall) {
+        g.fillStyle(COLORS.caveWall, 1);
+        g.fillRect(lx(tx), ly(ty), TILE, TILE);
+        // Jagged mass: two dark boulders per tile, jittered by hash.
+        for (let k = 0; k < 2; k++) {
+          const jx = TILE * (0.2 + h01(tx, ty, 210 + k) * 0.6);
+          const jy = TILE * (0.2 + h01(tx, ty, 220 + k) * 0.6);
+          g.fillStyle(COLORS.caveWallDark, 0.9);
+          g.fillCircle(lx(tx) + jx, ly(ty) + jy, TILE * (0.28 + h01(tx, ty, 230 + k) * 0.2));
+        }
+        // A lit top edge where wall meets floor below, so the wall has a lip.
+        if (map.at(tx, ty + 1) === Tile.Cave) {
+          g.fillStyle(COLORS.caveWallEdge, 1);
+          g.fillRect(lx(tx), ly(ty) + TILE - 5, TILE, 5);
+        }
+      } else {
+        g.fillStyle(COLORS.caveFloor, 1);
+        g.fillRect(lx(tx), ly(ty), TILE, TILE);
+        // Worked flagstones: faint lighter slabs, then chips of pale scree.
+        if (h01(tx, ty, 240) < 0.5) {
+          g.fillStyle(COLORS.caveFloorLight, 1);
+          g.fillCircle(
+            lx(tx) + TILE * (0.3 + h01(tx, ty, 241) * 0.4),
+            ly(ty) + TILE * (0.3 + h01(tx, ty, 242) * 0.4),
+            TILE * (0.3 + h01(tx, ty, 243) * 0.18),
+          );
+        }
+        for (let k = 0; k < 2; k++) {
+          if (h01(tx, ty, 250 + k) > 0.35) continue;
+          g.fillStyle(COLORS.caveChip, 0.7);
+          g.fillCircle(
+            lx(tx) + TILE * h01(tx, ty, 260 + k),
+            ly(ty) + TILE * h01(tx, ty, 270 + k),
+            1.6 + h01(tx, ty, 280 + k) * 1.6,
+          );
+        }
+      }
+    }
+  }
+  // Torch pools: warm baked light on the stone below each bracket.
+  for (const t of CAVE_TORCHES) {
+    const cx = t.x * TILE + TILE / 2 - tx0 * TILE;
+    const cy = (t.y + 0.8) * TILE - ty0 * TILE;
+    if (cx < -TILE * 3 || cy < -TILE * 3 || cx > (tw + 3) * TILE || cy > (th + 3) * TILE) continue;
+    for (const [r, a] of [
+      [2.2, 0.05],
+      [1.5, 0.07],
+      [0.9, 0.1],
+    ] as const) {
+      g.fillStyle(COLORS.caveGlow, a);
+      g.fillCircle(cx, cy, TILE * r);
+    }
+  }
+
   // 7. scatter: tufts, clover, flowers, pebbles — never on dirt or water.
   //
   // The rule that matters here is variation. An identical mark repeated on a
@@ -250,6 +322,7 @@ function paintChunk(
     for (let tx = tx0; tx < tx0 + tw; tx++) {
       const kind = map.at(tx, ty);
       if (kind === Tile.Water || kind === Tile.Dirt) continue;
+      if (kind === Tile.Cave || kind === Tile.CaveWall) continue;
 
       // grass tufts
       const th01 = h01(tx, ty, 21);

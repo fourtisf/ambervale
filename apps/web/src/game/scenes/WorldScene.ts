@@ -11,6 +11,9 @@
 import {
   BOAT_LANDINGS,
   BOAT_MOORINGS,
+  CAVE_ENTRY,
+  CAVE_EXIT,
+  CAVE_TORCHES,
   SPAWN,
   TILE,
   WORLD,
@@ -116,6 +119,8 @@ export class WorldScene extends Phaser.Scene {
     const scenery = buildScenery(this, (tx, ty) => {
       const kind = this.map.at(tx, ty);
       if (kind === Tile.Water || kind === Tile.Dirt) return true;
+      // No pines underground — the chamber floor is walkable but not meadow.
+      if (kind === Tile.Cave || kind === Tile.CaveWall) return true;
       return this.collision.blocked(tx * TILE + TILE / 2, ty * TILE + TILE / 2);
     });
     this.occlusion.registerAll(this.layout.occluders);
@@ -156,6 +161,13 @@ export class WorldScene extends Phaser.Scene {
     if (bridge.started) this.beginPlay();
     this.unsubscribe.push(bridge.on('sleep', () => this.sleep()));
     this.unsubscribe.push(bridge.on('row', (shore) => this.rowAcross(shore)));
+    this.unsubscribe.push(bridge.on('delve', (dir) => this.delve(dir)));
+
+    // The chamber's torches burn at every hour; their warmth is a dynamic
+    // light so the Light2D sprites near them catch it after dark.
+    for (const t of CAVE_TORCHES) {
+      this.dayNight?.addDynamicLight(t.x * TILE + TILE / 2, (t.y + 0.6) * TILE, 170, 0xffa94d);
+    }
 
     // The boat starts on the home shore; the interaction scan reads this.
     bridge.boatAt = {
@@ -319,6 +331,33 @@ export class WorldScene extends Phaser.Scene {
         this.crossing = false;
         if (shore === 'east') bridge.toast('info', 'The Far Shore.');
       },
+    });
+  }
+
+  /**
+   * Through the mouth of the Amber Deep, or back out. A short fade sells the
+   * passage through rock that the map cannot actually tunnel; the chamber is
+   * an enclosed pocket on this same map, so every system — mining, effects,
+   * the action button, the dog — simply keeps working inside.
+   */
+  private delve(dir: 'in' | 'out'): void {
+    if (!this.controller || this.crossing) return;
+
+    const to = dir === 'in' ? CAVE_ENTRY : CAVE_EXIT;
+    const cam = this.cameras.main;
+    this.controller.frozen = true;
+    audio.delve(dir);
+
+    cam.fadeOut(280, 8, 6, 5);
+    cam.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      const x = to.x * TILE + TILE / 2;
+      const y = to.y * TILE + TILE / 2;
+      this.controller?.placeAt(x, y);
+      this.dog?.place(x + 26, y + 18);
+      if (this.controller) this.controller.frozen = false;
+      cam.fadeIn(420, 8, 6, 5);
+      if (dir === 'in')
+        bridge.toast('info', 'The Amber Deep. The veins regrow slowly — take your time.');
     });
   }
 

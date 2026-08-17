@@ -231,6 +231,36 @@ export const FENCES: readonly { x: number; y: number; w: number; h: number }[] =
 ];
 
 // ---------------------------------------------------------------------------
+// The Amber Deep
+// ---------------------------------------------------------------------------
+
+/**
+ * The quarry floor behind the cave mouth — the island hill, hollowed out.
+ * Everything inside these bounds is dark worked stone; the ring around it is
+ * sheer rock wall that nothing walks through. The only ways in and out are
+ * the teleports at the mouth, which is what makes it feel underground while
+ * living on the same map as everything else (and so costing no new scene,
+ * no second interaction system, no duplicated renderer).
+ */
+export const CAVE_FLOOR = { x0: 74, y0: 3, x1: 82, y1: 8 } as const;
+
+/** Where the player stands after stepping through the mouth. */
+export const CAVE_ENTRY: TileVec = { x: 75, y: 8 };
+
+/** Where the ladder out stands, inside the chamber. */
+export const CAVE_LADDER: TileVec = { x: 74, y: 7 };
+
+/** Where climbing out sets the player down, in front of the mouth. */
+export const CAVE_EXIT: TileVec = { x: 75, y: 11 };
+
+/** Wall brackets whose torches light the chamber at every hour. */
+export const CAVE_TORCHES: readonly TileVec[] = [
+  { x: 76, y: 3 },
+  { x: 80, y: 3 },
+  { x: 82, y: 6 },
+];
+
+// ---------------------------------------------------------------------------
 // Plots
 // ---------------------------------------------------------------------------
 
@@ -303,7 +333,7 @@ export const FIELD_CENTER: TileVec = { x: 19, y: 23 };
 
 export interface NodeSlot {
   index: number;
-  kind: 'oak' | 'rock';
+  kind: 'oak' | 'rock' | 'vein';
   x: number;
   y: number;
 }
@@ -344,6 +374,13 @@ export const NODE_SLOTS: readonly NodeSlot[] = [
   { index: 23, kind: 'rock', x: 80, y: 14 },
   { index: 24, kind: 'rock', x: 76, y: 31 },
   { index: 25, kind: 'rock', x: 82, y: 37 },
+
+  // The Amber Deep's veins, inside CAVE_FLOOR. Placed clear of the entry and
+  // the ladder so nobody mines with their back against the way out.
+  { index: 26, kind: 'vein', x: 77, y: 4 },
+  { index: 27, kind: 'vein', x: 80, y: 4 },
+  { index: 28, kind: 'vein', x: 76, y: 6 },
+  { index: 29, kind: 'vein', x: 81, y: 6 },
 ];
 
 export const nodeSlotAt = (index: number): NodeSlot | undefined =>

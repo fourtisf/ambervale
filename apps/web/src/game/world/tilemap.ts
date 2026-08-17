@@ -6,6 +6,7 @@
  */
 
 import {
+  CAVE_FLOOR,
   CHANNEL,
   DOCK_PLANKS,
   FAR_PLANKS,
@@ -26,6 +27,10 @@ export const enum Tile {
   Grass2 = 2,
   Dirt = 3,
   Water = 4,
+  /** The Amber Deep's worked-stone floor — walkable, dark, underground. */
+  Cave = 5,
+  /** Sheer rock around the chamber. Blocks like water; nothing walks it. */
+  CaveWall = 6,
 }
 
 export interface WorldMap {
@@ -142,6 +147,18 @@ export function generateWorld(): WorldMap {
     }
   }
 
+  // The Amber Deep, carved after everything else so nothing dilutes it: the
+  // chamber floor, then a ring of sheer wall one tile thick around it. Only
+  // the mouth's teleports cross that ring.
+  const cf = CAVE_FLOOR;
+  for (let ty = cf.y0 - 1; ty <= cf.y1 + 1; ty++) {
+    for (let tx = cf.x0 - 1; tx <= cf.x1 + 1; tx++) {
+      if (tx < 0 || ty < 0 || tx >= w || ty >= h) continue;
+      const inFloor = tx >= cf.x0 && tx <= cf.x1 && ty >= cf.y0 && ty <= cf.y1;
+      tiles[ty * w + tx] = inFloor ? Tile.Cave : Tile.CaveWall;
+    }
+  }
+
   // The dock is planked over the lake — still water for rendering, but the
   // collision map below treats those tiles as walkable.
   void dockSet;
@@ -204,6 +221,7 @@ export function buildCollision(map: WorldMap): Collision {
 
       if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) return true;
       if (map.isWater(tx, ty) && !walkableWater.has(`${tx},${ty}`)) return true;
+      if (map.at(tx, ty) === Tile.CaveWall) return true;
 
       for (const s of solids) {
         if (px >= s.x0 && px <= s.x1 && py >= s.y0 && py <= s.y1) return true;

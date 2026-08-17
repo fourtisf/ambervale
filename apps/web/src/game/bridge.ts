@@ -36,7 +36,8 @@ export interface Interaction {
     | 'mill'
     | 'bag'
     | 'sleep'
-    | 'row';
+    | 'row'
+    | 'delve';
   label: string;
   /** Plot/node index or ground-item id, whichever the action needs. */
   target: number | string;
@@ -72,6 +73,8 @@ export interface BridgeEvents {
   sleep: void;
   /** The player took the rowboat; the world plays the crossing. */
   row: 'east' | 'west';
+  /** The player stepped through the Amber Deep's mouth, or climbed out. */
+  delve: 'in' | 'out';
   /** The invite gate is up; canvas-drawn HUD hides behind it. */
   gated: boolean;
   /**

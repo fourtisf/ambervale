@@ -10,6 +10,8 @@
 import {
   BUILDS,
   BUILD_KEYS,
+  CAVE_LADDER,
+  CAVE_TORCHES,
   DOCK_PLANKS,
   FAR_PLANKS,
   FENCES,
@@ -150,6 +152,17 @@ export function buildLayout(scene: Phaser.Scene): LayoutRefs {
   for (const lamp of LAMPS) {
     occluders.push(place(scene, 'lamp', lamp.x, lamp.y));
   }
+
+  // The Amber Deep's fittings. Torches skip the Light2D pipeline on purpose:
+  // a flame that goes dark at night because the *sun* went down is absurd.
+  for (const t of CAVE_TORCHES) {
+    scene.add
+      .image(t.x * TILE + TILE / 2, t.y * TILE + TILE, 'torch')
+      .setOrigin(0.5, 1)
+      .setScale(SPRITE_SCALE)
+      .setDepth(t.y * TILE);
+  }
+  place(scene, 'ladder', CAVE_LADDER.x, CAVE_LADDER.y);
 
   // North meadow signpost.
   const sign = structureAt('sign');

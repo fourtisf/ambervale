@@ -24,6 +24,8 @@ const TILE_CSS: Record<Tile, string> = {
   [Tile.Grass2]: '#5b9450',
   [Tile.Dirt]: '#8b6e46',
   [Tile.Water]: '#2f6f92',
+  [Tile.Cave]: '#241f1c',
+  [Tile.CaveWall]: '#38322b',
 };
 
 const PANEL_MARGIN = 12;

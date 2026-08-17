@@ -930,6 +930,116 @@ const cave: Painter = (g, s) => {
   g.fillEllipse(112 * s, 100 * s, 10 * s, 6 * s);
 };
 
+/**
+ * An amber vein at one of four richness stages. Stage 3 is untouched — dark
+ * host rock crowded with lit crystals; each stage down loses crystals until
+ * 0 is spent rubble with one dull glint left as the promise it regrows.
+ */
+function veinAt(stage: number): Painter {
+  return (g, s) => {
+    shadow(g, s, 34, 50, 26);
+
+    if (stage === 0) {
+      g.fillStyle(0x2c2622, 1);
+      g.fillCircle(26 * s, 45 * s, 7 * s);
+      g.fillCircle(42 * s, 44 * s, 5.5 * s);
+      g.fillStyle(0x3a332d, 1);
+      g.fillCircle(34 * s, 41 * s, 8 * s);
+      g.fillStyle(0xf4b942, 0.45);
+      g.fillCircle(35 * s, 40 * s, 1.8 * s);
+      return;
+    }
+
+    // Host rock: darker than surface stone — it lives underground.
+    g.fillStyle(0x2c2622, 1);
+    g.fillPoints(
+      [
+        { x: 6 * s, y: 50 * s },
+        { x: 10 * s, y: 26 * s },
+        { x: 24 * s, y: 12 * s },
+        { x: 46 * s, y: 15 * s },
+        { x: 60 * s, y: 34 * s },
+        { x: 56 * s, y: 50 * s },
+      ],
+      true,
+    );
+    g.fillStyle(0x3a332d, 1);
+    g.fillPoints(
+      [
+        { x: 14 * s, y: 47 * s },
+        { x: 17 * s, y: 27 * s },
+        { x: 30 * s, y: 17 * s },
+        { x: 46 * s, y: 22 * s },
+        { x: 52 * s, y: 40 * s },
+        { x: 46 * s, y: 47 * s },
+      ],
+      true,
+    );
+
+    // The crystals: fat amber shards with a pale hot core, count by stage.
+    const shards: [number, number, number, number][] = [
+      [33, 30, 9, 14], // cx, cy, w, h — the heart shard, always present
+      [21, 36, 6, 10],
+      [45, 33, 6, 11],
+      [28, 24, 5, 8],
+      [40, 22, 4, 7],
+    ];
+    const show = stage === 3 ? shards.length : stage === 2 ? 3 : 1;
+    for (let i = 0; i < show; i++) {
+      const [cx, cy, w, h] = shards[i]!;
+      g.fillStyle(0xc78d2a, 1);
+      g.fillPoints(
+        [
+          { x: (cx - w / 2) * s, y: (cy + h / 2) * s },
+          { x: (cx - w / 3) * s, y: (cy - h / 2) * s },
+          { x: (cx + w / 3) * s, y: (cy - h / 2.4) * s },
+          { x: (cx + w / 2) * s, y: (cy + h / 2) * s },
+        ],
+        true,
+      );
+      g.fillStyle(0xf4b942, 1);
+      g.fillPoints(
+        [
+          { x: (cx - w / 3.2) * s, y: (cy + h / 2.4) * s },
+          { x: (cx - w / 5) * s, y: (cy - h / 2.6) * s },
+          { x: (cx + w / 4) * s, y: (cy - h / 3) * s },
+          { x: (cx + w / 3) * s, y: (cy + h / 2.4) * s },
+        ],
+        true,
+      );
+      g.fillStyle(0xffe9b0, 0.9);
+      g.fillCircle((cx - w / 8) * s, (cy - h / 6) * s, (w / 4.4) * s);
+    }
+  };
+}
+
+/** A wall torch for the Amber Deep: iron bracket, flame, no daylight needed. */
+const torch: Painter = (g, s) => {
+  g.fillStyle(0x3a3a3a, 1);
+  g.fillRect(11 * s, 22 * s, 6 * s, 20 * s);
+  g.fillRect(8 * s, 38 * s, 12 * s, 4 * s);
+  g.fillStyle(0x6b4a2a, 1);
+  g.fillRect(12 * s, 12 * s, 4 * s, 12 * s);
+  g.fillStyle(0xd96b2a, 1);
+  g.fillEllipse(14 * s, 9 * s, 10 * s, 13 * s);
+  g.fillStyle(0xf4b942, 1);
+  g.fillEllipse(14 * s, 10 * s, 6 * s, 9 * s);
+  g.fillStyle(0xffe9b0, 1);
+  g.fillEllipse(14 * s, 11.5 * s, 3 * s, 4.5 * s);
+};
+
+/** The ladder out of the Amber Deep, leaned against the chamber wall. */
+const ladder: Painter = (g, s) => {
+  shadow(g, s, 14, 56, 9);
+  g.fillStyle(PALETTE.woodDark, 1);
+  g.fillRect(6 * s, 4 * s, 4 * s, 52 * s);
+  g.fillRect(18 * s, 4 * s, 4 * s, 52 * s);
+  g.fillStyle(PALETTE.wood, 1);
+  for (let i = 0; i < 6; i++) {
+    g.fillRect(6 * s, (9 + i * 8.6) * s, 16 * s, 3 * s);
+  }
+};
+
 // ---------------------------------------------------------------------------
 // Registry
 // ---------------------------------------------------------------------------
@@ -1368,6 +1478,12 @@ export const SPRITES: readonly SpriteDef[] = [
   { key: 'rock1', w: 64, h: 48, paint: rockAt(1) },
   { key: 'rock2', w: 64, h: 48, paint: rockAt(2) },
   { key: 'rock3', w: 64, h: 48, paint: rockAt(3) },
+  { key: 'vein0', w: 68, h: 54, paint: veinAt(0) },
+  { key: 'vein1', w: 68, h: 54, paint: veinAt(1) },
+  { key: 'vein2', w: 68, h: 54, paint: veinAt(2) },
+  { key: 'vein3', w: 68, h: 54, paint: veinAt(3) },
+  { key: 'torch', w: 28, h: 44, paint: torch },
+  { key: 'ladder', w: 28, h: 58, paint: ladder },
   { key: 'bush', w: 52, h: 42, paint: bush },
   { key: 'soil', w: 64, h: 64, paint: soil },
   { key: 'soilWet', w: 64, h: 64, paint: soilWet },
@@ -1406,6 +1522,15 @@ export const SPRITES: readonly SpriteDef[] = [
 /** Texture key for a rock at the given remaining hp (0–3). */
 export const rockTextureKey = (hp: number): string =>
   `rock${Math.max(0, Math.min(3, Math.round(hp)))}`;
+
+/**
+ * Texture key for a vein at the given remaining hp (0–5). Five hits map onto
+ * four art stages: untouched, cracked, nearly spent, rubble.
+ */
+export const veinTextureKey = (hp: number): string => {
+  const stage = hp <= 0 ? 0 : hp <= 2 ? 1 : hp <= 4 ? 2 : 3;
+  return `vein${stage}`;
+};
 
 /**
  * Draws every sprite into the texture manager. Idempotent — a texture that

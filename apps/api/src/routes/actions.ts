@@ -14,10 +14,12 @@ import {
   crowState,
   isCropKey,
   isItemKey,
+  nodeDepleteXp,
   nodeSlotAt,
   waterCutMs,
   type CropKey,
   type GoodKey,
+  type NodeKey,
 } from '@ambervale/game-config';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { User } from '@prisma/client';
@@ -443,15 +445,16 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
   // -------------------------------------------------------------------------
   // Chop / mine — same mechanic, different node kind
   // -------------------------------------------------------------------------
-  async function doHit(req: FastifyRequest, expectedKind: 'oak' | 'rock', action: string) {
+  async function doHit(req: FastifyRequest, expectedKinds: readonly NodeKey[], action: string) {
     const body = parseBody(NodeBody, req);
     const user = await guard(req, action, body.nodeIndex);
 
     const slot = nodeSlotAt(body.nodeIndex);
     if (!slot) throw notFound(`No node ${body.nodeIndex}.`);
-    if (slot.kind !== expectedKind) {
-      throw badRequest(`Node ${body.nodeIndex} is a ${slot.kind}, not a ${expectedKind}.`);
+    if (!expectedKinds.includes(slot.kind)) {
+      throw badRequest(`Node ${body.nodeIndex} is a ${slot.kind}, not a ${expectedKinds[0]}.`);
     }
+    const kind = slot.kind;
 
     // Per-node cooldown on top of the global rate limit: swinging faster than
     // the animation is the cheapest way to farm a node, so it is capped here.
@@ -459,7 +462,7 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
       throw conflict('TOO_FAST', 'Swinging too fast.');
     }
 
-    const def = NODES[expectedKind];
+    const def = NODES[kind];
 
     return prisma.$transaction(async (tx) => {
       // Lazy respawn: a node whose timer elapsed is restored before we judge it.
@@ -493,20 +496,25 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
         // A better tool means more from the same tree. The bonus lands on the
         // node's primary drop only, so a pick cannot conjure wood.
         const effects = await effectsFor(tx, user.id);
-        const primary = expectedKind === 'oak' ? 'wood' : 'stone';
-        const bonus = expectedKind === 'oak' ? effects.axeBonus : effects.pickBonus;
+        const primary = kind === 'oak' ? 'wood' : 'stone';
+        const bonus = kind === 'oak' ? effects.axeBonus : effects.pickBonus;
 
         for (const [itemKey, qty] of Object.entries(def.yield) as [GoodKey, number][]) {
           const total = qty + (itemKey === primary ? bonus : 0);
           await addItem(tx, user.id, itemKey, total);
           gained[itemKey] = total;
         }
-        xp = expectedKind === 'oak' ? NODES.oak.xpOnFell : NODES.rock.xpOnBreak;
+        // The Amber Deep's bonus roll. Server-side randomness, decided in the
+        // same transaction that pays out — a client can neither see it coming
+        // nor retry its way into one.
+        if (kind === 'vein' && Math.random() < NODES.vein.geodeChance) {
+          await addItem(tx, user.id, 'geode', 1);
+          gained['geode'] = 1;
+        }
+        xp = nodeDepleteXp(kind);
       }
 
-      const counters = felled
-        ? { [expectedKind === 'oak' ? 'choppedCount' : 'minedCount']: 1 }
-        : {};
+      const counters = felled ? { [kind === 'oak' ? 'choppedCount' : 'minedCount']: 1 } : {};
 
       const g = await grant(tx, user.id, { xp, counters });
       await logEvent(tx, user.id, `act.${action}`, {
@@ -522,7 +530,7 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/act/chop', async (req, res) => {
     const user = req.requireUser();
-    const r = await doHit(req, 'oak', 'chop');
+    const r = await doHit(req, ['oak'], 'chop');
     return res.send(
       await reply(user, {
         levelUps: r.g.levelUps,
@@ -539,7 +547,9 @@ export async function actionRoutes(app: FastifyInstance): Promise<void> {
 
   app.post('/act/mine', async (req, res) => {
     const user = req.requireUser();
-    const r = await doHit(req, 'rock', 'mine');
+    // One endpoint for both: a vein is mined with the same pick, and the
+    // client's optimistic swing plays identically. The server decides yields.
+    const r = await doHit(req, ['rock', 'vein'], 'mine');
     return res.send(
       await reply(user, {
         levelUps: r.g.levelUps,

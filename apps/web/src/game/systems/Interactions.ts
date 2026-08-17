@@ -10,6 +10,7 @@
 import {
   ANIMALS,
   BOAT_MOORINGS,
+  CAVE_LADDER,
   CROPS,
   PADDOCKS,
   PLAYER,
@@ -169,7 +170,13 @@ export class Interactions {
       consider(
         {
           kind: slot.kind === 'oak' ? 'chop' : 'mine',
-          label: alive ? (slot.kind === 'oak' ? 'Chop oak' : 'Mine rock') : 'Regrowing',
+          label: alive
+            ? slot.kind === 'oak'
+              ? 'Chop oak'
+              : slot.kind === 'vein'
+                ? 'Mine the vein'
+                : 'Mine rock'
+            : 'Regrowing',
           target: node.index,
           enabled: alive,
         },
@@ -251,6 +258,20 @@ export class Interactions {
       house.y * TILE,
     );
 
+    // The Amber Deep: in at the mouth, out at the ladder. Like the boat these
+    // send no request — the mouth and the ladder are doors, not verbs.
+    const cave = structureAt('cave');
+    consider(
+      { kind: 'delve', label: 'Enter the Amber Deep', target: 'in', enabled: true },
+      cave.x * TILE + TILE / 2,
+      (cave.y + 1) * TILE,
+    );
+    consider(
+      { kind: 'delve', label: 'Climb out', target: 'out', enabled: true },
+      CAVE_LADDER.x * TILE + TILE / 2,
+      CAVE_LADDER.y * TILE + TILE,
+    );
+
     // The rowboat, wherever it is moored. Crossing is traversal, not economy —
     // no request is sent; the world scene plays the trip and owns the boat.
     // Its own reach, wider than an arm's length: the boat is moored a stride
@@ -308,6 +329,9 @@ export class Interactions {
     if (interaction.kind === 'sleep') return void bridge.emit('sleep', undefined);
     if (interaction.kind === 'row') {
       return void bridge.emit('row', interaction.target as 'east' | 'west');
+    }
+    if (interaction.kind === 'delve') {
+      return void bridge.emit('delve', interaction.target as 'in' | 'out');
     }
 
     this.busy = true;

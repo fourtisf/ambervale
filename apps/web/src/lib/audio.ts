@@ -210,6 +210,17 @@ class Synth {
     this.note(760, 0.05, { wave: 'square', gain: 0.1, delay: 0.07 });
   }
 
+  /** Passing through the cave mouth: down is a fall of echo, up is daylight. */
+  delve(dir: 'in' | 'out'): void {
+    if (dir === 'in') {
+      this.noise(0.3, 300, 0.2);
+      this.note(220, 0.5, { wave: 'sine', gain: 0.14, sweepTo: 90 });
+    } else {
+      this.noise(0.2, 900, 0.12);
+      this.note(180, 0.4, { wave: 'sine', gain: 0.12, sweepTo: 340 });
+    }
+  }
+
   /** An oar stroke: the dip, the pull, the drip off the blade. */
   row(): void {
     this.noise(0.18, 600, 0.2);
